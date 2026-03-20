@@ -68,72 +68,226 @@
   font-weight: 600;
 }
 
-.match-player {
-  margin: 0 14px 16px;
+/* === CRICFY SECTION === */
+
+.cricfy-section {
+  padding: 0 14px;
+}
+
+.cricfy-stream-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.cricfy-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--bg2);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  flex: 1;
+  min-width: 140px;
+}
+.cricfy-tab:hover {
+  border-color: var(--stream-color, var(--accent));
+}
+.cricfy-tab.active {
+  border-color: var(--stream-color, var(--accent));
+  background: rgba(232, 124, 12, 0.1);
+}
+
+.cricfy-tab-emoji {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.cricfy-tab-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+}
+
+.cricfy-tab-desc {
+  font-size: 0.7rem;
+  color: var(--text3);
+  display: block;
+  margin-top: 1px;
+}
+
+.cricfy-player-wrap {
   background: #0d0d0d;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--border);
+  margin-bottom: 16px;
 }
 
-.match-player-header {
+.cricfy-player-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 10px 14px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
   background: #111;
   border-bottom: 1px solid var(--border);
-  gap: 10px;
 }
 
-.match-player-title {
+.cricfy-player-emoji {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.cricfy-player-title {
   font-weight: 700;
   font-size: 0.95rem;
   color: var(--text);
 }
 
-.match-player-comp {
+.cricfy-player-desc {
   font-size: 0.72rem;
   color: var(--text3);
   margin-top: 2px;
 }
 
-.match-player-close {
-  background: rgba(255,255,255,0.1);
-  border: none;
-  color: #fff;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  font-size: 0.85rem;
+.cricfy-live-pill {
+  margin-left: auto;
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  gap: 6px;
+  background: rgba(229, 9, 20, 0.15);
+  border: 1px solid rgba(229, 9, 20, 0.4);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
 }
-.match-player-close:hover { background: var(--accent); }
 
-.match-player-frame {
+.cricfy-live-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.cricfy-iframe-wrap {
   position: relative;
   width: 100%;
-  padding-top: 56.25%;
+  height: 600px;
   background: #000;
 }
 
-.match-player-loading {
+@media (max-width: 600px) {
+  .cricfy-iframe-wrap { height: 420px; }
+}
+
+.cricfy-loading {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   background: #000;
   z-index: 2;
   color: var(--text2);
-  font-size: 0.82rem;
+  font-size: 0.85rem;
 }
 
+.cricfy-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.cricfy-actions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #111;
+  border-top: 1px solid var(--border);
+}
+
+.cricfy-action-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+}
+.cricfy-action-btn:hover { opacity: 0.85; }
+.cricfy-action-btn.primary {
+  background: #e87c0c;
+  color: #fff;
+}
+.cricfy-action-btn.secondary {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+
+.cricfy-info-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 600px) {
+  .cricfy-info-cards { grid-template-columns: repeat(4, 1fr); }
+}
+
+.cricfy-info-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+.cricfy-info-card:hover { border-color: #e87c0c; }
+
+.cricfy-info-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.cricfy-info-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cricfy-info-desc {
+  font-size: 0.65rem;
+  color: var(--text3);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* === SPINNER === */
 .spinner {
   width: 40px;
   height: 40px;
@@ -145,216 +299,7 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.match-player-actions {
-  display: flex;
-  gap: 6px;
-  padding: 8px 12px;
-  background: #111;
-  border-top: 1px solid var(--border);
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.comp-filter-row {
-  display: flex;
-  gap: 6px;
-  padding: 0 14px 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.comp-filter-row::-webkit-scrollbar { display: none; }
-
-.comp-filter-btn {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  color: var(--text3);
-  padding: 5px 13px;
-  border-radius: 14px;
-  font-size: 0.72rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: all 0.2s;
-}
-.comp-filter-btn:hover { color: #fff; border-color: var(--accent); }
-.comp-filter-btn.active {
-  background: rgba(229,9,20,0.15);
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.match-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding: 0 14px;
-}
-
-@media (min-width: 500px) {
-  .match-grid { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (min-width: 700px) {
-  .match-grid { grid-template-columns: repeat(4, 1fr); }
-}
-
-.match-card {
-  background: var(--bg2);
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.match-card:hover { transform: translateY(-2px); border-color: var(--accent); }
-.match-card.match-active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(229,9,20,0.3); }
-
-.match-thumb {
-  position: relative;
-  width: 100%;
-  padding-top: 56.25%;
-  background-size: cover;
-  background-position: center;
-  background-color: #111;
-}
-
-.match-thumb-placeholder {
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
-}
-
-.match-thumb-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.match-card:hover .match-thumb-overlay { opacity: 1; }
-
-.match-play-btn {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(229,9,20,0.9);
-  color: #fff;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-}
-
-.match-time-badge {
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  background: rgba(0,0,0,0.8);
-  color: #aaa;
-  font-size: 0.62rem;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-
-.match-info {
-  padding: 8px;
-}
-
-.match-teams {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 4px;
-  flex-wrap: wrap;
-}
-
-.match-team {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.match-team.home { text-align: right; }
-.match-team.away { text-align: left; }
-
-.match-vs {
-  font-size: 0.6rem;
-  color: var(--text3);
-  background: var(--bg3);
-  padding: 1px 5px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.match-comp {
-  font-size: 0.62rem;
-  color: var(--text3);
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.match-loading {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding: 0 14px;
-}
-
-@media (min-width: 500px) {
-  .match-loading { grid-template-columns: repeat(3, 1fr); }
-}
-
-.match-skeleton {
-  background: var(--bg2);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.skel-thumb {
-  width: 100%;
-  padding-top: 56.25%;
-  background: var(--bg3);
-  animation: shimmer 1.2s ease-in-out infinite alternate;
-}
-
-.skel-info {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.skel-line {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--bg3);
-  animation: shimmer 1.2s ease-in-out infinite alternate;
-}
-.skel-line.long { width: 90%; }
-.skel-line.short { width: 60%; }
-
-@keyframes shimmer {
-  from { opacity: 0.4; }
-  to { opacity: 0.9; }
-}
-
-.match-error, .match-empty {
-  text-align: center;
-  padding: 32px 20px;
-  color: var(--text3);
-  font-size: 0.85rem;
-}
+/* === CHANNELS SECTION === */
 
 .channels-section {
   padding: 0 14px;
@@ -426,35 +371,3 @@
   color: var(--text3);
   margin-top: 2px;
 }
-
-.source-btn {
-  background: #1a1a1a;
-  border: 1px solid var(--border);
-  color: var(--text2);
-  padding: 5px 13px;
-  border-radius: 5px;
-  font-size: 0.75rem;
-  transition: all 0.2s;
-}
-.source-btn:hover { border-color: var(--accent); color: #fff; }
-.source-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  font-weight: 600;
-}
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border-radius: 6px;
-  border: none;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.action-btn:hover { opacity: 0.8; }
-.action-btn.watch { background: var(--accent); color: #fff; }
