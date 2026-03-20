@@ -1,12 +1,10 @@
 import express from 'express'
 import cors from 'cors'
-import { createProxyMiddleware } from 'http-proxy-middleware'
 import fetch from 'node-fetch'
 import https from 'https'
-import http from 'http'
 
 const app = express()
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 
 app.use(cors())
 app.use(express.json())
@@ -38,31 +36,31 @@ app.get('/api/sources/:type/:imdb', (req, res) => {
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false })
 
+async function proxyFetch(targetUrl, res, extraHeaders = {}) {
+  const parsed = new URL(targetUrl)
+  const upstream = await fetch(targetUrl, {
+    agent: httpsAgent,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': '*/*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Referer': parsed.origin,
+      ...extraHeaders,
+    },
+    redirect: 'follow',
+  })
+  return { upstream, parsed }
+}
+
 app.use('/stream-proxy', async (req, res) => {
   const target = req.query.target
   if (!target) return res.status(400).send('Missing target URL')
 
   try {
-    const parsedUrl = new URL(target)
-    const isHttps = parsedUrl.protocol === 'https:'
-    const agent = isHttps ? httpsAgent : undefined
-
-    const upstream = await fetch(target, {
-      agent,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Referer': parsedUrl.origin,
-      },
-      redirect: 'follow',
-    })
-
+    const { upstream } = await proxyFetch(target, res)
     const contentType = upstream.headers.get('content-type') || 'text/html'
     res.set('Content-Type', contentType)
     res.set('Access-Control-Allow-Origin', '*')
-    res.removeHeader('X-Frame-Options')
-    res.removeHeader('Content-Security-Policy')
 
     const body = await upstream.text()
     const baseUrl = upstream.url || target
@@ -83,14 +81,8 @@ app.get('/api/imgproxy', async (req, res) => {
   const src = req.query.src
   if (!src) return res.status(400).send('Missing src')
   try {
-    const parsed = new URL(src)
-    const upstream = await fetch(src, {
-      agent: httpsAgent,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': parsed.origin,
-        'Accept': 'image/webp,image/avif,image/*,*/*',
-      },
+    const { upstream } = await proxyFetch(src, res, {
+      Accept: 'image/webp,image/avif,image/*,*/*',
     })
     const ct = upstream.headers.get('content-type') || 'image/jpeg'
     res.set('Content-Type', ct)
@@ -116,7 +108,6 @@ app.use('/api/moviebox', async (req, res) => {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
         'origin': 'https://moviebox.ph',
         'referer': 'https://moviebox.ph/',
         'Content-Type': req.headers['content-type'] || 'application/json',
@@ -196,6 +187,52 @@ app.get('/api/flixer/movies', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`Stream proxy server running on port ${PORT}`)
+const PROXY_ROUTES = [
+  {
+    prefix: '/proxy/omdb',
+    target: 'https://www.omdbapi.com',
+    rewrite: (p) => p.replace(/^\/proxy\/omdb/, ''),
+  },
+  {
+    prefix: '/proxy/tvmaze',
+    target: 'https://api.tvmaze.com',
+    rewrite: (p) => p.replace(/^\/proxy\/tvmaze/, ''),
+  },
+  {
+    prefix: '/proxy/jikan',
+    target: 'https://api.jikan.moe/v4',
+    rewrite: (p) => p.replace(/^\/proxy\/jikan/, ''),
+  },
+]
+
+PROXY_ROUTES.forEach(({ prefix, target, rewrite }) => {
+  app.use(prefix, async (req, res) => {
+    const path = rewrite(req.path)
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
+    const url = `${target}${path}${qs}`
+    try {
+      const upstream = await fetch(url, {
+        agent: httpsAgent,
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Accept': 'application/json',
+        },
+      })
+      const ct = upstream.headers.get('content-type') || 'application/json'
+      res.set('Content-Type', ct)
+      res.set('Access-Control-Allow-Origin', '*')
+      const text = await upstream.text()
+      res.send(text)
+    } catch (err) {
+      res.status(502).json({ error: `Proxy error for ${prefix}`, message: err.message })
+    }
+  })
 })
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Stream proxy server running on port ${PORT}`)
+  })
+}
+
+export default app

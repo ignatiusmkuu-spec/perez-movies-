@@ -12,6 +12,13 @@ Made by **Ignatius** · Contact: +254 706 535 581
 - **Content APIs**: MovieBox (`h5-api.aoneroom.com`), OMDB (search), Jikan (anime browse)
 - **Streaming**: 123movienow.cc (primary), VidSrc, MultiEmbed, 2Embed, EmbedHub, VidSrc.me
 
+## Vercel Deployment
+- `vercel.json` configured with `@vercel/static-build` (frontend) + `@vercel/node` (backend)
+- `vercel-build` script runs `vite build` → outputs to `dist/`
+- Express server exports `default app` and skips `listen()` when `VERCEL=1`
+- All proxy routes (`/api/*`, `/stream-proxy`, `/proxy/*`) routed to `server/index.js`
+- No hardcoded localhost URLs in frontend — all calls use relative paths
+
 ## Project Structure
 ```
 server/
