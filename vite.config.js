@@ -26,6 +26,12 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/proxy\/jikan/, ''),
         secure: false,
       },
+      '/proxy/scorebat': {
+        target: 'https://www.scorebat.com/video-api/v3',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/proxy\/scorebat/, ''),
+        secure: false,
+      },
       '/stream-proxy': {
         target: 'http://localhost:3001',
         changeOrigin: true,
