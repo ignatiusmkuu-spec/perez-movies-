@@ -1,41 +1,45 @@
 .player-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.94);
+  background: rgba(0,0,0,0.96);
   z-index: 1000;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  padding: 8px;
+  overflow-y: auto;
 }
 
 .player-box {
-  background: #000;
+  background: #050505;
   border-radius: 12px;
   overflow: hidden;
   width: 100%;
-  max-width: 880px;
-  box-shadow: 0 0 80px rgba(229,9,20,0.25), 0 0 0 1px rgba(229,9,20,0.3);
+  max-width: 900px;
+  box-shadow: 0 0 60px rgba(229,9,20,0.3), 0 0 0 1px #2a2a3a;
+  flex-shrink: 0;
 }
 
 .player-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 14px 16px;
-  background: var(--bg2);
+  padding: 12px 16px;
+  background: #0d0d0d;
   border-bottom: 1px solid var(--border);
+  gap: 12px;
 }
+
+.player-header-info { flex: 1; min-width: 0; }
 
 .player-title {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 280px;
 }
 
 .player-year {
@@ -48,24 +52,85 @@
   background: rgba(255,255,255,0.1);
   border: none;
   color: #fff;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-left: 12px;
   transition: background 0.2s;
 }
 .player-close:hover { background: var(--accent); }
+
+.episode-picker {
+  display: flex;
+  gap: 20px;
+  padding: 10px 16px;
+  background: #0d0d0d;
+  border-bottom: 1px solid var(--border);
+}
+
+.episode-picker label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text2);
+}
+
+.episode-picker input {
+  width: 56px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.player-hint {
+  background: rgba(229,9,20,0.08);
+  border-bottom: 1px solid rgba(229,9,20,0.2);
+  padding: 7px 16px;
+  font-size: 0.72rem;
+  color: #ff8888;
+}
 
 .player-iframe-wrap {
   position: relative;
   width: 100%;
   padding-top: 56.25%;
   background: #000;
+}
+
+.player-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #000;
+  z-index: 2;
+  color: var(--text2);
+  font-size: 0.85rem;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid #222;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .player-iframe {
@@ -75,14 +140,15 @@
   height: 100%;
   border: none;
   display: block;
+  z-index: 1;
 }
 
 .player-sources {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--bg2);
+  gap: 6px;
+  padding: 10px 14px;
+  background: #0d0d0d;
   border-top: 1px solid var(--border);
   flex-wrap: wrap;
 }
@@ -94,15 +160,16 @@
 }
 
 .source-btn {
-  background: var(--bg3);
+  background: #1a1a1a;
   border: 1px solid var(--border);
   color: var(--text2);
-  padding: 5px 12px;
+  padding: 5px 13px;
   border-radius: 5px;
   font-size: 0.75rem;
   transition: all 0.2s;
 }
-.source-btn:hover, .source-btn.active {
+.source-btn:hover { border-color: var(--accent); color: #fff; }
+.source-btn.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
@@ -112,8 +179,8 @@
 .player-actions {
   display: flex;
   gap: 8px;
-  padding: 10px 16px;
-  background: var(--bg2);
+  padding: 10px 14px;
+  background: #0d0d0d;
   border-top: 1px solid var(--border);
 }
 
@@ -131,8 +198,9 @@
   text-decoration: none;
   transition: opacity 0.2s;
   cursor: pointer;
+  white-space: nowrap;
 }
 .action-btn:hover { opacity: 0.82; }
+.action-btn.watch { background: var(--accent); color: #fff; }
 .action-btn.dl { background: #1db954; color: #fff; }
 .action-btn.info { background: #f5c518; color: #000; }
-.action-btn.share { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); }
