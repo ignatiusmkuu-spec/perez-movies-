@@ -10,7 +10,8 @@ Made by **Ignatius** · Contact: +254 706 535 581
 - **Backend**: Express.js proxy server (port 3001)
 - **Styling**: CSS (component-level, CSS variables)
 - **Content APIs**: MovieBox (`h5-api.aoneroom.com`), OMDB (search), Jikan (anime browse)
-- **Streaming**: 123movienow.cc (primary), VidSrc, MultiEmbed, 2Embed, EmbedHub, VidSrc.me
+- **Streaming**: 123movienow.cc (MovieBox primary), VidSrc, EmbedSU, MultiEmbed, 2Embed, Smashy, VidSrc.me, MoviesAPI, VidLink
+- **Downloads**: apibay.org (Pirate Bay API) — real torrent/magnet links by quality (4K/1080p/720p/480p)
 
 ## Vercel Deployment
 - `vercel.json` configured with `@vercel/static-build` (frontend) + `@vercel/node` (backend)

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { getImdbId } from '../api/moviebox'
+import { fetchDownloads, groupByQuality } from '../api/download'
 import './PlayerModal.css'
 
 const MB_DOMAIN_URL = '/proxy/moviebox-domain'
@@ -67,6 +68,10 @@ export default function PlayerModal({ item, type, onClose }) {
   const [lookingUp, setLookingUp]       = useState(false)
   const [visible, setVisible]           = useState(false)
   const [showEpPanel, setShowEpPanel]   = useState(false)
+  const [showDlPanel, setShowDlPanel]   = useState(false)
+  const [dlLoading, setDlLoading]       = useState(false)
+  const [dlGroups, setDlGroups]         = useState(null)
+  const [dlError, setDlError]           = useState(null)
 
   const loadTimer = useRef(null)
   const iframeRef = useRef()
@@ -131,6 +136,9 @@ export default function PlayerModal({ item, type, onClose }) {
     setTimedOut(false)
     setSeason(1)
     setEpisode(1)
+    setShowDlPanel(false)
+    setDlGroups(null)
+    setDlError(null)
 
     if (item.imdbID && !isAnime) { setResolvedImdb(item.imdbID); return }
     if (item.externals?.imdb && isTV) { setResolvedImdb(item.externals.imdb); return }
@@ -178,6 +186,30 @@ export default function PlayerModal({ item, type, onClose }) {
     setEpisode(1)
     setLoading(true)
     setTimedOut(false)
+  }
+
+  const openDownloads = async () => {
+    setShowDlPanel(true)
+    setShowEpPanel(false)
+    if (dlGroups !== null) return
+    setDlLoading(true)
+    setDlError(null)
+    try {
+      const mediaType = isTV || isAnime ? 'tv' : 'movie'
+      const data = await fetchDownloads({
+        title,
+        year,
+        imdb: id,
+        type: mediaType,
+        season: showEps ? season : undefined,
+        episode: showEps ? episode : undefined,
+      })
+      setDlGroups(groupByQuality(data.results || []))
+    } catch {
+      setDlError('Could not load downloads. Try again.')
+    } finally {
+      setDlLoading(false)
+    }
   }
 
   return (
@@ -265,6 +297,76 @@ export default function PlayerModal({ item, type, onClose }) {
               </div>
             ) : null}
 
+            {showDlPanel && (
+              <div className="mb-ep-panel">
+                <div className="mb-ep-panel-header">
+                  <span>Download</span>
+                  <button className="mb-ep-panel-close" onClick={() => setShowDlPanel(false)}>✕</button>
+                </div>
+
+                {dlLoading && (
+                  <div className="mb-dl-loading">
+                    <div className="mb-spinner" style={{ width: 32, height: 32, borderWidth: 2 }} />
+                    <span>Searching torrents…</span>
+                  </div>
+                )}
+
+                {dlError && (
+                  <div className="mb-dl-error">{dlError}</div>
+                )}
+
+                {!dlLoading && dlGroups !== null && dlGroups.length === 0 && (
+                  <div className="mb-dl-empty">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3ba776" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>No downloads found for "{title}"</p>
+                    <p className="mb-fallback-sub">Try searching on YTS or Nyaa</p>
+                    <div className="mb-dl-fallback-links">
+                      <a href={`https://yts.mx/browse-movies/${encodeURIComponent(title)}`} target="_blank" rel="noreferrer" className="mb-ext-btn">YTS Movies</a>
+                      <a href={`https://nyaa.si/?q=${encodeURIComponent(title)}`} target="_blank" rel="noreferrer" className="mb-ext-btn">Nyaa Anime</a>
+                    </div>
+                  </div>
+                )}
+
+                {!dlLoading && dlGroups !== null && dlGroups.length > 0 && (
+                  <div className="mb-dl-groups">
+                    {dlGroups.map(({ quality, items }) => (
+                      <div key={quality} className="mb-dl-group">
+                        <div className="mb-dl-quality-label">
+                          <span className="mb-dl-badge">{quality}</span>
+                          <span className="mb-dl-count">{items.length} result{items.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="mb-dl-items">
+                          {items.map((item, i) => (
+                            <div key={i} className="mb-dl-item">
+                              <div className="mb-dl-item-name">{item.name}</div>
+                              <div className="mb-dl-item-meta">
+                                <span className="mb-dl-size">{item.size}</span>
+                                <span className="mb-dl-seeds">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#3ba776"><circle cx="12" cy="12" r="10"/></svg>
+                                  {item.seeders} seeds
+                                </span>
+                              </div>
+                              <a
+                                href={item.magnet}
+                                className="mb-dl-magnet-btn"
+                                title="Open with torrent client"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Magnet Download
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="mb-dl-note">
+                      Downloads open in your torrent client (qBittorrent, uTorrent, etc.)
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {showEpPanel && showEps && (
               <div className="mb-ep-panel">
                 <div className="mb-ep-panel-header">
@@ -328,10 +430,13 @@ export default function PlayerModal({ item, type, onClose }) {
               </a>
             )}
             {title && (
-              <a className="mb-action-link" href={`https://yts.mx/browse-movies/${encodeURIComponent(title)}`} target="_blank" rel="noreferrer">
+              <button
+                className={`mb-action-link mb-dl-trigger ${showDlPanel ? 'mb-dl-active' : ''}`}
+                onClick={openDownloads}
+              >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Download
-              </a>
+              </button>
             )}
           </div>
         </div>

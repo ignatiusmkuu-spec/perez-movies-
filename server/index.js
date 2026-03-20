@@ -187,6 +187,97 @@ app.get('/api/flixer/movies', async (req, res) => {
   }
 })
 
+const TRACKERS = [
+  'udp://tracker.opentrackr.org:1337/announce',
+  'udp://open.demonii.com:1337/announce',
+  'udp://tracker.openbittorrent.com:6969/announce',
+  'udp://9.rarbg.com:2810/announce',
+  'udp://exodus.desync.com:6969/announce',
+].map(t => `&tr=${encodeURIComponent(t)}`).join('')
+
+function makeMagnet(hash, name) {
+  return `magnet:?xt=urn:btih:${hash}&dn=${encodeURIComponent(name)}${TRACKERS}`
+}
+
+function guessQuality(name) {
+  const n = name.toLowerCase()
+  if (n.includes('2160p') || n.includes('4k') || n.includes('uhd')) return '4K'
+  if (n.includes('1080p')) return '1080p'
+  if (n.includes('720p'))  return '720p'
+  if (n.includes('480p'))  return '480p'
+  if (n.includes('360p'))  return '360p'
+  return 'SD'
+}
+
+function formatSize(bytes) {
+  const b = parseInt(bytes) || 0
+  if (b >= 1e9) return (b / 1e9).toFixed(2) + ' GB'
+  if (b >= 1e6) return (b / 1e6).toFixed(0) + ' MB'
+  return b + ' B'
+}
+
+app.get('/api/download', async (req, res) => {
+  const { title, year, imdb, type, season, episode } = req.query
+  if (!title) return res.status(400).json({ error: 'title required' })
+
+  try {
+    let query = title
+    if (type === 'tv' && season) {
+      const s = String(season).padStart(2, '0')
+      const e = episode ? String(episode).padStart(2, '0') : null
+      query = e ? `${title} S${s}E${e}` : `${title} S${s}`
+    } else if (year) {
+      query = `${title} ${year}`
+    }
+
+    const cat = type === 'tv' ? '205' : '207'
+    const url = `https://apibay.org/q.php?q=${encodeURIComponent(query)}&cat=${cat}`
+    const upstream = await fetch(url, {
+      agent: httpsAgent,
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+    })
+    const data = await upstream.json()
+
+    if (!Array.isArray(data) || data.length === 0 || data[0]?.name === 'No results returned') {
+      // Fallback: broader search without category
+      const url2 = `https://apibay.org/q.php?q=${encodeURIComponent(title + (year ? ' ' + year : ''))}&cat=0`
+      const r2 = await fetch(url2, { agent: httpsAgent, headers: { 'User-Agent': 'Mozilla/5.0' } })
+      const d2 = await r2.json()
+      if (!Array.isArray(d2) || d2[0]?.name === 'No results returned') {
+        return res.json({ results: [] })
+      }
+      const results = d2
+        .filter(t => parseInt(t.seeders) > 0)
+        .sort((a, b) => parseInt(b.seeders) - parseInt(a.seeders))
+        .slice(0, 10)
+        .map(t => ({
+          name: t.name,
+          quality: guessQuality(t.name),
+          size: formatSize(t.size),
+          seeders: parseInt(t.seeders),
+          magnet: makeMagnet(t.info_hash, t.name),
+        }))
+      return res.json({ results })
+    }
+
+    const results = data
+      .filter(t => parseInt(t.seeders) > 0)
+      .sort((a, b) => parseInt(b.seeders) - parseInt(a.seeders))
+      .slice(0, 12)
+      .map(t => ({
+        name: t.name,
+        quality: guessQuality(t.name),
+        size: formatSize(t.size),
+        seeders: parseInt(t.seeders),
+        magnet: makeMagnet(t.info_hash, t.name),
+      }))
+
+    res.json({ results })
+  } catch (err) {
+    res.status(502).json({ error: 'Download search failed', message: err.message })
+  }
+})
+
 app.get('/proxy/moviebox-domain', async (req, res) => {
   try {
     const upstream = await fetch('https://h5-api.aoneroom.com/wefeed-h5api-bff/media-player/get-domain', {
