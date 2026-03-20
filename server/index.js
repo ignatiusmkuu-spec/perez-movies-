@@ -135,6 +135,67 @@ app.use('/api/moviebox', async (req, res) => {
   }
 })
 
+let _flixerCache = null
+let _flixerCacheAt = 0
+const FLIXER_TTL = 10 * 60 * 1000
+
+function parseFlixerHtml(html) {
+  const movies = []
+  const seen = new Set()
+  const linkRe = /href="(\/movie\/watch-[^"]+)"[^>]*title="([^"]+)"/g
+  const posterRe = /data-src="(https:\/\/f\.woowoowoowoo[^"]+)"/g
+  const yearRe = /<span class="fdi-item"[^>]*>(\d{4})<\/span>/g
+  const qualityRe = /<span class="film-poster-quality">([^<]+)<\/span>/g
+
+  const links = [...html.matchAll(linkRe)]
+  const posters = [...html.matchAll(posterRe)]
+  const years = [...html.matchAll(yearRe)]
+  const qualities = [...html.matchAll(qualityRe)]
+
+  links.forEach((m, idx) => {
+    const href = m[1]
+    if (seen.has(href)) return
+    seen.add(href)
+    const idMatch = href.match(/(\d+)$/)
+    const i = movies.length
+    movies.push({
+      id: idMatch ? idMatch[1] : String(idx),
+      title: m[2].replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'"),
+      href,
+      poster: posters[i]?.[1] || '',
+      year: years[i]?.[1] || '',
+      quality: qualities[i]?.[1]?.trim() || 'HD',
+      _source: 'flixer',
+    })
+  })
+  return movies
+}
+
+app.get('/api/flixer/movies', async (req, res) => {
+  if (_flixerCache && Date.now() - _flixerCacheAt < FLIXER_TTL) {
+    return res.json({ movies: _flixerCache })
+  }
+  try {
+    const upstream = await fetch('https://theflixertv.to/movie', {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://theflixertv.to/',
+      },
+    })
+    const html = await upstream.text()
+    const movies = parseFlixerHtml(html)
+    _flixerCache = movies
+    _flixerCacheAt = Date.now()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ movies })
+  } catch (err) {
+    res.status(502).json({ error: 'Flixer fetch error', message: err.message })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`Stream proxy server running on port ${PORT}`)
 })

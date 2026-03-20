@@ -95,7 +95,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const [imdbLookingUp, setImdbLookingUp] = useState(false)
   const iframeRef = useRef()
 
-  const isMbItem = item?._source === 'moviebox' || item?._mbId
+  const isMbItem = item?._source === 'moviebox' || item?._mbId || item?._source === 'flixer'
   const isTV = type === 'moviebox-tv' || type === 'tv'
   const isAnime = type === 'anime'
 

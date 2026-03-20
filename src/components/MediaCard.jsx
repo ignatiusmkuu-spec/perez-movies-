@@ -1,9 +1,17 @@
 import './MediaCard.css'
 
 export default function MediaCard({ item, type, onPlay }) {
-  let poster, title, rating, year, genre, imdbId
+  let poster, title, rating, year, genre, imdbId, quality
 
-  if (type === 'movie') {
+  if (type === 'flixer') {
+    poster = item.Poster || null
+    title = item.Title
+    rating = null
+    year = item.Year
+    genre = null
+    quality = item.quality || 'HD'
+    imdbId = item.imdbID || null
+  } else if (type === 'movie') {
     poster = item.Poster !== 'N/A' ? item.Poster : null
     title = item.Title
     rating = item.imdbRating && item.imdbRating !== 'N/A' ? item.imdbRating : null
@@ -51,6 +59,9 @@ export default function MediaCard({ item, type, onPlay }) {
         </div>
         {rating && (
           <div className="card-rating">★ {Number(rating).toFixed(1)}</div>
+        )}
+        {quality && !rating && (
+          <div className="card-quality">{quality}</div>
         )}
         <div className="card-overlay">
           <button className="overlay-play" onClick={() => onPlay(item, type)}>▶ Play</button>

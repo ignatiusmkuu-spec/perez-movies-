@@ -45,16 +45,19 @@ vite.config.js     # Proxies: /proxy/omdb, /proxy/tvmaze, /proxy/jikan, /api, /s
 3. **Image proxy**: `/api/imgproxy?src=<url>` proxies MovieBox CDN images (CDN blocks direct browser requests without referer)
 4. **MovieBox response key**: `data.operatingList` (NOT `data.sections`) — 33 sections, 272+ movies
 5. **Search**: OMDB via Vite proxy with key "trilogy"
-6. **Streaming**: PlayerModal looks up IMDB ID via OMDB for MovieBox items, then builds embed URL
+6. **Streaming**: PlayerModal looks up IMDB ID via OMDB for MovieBox/Flixer items, then builds embed URL
+7. **TheFlixer**: Express scrapes `theflixertv.to/movie` HTML (server-side), parses movie list, returns JSON; cached 10 min
 
 ## Key API Facts
 - MovieBox base URL: `https://h5-api.aoneroom.com` (proxied as `/api/moviebox`)
 - Image CDN: `pbcdnw.aoneroom.com` (proxied as `/api/imgproxy?src=...`)
 - Section types: `SUBJECTS_MOVIE` (subjectType=1 movie, subjectType=2 TV)
 - 123movienow.cc: `https://123movienow.cc/embed/movie/{imdb}` and `/embed/tv/{imdb}/{s}/{e}`
+- TheFlixer scraper: `/api/flixer/movies` → 32 latest movies; posters from `f.woowoowoowoo.net` (no proxy needed)
+- TheFlixer URL pattern: `/movie/watch-{slug}-full-{id}` (SAMEORIGIN on their pages — embed not possible)
 
 ## Tabs
-1. **Movies** — 272+ movies from 15 MovieBox sections, genre filter tabs, hero banner
+1. **Movies** — 322+ movies (32 from TheFlixer + 290 from MovieBox), genre filter tabs including "New Releases", hero banner
 2. **Drama** — K-Drama, C-Drama, Thai-Drama, SA Drama, Turkish, Nollywood, Must-watch Black Shows
 3. **Anime** — MovieBox Anime (English Dubbed) + Jikan top airing + genre browse
 4. **Live TV** — Live football/cricket/TV channel streams (Scorebat + embedded channels)

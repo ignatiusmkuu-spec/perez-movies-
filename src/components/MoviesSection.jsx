@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchHomeData, getSectionSubjects, normalizeMbItem, omdbSearch } from '../api/moviebox'
+import { fetchFlixerMovies } from '../api/flixer'
 import SectionHeader from './SectionHeader'
 import MediaCard from './MediaCard'
 import HeroBanner from './HeroBanner'
@@ -7,6 +8,7 @@ import './MediaGrid.css'
 
 const GENRES = [
   { label: 'All', value: 'all' },
+  { label: 'New Releases', value: 'new-releases' },
   { label: 'Popular', value: 'Popular Movie' },
   { label: 'Action', value: 'Action Movies' },
   { label: 'Horror', value: 'Horror Movies' },
@@ -55,14 +57,30 @@ export default function MoviesSection({ searchQuery, onPlay }) {
           return [...prev, ...normalized.filter(m => !ids.has(m.imdbID))]
         })
         setHasMore(results.length >= 10)
+      } else if (g === 'new-releases') {
+        const flixerMovies = await fetchFlixerMovies()
+        if (p === 1) setMovies(flixerMovies)
+        setHasMore(false)
       } else {
-        const sections = await fetchHomeData()
+        const [sections, flixerMovies] = await Promise.all([
+          fetchHomeData(),
+          g === 'all' ? fetchFlixerMovies() : Promise.resolve([]),
+        ])
         let items = []
         if (g === 'all') {
           const allSections = sections.filter(s =>
             s.type === 'SUBJECTS_MOVIE' && s.subjectType !== 2 && s.subjects?.length > 0
           )
-          items = allSections.flatMap(s => s.subjects || [])
+          const mbItems = allSections.flatMap(s => s.subjects || [])
+          const unique = mbItems.filter((m, i, arr) =>
+            arr.findIndex(x => x.subjectId === m.subjectId) === i
+          )
+          const mbNormalized = unique.map(normalizeMbItem)
+          const combined = [...flixerMovies, ...mbNormalized]
+          if (p === 1) setMovies(combined)
+          setHasMore(false)
+          setLoading(false)
+          return
         } else if (['sci-fi', 'thriller', 'animation', 'crime'].includes(g)) {
           const allMovies = sections.filter(s =>
             s.type === 'SUBJECTS_MOVIE' && s.subjects?.length > 0
@@ -117,9 +135,9 @@ export default function MoviesSection({ searchQuery, onPlay }) {
               ? <div className="no-results">No movies found.</div>
               : movies.map((m, i) => (
                   <MediaCard
-                    key={m.imdbID || m._mbId || i}
+                    key={m.imdbID || m._mbId || m._flixerId || i}
                     item={m}
-                    type={m._source === 'moviebox' ? 'moviebox' : 'movie'}
+                    type={m._source === 'flixer' ? 'flixer' : m._source === 'moviebox' ? 'moviebox' : 'movie'}
                     onPlay={onPlay}
                   />
                 ))
