@@ -32,6 +32,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/proxy\/scorebat/, ''),
         secure: false,
       },
+      '/proxy/moviebox-domain': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
       '/stream-proxy': {
         target: 'http://localhost:3001',
         changeOrigin: true,

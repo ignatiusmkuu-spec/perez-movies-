@@ -187,6 +187,24 @@ app.get('/api/flixer/movies', async (req, res) => {
   }
 })
 
+app.get('/proxy/moviebox-domain', async (req, res) => {
+  try {
+    const upstream = await fetch('https://h5-api.aoneroom.com/wefeed-h5api-bff/media-player/get-domain', {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'origin': 'https://moviebox.ph',
+        'referer': 'https://moviebox.ph/',
+        'Accept': 'application/json',
+      },
+    })
+    const json = await upstream.json()
+    res.json(json)
+  } catch (err) {
+    res.json({ code: 0, message: 'ok', data: 'https://123movienow.cc' })
+  }
+})
+
 const PROXY_ROUTES = [
   {
     prefix: '/proxy/omdb',
