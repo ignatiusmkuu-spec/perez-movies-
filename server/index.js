@@ -203,6 +203,11 @@ const PROXY_ROUTES = [
     target: 'https://api.jikan.moe/v4',
     rewrite: (p) => p.replace(/^\/proxy\/jikan/, ''),
   },
+  {
+    prefix: '/proxy/scorebat',
+    target: 'https://www.scorebat.com/video-api/v1',
+    rewrite: (p) => p.replace(/^\/proxy\/scorebat/, ''),
+  },
 ]
 
 PROXY_ROUTES.forEach(({ prefix, target, rewrite }) => {

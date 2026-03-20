@@ -9,7 +9,6 @@
   gap: 10px;
   padding: 0 14px 12px;
 }
-
 .sports-header h2 {
   font-size: 1.1rem;
   font-weight: 700;
@@ -19,12 +18,11 @@
 .live-dot {
   width: 10px;
   height: 10px;
-  background: var(--accent);
+  background: #e50914;
   border-radius: 50%;
   animation: pulse 1.2s ease-in-out infinite;
   flex-shrink: 0;
 }
-
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.8); }
@@ -33,7 +31,7 @@
 .live-label {
   font-size: 0.68rem;
   font-weight: 700;
-  background: var(--accent);
+  background: #e50914;
   color: #fff;
   padding: 2px 7px;
   border-radius: 4px;
@@ -59,252 +57,372 @@
   white-space: nowrap;
   transition: all 0.2s;
   flex-shrink: 0;
+  cursor: pointer;
 }
-.sport-tab:hover { border-color: var(--accent); color: #fff; }
+.sport-tab:hover { border-color: #e50914; color: #fff; }
 .sport-tab.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #e50914;
+  border-color: #e50914;
   color: #fff;
   font-weight: 600;
 }
 
-/* === CRICFY SECTION === */
-
-.cricfy-section {
-  padding: 0 14px;
-}
-
-.cricfy-stream-tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-}
-
-.cricfy-tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 2px solid var(--border);
-  background: var(--bg2);
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: left;
-  flex: 1;
-  min-width: 140px;
-}
-.cricfy-tab:hover {
-  border-color: var(--stream-color, var(--accent));
-}
-.cricfy-tab.active {
-  border-color: var(--stream-color, var(--accent));
-  background: rgba(232, 124, 12, 0.1);
-}
-
-.cricfy-tab-emoji {
-  font-size: 1.4rem;
-  flex-shrink: 0;
-}
-
-.cricfy-tab-name {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text);
-  display: block;
-}
-
-.cricfy-tab-desc {
-  font-size: 0.7rem;
-  color: var(--text3);
-  display: block;
-  margin-top: 1px;
-}
-
-.cricfy-player-wrap {
-  background: #0d0d0d;
-  border-radius: 14px;
+/* === MATCH PLAYER === */
+.match-player {
+  margin: 0 14px 16px;
+  background: #0a0a0a;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--border);
-  margin-bottom: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
 }
-
-.cricfy-player-header {
+.match-player-header {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 14px;
   background: #111;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  gap: 10px;
 }
-
-.cricfy-player-emoji {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.cricfy-player-title {
+.match-player-title {
   font-weight: 700;
   font-size: 0.95rem;
   color: var(--text);
 }
-
-.cricfy-player-desc {
+.match-player-comp {
   font-size: 0.72rem;
   color: var(--text3);
   margin-top: 2px;
 }
-
-.cricfy-live-pill {
-  margin-left: auto;
+.match-player-close {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(229, 9, 20, 0.15);
-  border: 1px solid rgba(229, 9, 20, 0.4);
-  color: var(--accent);
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 20px;
-  letter-spacing: 0.5px;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.2s;
 }
-
-.cricfy-live-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--accent);
-  border-radius: 50%;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.cricfy-iframe-wrap {
+.match-player-close:hover { background: #e50914; }
+.match-player-frame {
   position: relative;
   width: 100%;
-  height: 600px;
+  padding-top: 56.25%;
   background: #000;
 }
-
-@media (max-width: 600px) {
-  .cricfy-iframe-wrap { height: 420px; }
-}
-
-.cricfy-loading {
+.match-player-loading {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
   background: #000;
   z-index: 2;
+}
+.match-player-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #111;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.sources-label {
+  font-size: 0.68rem;
+  color: var(--text3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+}
+.source-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
   color: var(--text2);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.source-btn:hover { border-color: #e50914; color: #fff; }
+.source-btn.active { background: #e50914; border-color: #e50914; color: #fff; font-weight: 600; }
+
+/* === FILTER ROW === */
+.comp-filter-row {
+  display: flex;
+  gap: 6px;
+  padding: 0 14px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.comp-filter-row::-webkit-scrollbar { display: none; }
+.comp-filter-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  padding: 5px 13px;
+  border-radius: 14px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.comp-filter-btn:hover { color: #fff; border-color: #e50914; }
+.comp-filter-btn.active {
+  background: rgba(229,9,20,0.15);
+  border-color: #e50914;
+  color: #e50914;
+  font-weight: 600;
+}
+
+/* === MATCH GRID === */
+.match-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 0 14px;
+}
+@media (min-width: 480px) { .match-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 700px) { .match-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 900px) { .match-grid { grid-template-columns: repeat(5, 1fr); } }
+
+.match-card {
+  background: var(--bg2);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.18s, border-color 0.18s;
+}
+.match-card:hover { transform: translateY(-3px); border-color: #e50914; }
+.match-card.match-active { border-color: #e50914; box-shadow: 0 0 0 2px rgba(229,9,20,0.3); }
+
+.match-thumb {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background-size: cover;
+  background-position: center;
+  background-color: #111;
+}
+.match-no-thumb {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e, #0d1117);
+  font-size: 1.8rem;
+  opacity: 0.5;
+}
+.match-skeleton-thumb {
+  background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.match-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.match-card:hover .match-overlay { opacity: 1; }
+.match-play-circle {
+  width: 40px;
+  height: 40px;
+  background: rgba(229,9,20,0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: #fff;
+}
+.match-badge {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  background: rgba(0,0,0,0.8);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.58rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.match-info { padding: 8px; }
+.match-teams-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+.match-team {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-vs {
+  font-size: 0.6rem;
+  color: var(--text3);
+  background: var(--bg3);
+  padding: 1px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.match-comp-name {
+  font-size: 0.6rem;
+  color: var(--text3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-video-count {
+  font-size: 0.58rem;
+  color: #e50914;
+  margin-top: 3px;
+}
+
+.match-error {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--text3);
   font-size: 0.85rem;
 }
 
-.cricfy-iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
+.skel-line {
+  height: 8px;
+  border-radius: 4px;
+  background: #222;
+  margin-bottom: 5px;
+  animation: shimmer 1.2s ease-in-out infinite;
+  background-size: 200% 100%;
+  background-image: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
 }
+.skel-line.long { width: 90%; }
+.skel-line.short { width: 60%; }
 
-.cricfy-actions {
-  display: flex;
-  gap: 10px;
-  padding: 12px 14px;
-  background: #111;
-  border-top: 1px solid var(--border);
-}
+/* === LIVE STREAMS SECTION === */
+.live-streams-section { padding: 0 14px; }
 
-.cricfy-action-btn {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-align: center;
-  text-decoration: none;
+.live-streams-notice {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: opacity 0.2s;
+  gap: 14px;
+  background: rgba(229,9,20,0.07);
+  border: 1px solid rgba(229,9,20,0.25);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
 }
-.cricfy-action-btn:hover { opacity: 0.85; }
-.cricfy-action-btn.primary {
-  background: #e87c0c;
-  color: #fff;
+.live-notice-icon { font-size: 1.6rem; flex-shrink: 0; }
+.live-notice-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
 }
-.cricfy-action-btn.secondary {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  color: var(--text2);
+.live-notice-sub {
+  font-size: 0.72rem;
+  color: var(--text3);
+  line-height: 1.4;
 }
 
-.cricfy-info-cards {
+.live-streams-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin-bottom: 16px;
 }
+@media (min-width: 480px) { .live-streams-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 700px) { .live-streams-grid { grid-template-columns: repeat(4, 1fr); } }
 
-@media (min-width: 600px) {
-  .cricfy-info-cards { grid-template-columns: repeat(4, 1fr); }
-}
-
-.cricfy-info-card {
+.stream-site-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
   background: var(--bg2);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--site-color, #e50914);
   border-radius: 10px;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: border-color 0.2s;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.cricfy-info-card:hover { border-color: #e87c0c; }
-
-.cricfy-info-icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
+.stream-site-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--site-color, #e50914);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
 }
-
-.cricfy-info-title {
-  font-size: 0.78rem;
+.stream-site-icon { font-size: 1.8rem; }
+.stream-site-name {
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--text);
+  text-align: center;
 }
-
-.cricfy-info-desc {
-  font-size: 0.65rem;
-  color: var(--text3);
-  margin-top: 2px;
-  line-height: 1.4;
+.stream-live-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #e50914;
+  letter-spacing: 0.04em;
 }
-
-/* === SPINNER === */
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #222;
-  border-top-color: var(--accent);
+.stream-live-dot {
+  width: 6px;
+  height: 6px;
+  background: #e50914;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.stream-watch-label {
+  font-size: 0.68rem;
+  color: var(--text3);
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* === CHANNELS SECTION === */
-
-.channels-section {
-  padding: 0 14px;
+.live-tip-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.75rem;
+  color: var(--text3);
+  line-height: 1.5;
 }
+.live-tip-box span { color: var(--text2); font-weight: 600; }
 
+/* === CHANNELS === */
+.channels-section { padding: 0 14px; }
 .channels-hint {
   text-align: center;
   font-size: 0.75rem;
@@ -315,20 +433,13 @@
   border-radius: 8px;
   border: 1px solid var(--border);
 }
-
 .channels-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
-
-@media (min-width: 500px) {
-  .channels-grid { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (min-width: 700px) {
-  .channels-grid { grid-template-columns: repeat(4, 1fr); }
-}
+@media (min-width: 500px) { .channels-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 700px) { .channels-grid { grid-template-columns: repeat(4, 1fr); } }
 
 .channel-card {
   background: linear-gradient(135deg, var(--bg2), var(--bg3));
@@ -341,16 +452,14 @@
   gap: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  border-top: 3px solid var(--ch-color, var(--accent));
+  border-top: 3px solid var(--ch-color, #e50914);
 }
 .channel-card:hover {
   transform: translateY(-2px);
-  border-color: var(--ch-color, var(--accent));
+  border-color: var(--ch-color, #e50914);
   box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
-
 .ch-logo { font-size: 1.8rem; }
-
 .ch-name {
   font-size: 0.75rem;
   font-weight: 600;
@@ -358,16 +467,16 @@
   text-align: center;
   line-height: 1.3;
 }
-
 .ch-live {
   font-size: 0.6rem;
-  color: var(--accent);
+  color: #e50914;
   font-weight: 700;
   animation: pulse 1.5s ease-in-out infinite;
 }
-
 .ch-watch {
   font-size: 0.65rem;
   color: var(--text3);
-  margin-top: 2px;
 }
+
+/* Shared spinner keyframe */
+@keyframes nf-spin { to { transform: rotate(360deg); } }

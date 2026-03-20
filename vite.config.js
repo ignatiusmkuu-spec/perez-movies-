@@ -27,7 +27,7 @@ export default defineConfig({
         secure: false,
       },
       '/proxy/scorebat': {
-        target: 'https://www.scorebat.com/video-api/v3',
+        target: 'https://www.scorebat.com/video-api/v1',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/proxy\/scorebat/, ''),
         secure: false,
