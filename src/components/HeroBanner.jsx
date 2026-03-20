@@ -1,53 +1,89 @@
+import { useState, useEffect } from 'react'
+import { fetchHomeData, getBannerItem, getImdbId } from '../api/moviebox'
 import './HeroBanner.css'
 
-const FEATURED = [
-  {
-    title: 'Back in Action',
-    year: '2025',
-    desc: 'A former CIA spy couple is dragged back into the world of espionage when their cover is blown.',
-    bg: 'https://m.media-amazon.com/images/M/MV5BMWQ4YWYxYTAtZTlhNC00Nzc3LWE3OWUtZjY5MThlNWNiYTBiXkEyXkFqcGc@._V1_SX1920.jpg',
-    imdbID: 'tt21191806',
-    genre: 'Action / Comedy',
-  },
-  {
-    title: 'Moana 2',
-    year: '2024',
-    desc: "Moana embarks on an epic journey beyond the far seas after receiving an unexpected call from her ancestors.",
-    bg: 'https://m.media-amazon.com/images/M/MV5BMzZkOGEzZGEtN2IzMC00MTBhLTkyZGUtMzJmZjRiYjFkMGI2XkEyXkFqcGc@._V1_SX1920.jpg',
-    imdbID: 'tt11360492',
-    genre: 'Animation / Adventure',
-  },
-]
+const FALLBACK_BG = '/api/imgproxy?src=' + encodeURIComponent('https://pbcdnw.aoneroom.com/image/2026/03/19/2e7dc8ef8e55968a6217d0d82fdfa456.png')
+
+const FALLBACK = {
+  title: 'Beauty in Black',
+  year: '2024',
+  desc: 'A gripping drama series about power, betrayal, and secrets that bind a family together.',
+  bg: FALLBACK_BG,
+  imdbID: 'tt21336766',
+  genre: 'Drama',
+}
 
 export default function HeroBanner({ onPlay }) {
-  const movie = FEATURED[0]
+  const [featured, setFeatured] = useState(FALLBACK)
+  const [imdbId, setImdbId] = useState(FALLBACK.imdbID)
+
+  useEffect(() => {
+    fetchHomeData().then(sections => {
+      const item = getBannerItem(sections)
+      if (item) {
+        const src = item.subject || item
+        const title = src.title || item.title || FALLBACK.title
+        const year = src.releaseDate?.slice(0, 4) || FALLBACK.year
+        const genre = src.genre || FALLBACK.genre
+        const rawBg = item.image?.url || src.cover?.url || null
+        const bg = rawBg ? `/api/imgproxy?src=${encodeURIComponent(rawBg)}` : FALLBACK.bg
+        const desc = src.description || FALLBACK.desc
+        const isTV = (src.subjectType || item.subjectType) === 2
+        setFeatured({ title, year, genre, bg, desc })
+        getImdbId(title, year, isTV).then(id => {
+          if (id) setImdbId(id)
+        })
+      }
+    }).catch(() => {})
+  }, [])
+
+  const handlePlay = () => {
+    onPlay({
+      Title: featured.title,
+      Year: featured.year,
+      imdbID: imdbId,
+      Genre: featured.genre,
+      Poster: featured.bg,
+      _source: 'moviebox',
+    }, 'movie')
+  }
 
   return (
-    <div className="hero" style={{ backgroundImage: `url(${movie.bg})` }}>
+    <div className="hero">
+      <img
+        className="hero-bg-img"
+        src={featured.bg}
+        alt={featured.title}
+        referrerPolicy="no-referrer"
+        onError={e => { e.target.style.display = 'none' }}
+      />
       <div className="hero-overlay">
         <div className="hero-badge">🔥 Featured</div>
-        <h1 className="hero-title">{movie.title}</h1>
+        <h1 className="hero-title">{featured.title}</h1>
         <div className="hero-meta">
-          <span>{movie.year}</span>
-          <span className="hero-dot">·</span>
-          <span>{movie.genre}</span>
+          <span>{featured.year}</span>
+          {featured.genre && (
+            <>
+              <span className="hero-dot">·</span>
+              <span>{featured.genre}</span>
+            </>
+          )}
         </div>
-        <p className="hero-desc">{movie.desc}</p>
+        <p className="hero-desc">{featured.desc}</p>
         <div className="hero-actions">
-          <button
-            className="hero-play"
-            onClick={() => onPlay({ Title: movie.title, Year: movie.year, imdbID: movie.imdbID })}
-          >
+          <button className="hero-play" onClick={handlePlay}>
             ▶ Play Now
           </button>
-          <a
-            className="hero-info"
-            href={`https://www.imdb.com/title/${movie.imdbID}/`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            ℹ More Info
-          </a>
+          {imdbId && (
+            <a
+              className="hero-info"
+              href={`https://www.imdb.com/title/${imdbId}/`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              ℹ More Info
+            </a>
+          )}
         </div>
       </div>
     </div>

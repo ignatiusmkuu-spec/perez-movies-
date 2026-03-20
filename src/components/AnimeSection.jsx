@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchHomeData, getSectionSubjects, normalizeMbItem, omdbSearch } from '../api/moviebox'
 import { getTopAnime, searchAnime, getAnimeByGenre, ANIME_GENRES } from '../api/jikan'
 import SectionHeader from './SectionHeader'
 import MediaCard from './MediaCard'
@@ -6,7 +7,8 @@ import './MediaGrid.css'
 
 const GENRES = [
   { label: 'Top Airing', value: 'top' },
-  ...ANIME_GENRES.map(g => ({ label: g.name, value: String(g.id) }))
+  { label: 'MovieBox Picks', value: 'mb' },
+  ...ANIME_GENRES.slice(0, 8).map(g => ({ label: g.name, value: String(g.id) })),
 ]
 
 function Skeleton() {
@@ -30,21 +32,32 @@ export default function AnimeSection({ searchQuery, onPlay }) {
 
   useEffect(() => {
     setLoading(true)
-    const fetch = async () => {
+    const load = async () => {
       try {
-        let data
         if (searchQuery) {
-          data = await searchAnime(searchQuery)
+          const data = await searchAnime(searchQuery)
+          setAnime(data)
+        } else if (genre === 'mb') {
+          const sections = await fetchHomeData()
+          const mbItems = getSectionSubjects(sections, 'Anime')
+          const unique = mbItems.filter((m, i, arr) =>
+            arr.findIndex(x => x.subjectId === m.subjectId) === i
+          )
+          setAnime(unique.map(item => ({
+            ...normalizeMbItem(item),
+            _animeSource: 'moviebox',
+          })))
         } else if (genre === 'top') {
-          data = await getTopAnime()
+          const data = await getTopAnime()
+          setAnime(data)
         } else {
-          data = await getAnimeByGenre(genre)
+          const data = await getAnimeByGenre(genre)
+          setAnime(data)
         }
-        setAnime(data)
-      } catch (e) { console.error(e) }
+      } catch (e) { console.error('AnimeSection:', e) }
       setLoading(false)
     }
-    fetch()
+    load()
   }, [genre, searchQuery])
 
   return (
@@ -62,8 +75,13 @@ export default function AnimeSection({ searchQuery, onPlay }) {
           <div className="media-grid">
             {anime.length === 0
               ? <div className="no-results">No anime found.</div>
-              : anime.map(a => (
-                  <MediaCard key={a.mal_id} item={a} type="anime" onPlay={onPlay} />
+              : anime.map((a, i) => (
+                  <MediaCard
+                    key={a.mal_id || a._mbId || i}
+                    item={a}
+                    type={a._animeSource === 'moviebox' ? 'moviebox' : 'anime'}
+                    onPlay={onPlay}
+                  />
                 ))
             }
           </div>

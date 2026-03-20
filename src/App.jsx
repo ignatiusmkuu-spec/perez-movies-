@@ -23,8 +23,17 @@ export default function App() {
     setSearchQuery(q)
   }, [])
 
-  const handlePlay = useCallback((item) => {
-    const type = tab === 'drama' ? 'tv' : tab === 'anime' ? 'anime' : 'movie'
+  const handlePlay = useCallback((item, cardType) => {
+    let type
+    if (cardType && cardType !== 'movie') {
+      type = cardType
+    } else if (tab === 'drama') {
+      type = 'tv'
+    } else if (tab === 'anime') {
+      type = 'anime'
+    } else {
+      type = 'movie'
+    }
     setPlayer({ item, type })
   }, [tab])
 

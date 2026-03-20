@@ -1,20 +1,18 @@
 import { useState, useEffect } from 'react'
-import { getPopularShows, searchShows, getShowsByGenre } from '../api/tvmaze'
+import { fetchHomeData, getSectionSubjects, normalizeMbItem, omdbSearch } from '../api/moviebox'
 import SectionHeader from './SectionHeader'
 import MediaCard from './MediaCard'
 import './MediaGrid.css'
 
 const GENRES = [
-  { label: 'Popular', value: 'popular' },
-  { label: 'Drama', value: 'drama' },
-  { label: 'Crime', value: 'crime' },
-  { label: 'Romance', value: 'romance' },
-  { label: 'Thriller', value: 'thriller' },
-  { label: 'Comedy', value: 'comedy' },
-  { label: 'Horror', value: 'horror' },
-  { label: 'Fantasy', value: 'fantasy' },
-  { label: 'K-Drama', value: 'korean' },
-  { label: 'Turkish', value: 'turkish' },
+  { label: 'Popular', value: 'Popular Series' },
+  { label: 'K-Drama', value: 'K-Drama' },
+  { label: 'C-Drama', value: 'C-Drama' },
+  { label: 'Thai Drama', value: 'Thai-Drama' },
+  { label: 'SA Drama', value: 'SA Drama' },
+  { label: 'Black Shows', value: 'Black Shows' },
+  { label: 'Romance', value: 'Teen Romance' },
+  { label: 'Turkish', value: 'Turkish' },
 ]
 
 function Skeleton() {
@@ -34,31 +32,44 @@ function Skeleton() {
 export default function DramaSection({ searchQuery, onPlay }) {
   const [shows, setShows] = useState([])
   const [loading, setLoading] = useState(true)
-  const [genre, setGenre] = useState('popular')
+  const [genre, setGenre] = useState('Popular Series')
 
   useEffect(() => {
     setLoading(true)
-    const fetch = async () => {
+    const load = async () => {
       try {
-        let data
         if (searchQuery) {
-          data = await searchShows(searchQuery)
-        } else if (genre === 'popular') {
-          data = await getPopularShows()
+          const results = await omdbSearch(searchQuery, 1)
+          setShows(results.map(r => ({
+            ...r,
+            _source: 'omdb',
+            Poster: r.Poster !== 'N/A' ? r.Poster : null,
+          })))
         } else {
-          data = await getShowsByGenre(genre)
+          const sections = await fetchHomeData()
+          let items = getSectionSubjects(sections, genre)
+          if (items.length === 0) {
+            const fallback = sections
+              .filter(s => s.type === 'SUBJECTS_MOVIE' && s.subjects?.length > 0)
+              .flatMap(s => s.subjects || [])
+              .filter(m => m.subjectType === 2)
+            items = fallback
+          }
+          const unique = items.filter((m, i, arr) =>
+            arr.findIndex(x => x.subjectId === m.subjectId) === i
+          )
+          setShows(unique.map(normalizeMbItem))
         }
-        setShows(data.filter(Boolean))
-      } catch (e) { console.error(e) }
+      } catch (e) { console.error('DramaSection:', e) }
       setLoading(false)
     }
-    fetch()
+    load()
   }, [genre, searchQuery])
 
   return (
     <div>
       <SectionHeader
-        title={searchQuery ? `Results for "${searchQuery}"` : '📺 Drama & TV Shows'}
+        title={searchQuery ? `Results for "${searchQuery}"` : '📺 Drama & Series'}
         genres={!searchQuery ? GENRES : null}
         activeGenre={genre}
         onGenre={setGenre}
@@ -69,9 +80,14 @@ export default function DramaSection({ searchQuery, onPlay }) {
         <div className="media-grid-wrap">
           <div className="media-grid">
             {shows.length === 0
-              ? <div className="no-results">No shows found.</div>
-              : shows.map(s => (
-                  <MediaCard key={s.id} item={s} type="tv" onPlay={onPlay} />
+              ? <div className="no-results">No shows found. Try another category.</div>
+              : shows.map((s, i) => (
+                  <MediaCard
+                    key={s.imdbID || s._mbId || i}
+                    item={s}
+                    type={s._source === 'moviebox' ? 'moviebox-tv' : 'movie'}
+                    onPlay={onPlay}
+                  />
                 ))
             }
           </div>

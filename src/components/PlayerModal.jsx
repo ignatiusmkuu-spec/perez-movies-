@@ -1,7 +1,13 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { getImdbId } from '../api/moviebox'
 import './PlayerModal.css'
 
 const MOVIE_SOURCES = [
+  {
+    label: '123Movies',
+    getUrl: (imdb) => `https://123movienow.cc/embed/movie/${imdb}`,
+    direct: (imdb) => `https://123movienow.cc/movie/${imdb}`,
+  },
   {
     label: 'VidSrc',
     getUrl: (imdb) => `https://vidsrc.net/embed/movie?imdb=${imdb}`,
@@ -18,18 +24,23 @@ const MOVIE_SOURCES = [
     direct: (imdb) => `https://www.2embed.cc/embed/${imdb}`,
   },
   {
-    label: 'MovieBox',
-    getUrl: (imdb) => `https://moviesapi.to/movie/${imdb}`,
-    direct: (imdb) => `https://moviesapi.to/movie/${imdb}`,
+    label: 'EmbedHub',
+    getUrl: (imdb) => `https://www.embedhub.cc/e/?imdb=${imdb}`,
+    direct: (imdb) => `https://www.embedhub.cc/e/?imdb=${imdb}`,
   },
   {
-    label: 'Flixer',
-    getUrl: (imdb) => `https://flixerz.to/embed/movie/${imdb}`,
-    direct: (imdb) => `https://flixerz.to/movie/${imdb}`,
+    label: 'VidSrc.me',
+    getUrl: (imdb) => `https://vidsrc.me/embed/movie?imdb=${imdb}`,
+    direct: (imdb) => `https://vidsrc.me/embed/movie?imdb=${imdb}`,
   },
 ]
 
 const TV_SOURCES = [
+  {
+    label: '123Movies',
+    getUrl: (imdb, s, e) => `https://123movienow.cc/embed/tv/${imdb}/${s}/${e}`,
+    direct: (imdb, s, e) => `https://123movienow.cc/tv/${imdb}/${s}/${e}`,
+  },
   {
     label: 'VidSrc',
     getUrl: (imdb, s, e) => `https://vidsrc.net/embed/tv?imdb=${imdb}&season=${s}&episode=${e}`,
@@ -46,64 +57,92 @@ const TV_SOURCES = [
     direct: (imdb, s, e) => `https://www.2embed.cc/embedtv/${imdb}&s=${s}&e=${e}`,
   },
   {
-    label: 'MovieBox',
-    getUrl: (imdb, s, e) => `https://moviesapi.to/tv/${imdb}-${s}-${e}`,
-    direct: (imdb, s, e) => `https://moviesapi.to/tv/${imdb}-${s}-${e}`,
+    label: 'VidSrc.me',
+    getUrl: (imdb, s, e) => `https://vidsrc.me/embed/tv?imdb=${imdb}&season=${s}&episode=${e}`,
+    direct: (imdb, s, e) => `https://vidsrc.me/embed/tv?imdb=${imdb}&season=${s}&episode=${e}`,
   },
 ]
 
 const ANIME_SOURCES = [
   {
     label: 'HiAnime',
-    getUrl: (title) => `https://hianime.to/search?keyword=${encodeURIComponent(title)}`,
-    direct: (title) => `https://hianime.to/search?keyword=${encodeURIComponent(title)}`,
+    getUrl: (t) => `https://hianime.to/search?keyword=${encodeURIComponent(t)}`,
+    direct: (t) => `https://hianime.to/search?keyword=${encodeURIComponent(t)}`,
   },
   {
     label: 'AniWatch',
-    getUrl: (title) => `https://aniwatch.to/search?keyword=${encodeURIComponent(title)}`,
-    direct: (title) => `https://aniwatch.to/search?keyword=${encodeURIComponent(title)}`,
+    getUrl: (t) => `https://aniwatch.to/search?keyword=${encodeURIComponent(t)}`,
+    direct: (t) => `https://aniwatch.to/search?keyword=${encodeURIComponent(t)}`,
+  },
+  {
+    label: 'AnimePahe',
+    getUrl: (t) => `https://animepahe.ru/anime?q=${encodeURIComponent(t)}`,
+    direct: (t) => `https://animepahe.ru/anime?q=${encodeURIComponent(t)}`,
   },
   {
     label: 'GogoAnime',
-    getUrl: (title) => `https://anitaku.pe/search.html?keyword=${encodeURIComponent(title)}`,
-    direct: (title) => `https://anitaku.pe/search.html?keyword=${encodeURIComponent(title)}`,
+    getUrl: (t) => `https://anitaku.pe/search.html?keyword=${encodeURIComponent(t)}`,
+    direct: (t) => `https://anitaku.pe/search.html?keyword=${encodeURIComponent(t)}`,
   },
 ]
 
 export default function PlayerModal({ item, type, onClose }) {
   const [srcIdx, setSrcIdx] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [iframeLoading, setIframeLoading] = useState(true)
   const [season, setSeason] = useState(1)
   const [episode, setEpisode] = useState(1)
+  const [resolvedImdb, setResolvedImdb] = useState(null)
+  const [imdbLookingUp, setImdbLookingUp] = useState(false)
   const iframeRef = useRef()
+
+  const isMbItem = item?._source === 'moviebox' || item?._mbId
+  const isTV = type === 'moviebox-tv' || type === 'tv'
+  const isAnime = type === 'anime'
 
   let sources, id, title, year
 
-  if (type === 'movie') {
-    sources = MOVIE_SOURCES
-    id = item.imdbID
-    title = item.Title
-    year = item.Year
-  } else if (type === 'tv') {
-    sources = TV_SOURCES
-    id = item.externals?.imdb || item.imdbID || ''
-    title = item.name
-    year = item.premiered?.slice(0, 4)
-  } else {
+  if (isAnime) {
     sources = ANIME_SOURCES
-    id = item.title_english || item.title
-    title = item.title_english || item.title
-    year = item.year
+    id = item.title_english || item.title || item.Title
+    title = id
+    year = item.year || item.Year
+  } else if (isTV || type === 'moviebox-tv') {
+    sources = TV_SOURCES
+    id = resolvedImdb || item.externals?.imdb || item.imdbID || ''
+    title = item.name || item.Title || item.title
+    year = item.premiered?.slice(0, 4) || item.Year || item.releaseDate?.slice(0, 4)
+  } else {
+    sources = MOVIE_SOURCES
+    id = resolvedImdb || item.imdbID || ''
+    title = item.Title || item.title || item.name
+    year = item.Year || item.releaseDate?.slice(0, 4) || item.premiered?.slice(0, 4)
   }
 
+  useEffect(() => {
+    if (isMbItem && !item.imdbID && !isAnime) {
+      const mbTitle = item.Title || item.title
+      const mbYear = item.Year || item.releaseDate?.slice(0, 4)
+      const isSeriesType = isTV || item._mbType === 2
+      setImdbLookingUp(true)
+      getImdbId(mbTitle, mbYear, isSeriesType).then(found => {
+        if (found) setResolvedImdb(found)
+        setImdbLookingUp(false)
+      })
+    } else {
+      setResolvedImdb(item.imdbID || null)
+    }
+  }, [item, isMbItem, isAnime, isTV])
+
   const currentSource = sources[srcIdx]
-  const embedUrl = currentSource?.getUrl(id, season, episode)
-  const directUrl = currentSource?.direct(id, season, episode)
+  const embedUrl = id ? currentSource?.getUrl(id, season, episode) : null
+  const directUrl = id ? currentSource?.direct(id, season, episode) : null
 
   const handleSrcChange = (i) => {
     setSrcIdx(i)
-    setLoading(true)
+    setIframeLoading(true)
   }
+
+  const showingPlayer = !isAnime
 
   return (
     <div className="player-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -114,26 +153,26 @@ export default function PlayerModal({ item, type, onClose }) {
             <div className="player-title">{title}</div>
             <div className="player-year">
               {year}
-              {type === 'tv' ? ` · Season ${season} Episode ${episode}` : ''}
+              {(isTV || type === 'moviebox-tv') ? ` · S${season} E${episode}` : ''}
             </div>
           </div>
           <button className="player-close" onClick={onClose}>✕</button>
         </div>
 
-        {type === 'tv' && (
+        {(isTV || type === 'moviebox-tv') && (
           <div className="episode-picker">
             <label>
               Season
               <input
                 type="number" min="1" max="30" value={season}
-                onChange={e => { setSeason(+e.target.value || 1); setLoading(true) }}
+                onChange={e => { setSeason(+e.target.value || 1); setIframeLoading(true) }}
               />
             </label>
             <label>
               Episode
               <input
-                type="number" min="1" max="100" value={episode}
-                onChange={e => { setEpisode(+e.target.value || 1); setLoading(true) }}
+                type="number" min="1" max="200" value={episode}
+                onChange={e => { setEpisode(+e.target.value || 1); setIframeLoading(true) }}
               />
             </label>
           </div>
@@ -144,22 +183,36 @@ export default function PlayerModal({ item, type, onClose }) {
         </div>
 
         <div className="player-iframe-wrap">
-          {loading && (
+          {(iframeLoading || imdbLookingUp) && (
             <div className="player-loading">
               <div className="spinner" />
-              <p>Connecting to stream...</p>
+              <p>{imdbLookingUp ? 'Finding stream...' : 'Connecting to server...'}</p>
             </div>
           )}
-          <iframe
-            ref={iframeRef}
-            key={`${srcIdx}-${id}-${season}-${episode}`}
-            className="player-iframe"
-            src={embedUrl}
-            allowFullScreen
-            allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
-            referrerPolicy="no-referrer-when-downgrade"
-            onLoad={() => setLoading(false)}
-          />
+
+          {!imdbLookingUp && embedUrl ? (
+            <iframe
+              ref={iframeRef}
+              key={`${srcIdx}-${id}-${season}-${episode}`}
+              className="player-iframe"
+              src={embedUrl}
+              allowFullScreen
+              allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
+              referrerPolicy="no-referrer-when-downgrade"
+              onLoad={() => setIframeLoading(false)}
+            />
+          ) : !imdbLookingUp && !id ? (
+            <div className="player-loading">
+              <p style={{fontSize:'1rem',color:'var(--text2)'}}>
+                Could not find stream for "{title}".<br />Try searching manually below.
+              </p>
+              {sources.filter(s => !s.getUrl('').includes('imdb')).map((s, i) => (
+                <a key={i} href={s.direct(title)} target="_blank" rel="noreferrer" className="action-btn watch" style={{marginTop:'0.5rem'}}>
+                  🔍 Search on {s.label}
+                </a>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="player-sources">
@@ -176,10 +229,12 @@ export default function PlayerModal({ item, type, onClose }) {
         </div>
 
         <div className="player-actions">
-          <a className="action-btn watch" href={directUrl} target="_blank" rel="noreferrer">
-            🔗 Open in New Tab
-          </a>
-          {type === 'movie' && id?.startsWith('tt') && (
+          {directUrl && (
+            <a className="action-btn watch" href={directUrl} target="_blank" rel="noreferrer">
+              🔗 Open in New Tab
+            </a>
+          )}
+          {id?.startsWith?.('tt') && (
             <a
               className="action-btn dl"
               href={`https://www.imdb.com/title/${id}/`}
@@ -189,7 +244,7 @@ export default function PlayerModal({ item, type, onClose }) {
               ★ IMDB Info
             </a>
           )}
-          {type === 'movie' && (
+          {showingPlayer && title && (
             <a
               className="action-btn info"
               href={`https://yts.mx/browse-movies/${encodeURIComponent(title || '')}/${year || '0'}`}
