@@ -150,6 +150,41 @@
   letter-spacing: 0.04em;
 }
 
+.nf-loader-hint {
+  color: rgba(255,255,255,0.25);
+  font-size: 0.72rem;
+  margin-top: -8px;
+  text-align: center;
+  max-width: 260px;
+}
+
+.nf-iframe-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nf-timeout-banner {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  background: rgba(229,9,20,0.15);
+  border: 1px solid rgba(229,9,20,0.4);
+  color: rgba(255,200,200,0.9);
+  font-size: 0.78rem;
+  padding: 8px 18px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: fadeInDown 0.3s ease;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* === BOTTOM BAR === */
 
 .nf-bottom-bar {

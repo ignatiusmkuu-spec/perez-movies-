@@ -3,22 +3,26 @@ import { getImdbId } from '../api/moviebox'
 import './PlayerModal.css'
 
 const MOVIE_SOURCES = [
-  { label: 'Server 1',  getUrl: (id) => `https://vidsrc.net/embed/movie?imdb=${id}` },
-  { label: 'Server 2',  getUrl: (id) => `https://vidlink.pro/movie/${id}` },
-  { label: 'Server 3',  getUrl: (id) => `https://www.2embed.cc/embed/${id}` },
-  { label: 'Server 4',  getUrl: (id) => `https://multiembed.mov/?video_id=${id}` },
-  { label: 'Server 5',  getUrl: (id) => `https://embed.smashystream.com/playere.php?imdb=${id}` },
-  { label: 'Server 6',  getUrl: (id) => `https://vidsrc.me/embed/movie?imdb=${id}` },
-  { label: 'Server 7',  getUrl: (id) => `https://123movienow.cc/embed/movie/${id}` },
+  { label: 'Server 1',  getUrl: (id) => `https://vidsrc.xyz/embed/movie?imdb=${id}` },
+  { label: 'Server 2',  getUrl: (id) => `https://vidsrc.to/embed/movie/${id}` },
+  { label: 'Server 3',  getUrl: (id) => `https://embed.su/embed/movie/${id}` },
+  { label: 'Server 4',  getUrl: (id) => `https://www.2embed.cc/embed/${id}` },
+  { label: 'Server 5',  getUrl: (id) => `https://multiembed.mov/?video_id=${id}` },
+  { label: 'Server 6',  getUrl: (id) => `https://embed.smashystream.com/playere.php?imdb=${id}` },
+  { label: 'Server 7',  getUrl: (id) => `https://vidsrc.me/embed/movie?imdb=${id}` },
+  { label: 'Server 8',  getUrl: (id) => `https://moviesapi.club/movie/${id}` },
+  { label: 'Server 9',  getUrl: (id) => `https://vidlink.pro/movie/${id}` },
 ]
 
 const TV_SOURCES = [
-  { label: 'Server 1',  getUrl: (id, s, e) => `https://vidsrc.net/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
-  { label: 'Server 2',  getUrl: (id, s, e) => `https://www.2embed.cc/embedtvfull/${id}&s=${s}&e=${e}` },
-  { label: 'Server 3',  getUrl: (id, s, e) => `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}` },
-  { label: 'Server 4',  getUrl: (id, s, e) => `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}` },
-  { label: 'Server 5',  getUrl: (id, s, e) => `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
-  { label: 'Server 6',  getUrl: (id, s, e) => `https://123movienow.cc/embed/tv/${id}/${s}/${e}` },
+  { label: 'Server 1',  getUrl: (id, s, e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
+  { label: 'Server 2',  getUrl: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
+  { label: 'Server 3',  getUrl: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}` },
+  { label: 'Server 4',  getUrl: (id, s, e) => `https://www.2embed.cc/embedtvfull/${id}&s=${s}&e=${e}` },
+  { label: 'Server 5',  getUrl: (id, s, e) => `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}` },
+  { label: 'Server 6',  getUrl: (id, s, e) => `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}` },
+  { label: 'Server 7',  getUrl: (id, s, e) => `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
+  { label: 'Server 8',  getUrl: (id, s, e) => `https://moviesapi.club/tv/${id}-${s}-${e}` },
 ]
 
 const ANIME_LINKS = [
@@ -28,45 +32,61 @@ const ANIME_LINKS = [
   { label: 'Crunchyroll', url: (t) => `https://www.crunchyroll.com/search?q=${encodeURIComponent(t)}` },
 ]
 
+const LOAD_TIMEOUT_MS = 9000
+
 export default function PlayerModal({ item, type, onClose }) {
-  const [srcIdx, setSrcIdx]           = useState(0)
-  const [loading, setLoading]         = useState(true)
-  const [season, setSeason]           = useState(1)
-  const [episode, setEpisode]         = useState(1)
+  const [srcIdx, setSrcIdx]             = useState(0)
+  const [loading, setLoading]           = useState(true)
+  const [timedOut, setTimedOut]         = useState(false)
+  const [season, setSeason]             = useState(1)
+  const [episode, setEpisode]           = useState(1)
   const [resolvedImdb, setResolvedImdb] = useState(null)
-  const [lookingUp, setLookingUp]     = useState(false)
+  const [lookingUp, setLookingUp]       = useState(false)
   const [showControls, setShowControls] = useState(true)
-  const [visible, setVisible]         = useState(false)
-  const hideTimer = useRef(null)
-  const iframeRef = useRef()
+  const [visible, setVisible]           = useState(false)
 
-  const isAnime = type === 'anime'
-  const isTV    = type === 'moviebox-tv' || type === 'tv'
+  const hideTimer    = useRef(null)
+  const loadTimer    = useRef(null)
+  const iframeRef    = useRef()
+
+  const isAnime    = type === 'anime'
+  const isTV       = type === 'moviebox-tv' || type === 'tv'
   const needsLookup = item?._source === 'moviebox' || item?._mbId || item?._source === 'flixer' || isAnime
-
-  const animeTitle = isAnime ? (item.title_english || item.title || item.Title || '') : ''
+  const animeTitle  = isAnime ? (item.title_english || item.title || item.Title || '') : ''
 
   let sources, id, title, year
   if (isAnime) {
     sources = resolvedImdb ? TV_SOURCES : null
-    id = resolvedImdb || ''
-    title = animeTitle
-    year = item.year || item.Year
+    id      = resolvedImdb || ''
+    title   = animeTitle
+    year    = item.year || item.Year
   } else if (isTV) {
     sources = TV_SOURCES
-    id = resolvedImdb || item.externals?.imdb || item.imdbID || ''
-    title = item.name || item.Title || item.title
-    year = item.premiered?.slice(0, 4) || item.Year || item.releaseDate?.slice(0, 4)
+    id      = resolvedImdb || item.externals?.imdb || item.imdbID || ''
+    title   = item.name || item.Title || item.title
+    year    = item.premiered?.slice(0, 4) || item.Year || item.releaseDate?.slice(0, 4)
   } else {
     sources = MOVIE_SOURCES
-    id = resolvedImdb || item.imdbID || ''
-    title = item.Title || item.title || item.name
-    year = item.Year || item.releaseDate?.slice(0, 4) || item.premiered?.slice(0, 4)
+    id      = resolvedImdb || item.imdbID || ''
+    title   = item.Title || item.title || item.name
+    year    = item.Year || item.releaseDate?.slice(0, 4) || item.premiered?.slice(0, 4)
   }
+
+  const startLoadTimer = useCallback(() => {
+    clearTimeout(loadTimer.current)
+    setTimedOut(false)
+    loadTimer.current = setTimeout(() => {
+      setLoading(false)
+      setTimedOut(true)
+    }, LOAD_TIMEOUT_MS)
+  }, [])
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true))
-    return () => clearTimeout(hideTimer.current)
+    return () => {
+      clearTimeout(hideTimer.current)
+      clearTimeout(loadTimer.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -84,17 +104,31 @@ export default function PlayerModal({ item, type, onClose }) {
     setResolvedImdb(null)
     setSrcIdx(0)
     setLoading(true)
+    setTimedOut(false)
+
     if (item.imdbID && !isAnime) { setResolvedImdb(item.imdbID); return }
     if (item.externals?.imdb && isTV) { setResolvedImdb(item.externals.imdb); return }
+
     if (needsLookup && !item.imdbID) {
       const lt = isAnime ? animeTitle : (item.Title || item.title)
       const ly = isAnime ? year : (item.Year || item.releaseDate?.slice(0, 4))
       const isSeries = isTV || isAnime || item._mbType === 2
       if (!lt) return
       setLookingUp(true)
-      getImdbId(lt, ly, isSeries).then(f => { if (f) setResolvedImdb(f); setLookingUp(false) })
+      getImdbId(lt, ly, isSeries).then(f => {
+        if (f) setResolvedImdb(f)
+        setLookingUp(false)
+      })
     }
   }, [item])
+
+  useEffect(() => {
+    if (id && !lookingUp) {
+      setLoading(true)
+      setTimedOut(false)
+      startLoadTimer()
+    }
+  }, [id, srcIdx, season, episode, lookingUp])
 
   const revealControls = useCallback(() => {
     setShowControls(true)
@@ -107,8 +141,14 @@ export default function PlayerModal({ item, type, onClose }) {
     setTimeout(onClose, 250)
   }
 
-  const showEps = isTV || (isAnime && resolvedImdb)
-  const src = sources?.[srcIdx]
+  const switchServer = (i) => {
+    setSrcIdx(i)
+    setLoading(true)
+    setTimedOut(false)
+  }
+
+  const showEps  = isTV || (isAnime && resolvedImdb)
+  const src      = sources?.[srcIdx]
   const embedUrl = id && src ? src.getUrl(id, season, episode) : null
 
   return (
@@ -132,14 +172,24 @@ export default function PlayerModal({ item, type, onClose }) {
         </div>
 
         <div className="nf-screen">
-          {(loading || lookingUp) && (
+          {lookingUp && (
             <div className="nf-loader">
-              <div className="nf-spinner">
-                <div className="nf-spinner-arc" />
-              </div>
-              <p className="nf-loader-text">
-                {lookingUp ? 'Finding stream…' : 'Loading…'}
-              </p>
+              <div className="nf-spinner"><div className="nf-spinner-arc" /></div>
+              <p className="nf-loader-text">Finding stream…</p>
+            </div>
+          )}
+
+          {!lookingUp && loading && !timedOut && (
+            <div className="nf-loader">
+              <div className="nf-spinner"><div className="nf-spinner-arc" /></div>
+              <p className="nf-loader-text">Connecting to server…</p>
+              <p className="nf-loader-hint">If it takes too long, try another server below</p>
+            </div>
+          )}
+
+          {!lookingUp && timedOut && embedUrl && (
+            <div className="nf-timeout-banner">
+              ⚠ Server may be blocked — try a different server below
             </div>
           )}
 
@@ -147,12 +197,16 @@ export default function PlayerModal({ item, type, onClose }) {
             <iframe
               ref={iframeRef}
               key={`${srcIdx}-${id}-${season}-${episode}`}
-              className="nf-iframe"
+              className={`nf-iframe ${loading && !timedOut ? 'nf-iframe-hidden' : ''}`}
               src={embedUrl}
               allowFullScreen
               allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
               referrerPolicy="no-referrer-when-downgrade"
-              onLoad={() => setLoading(false)}
+              onLoad={() => {
+                clearTimeout(loadTimer.current)
+                setLoading(false)
+                setTimedOut(false)
+              }}
             />
           ) : !lookingUp && isAnime && !resolvedImdb ? (
             <div className="nf-fallback">
@@ -168,7 +222,12 @@ export default function PlayerModal({ item, type, onClose }) {
           ) : !lookingUp && !id ? (
             <div className="nf-fallback">
               <p>Stream not found for "{title}"</p>
-              <p style={{ fontSize: '0.8rem', marginTop: 8, opacity: 0.6 }}>Try switching servers below</p>
+              <p style={{ fontSize: '0.8rem', marginTop: 8, opacity: 0.6 }}>Try a different server below or open in a new tab</p>
+              {embedUrl && (
+                <a className="nf-anime-btn" href={embedUrl} target="_blank" rel="noreferrer" style={{ marginTop: 16 }}>
+                  ↗ Open in New Tab
+                </a>
+              )}
             </div>
           ) : null}
         </div>
@@ -179,17 +238,17 @@ export default function PlayerModal({ item, type, onClose }) {
               <div className="nf-ep-group">
                 <span className="nf-ep-label">Season</span>
                 <div className="nf-ep-controls">
-                  <button className="nf-ep-btn" onClick={() => { setSeason(s => Math.max(1, s - 1)); setLoading(true) }}>−</button>
+                  <button className="nf-ep-btn" onClick={() => { setSeason(s => Math.max(1, s - 1)); setLoading(true); setTimedOut(false) }}>−</button>
                   <span className="nf-ep-val">{season}</span>
-                  <button className="nf-ep-btn" onClick={() => { setSeason(s => s + 1); setLoading(true) }}>+</button>
+                  <button className="nf-ep-btn" onClick={() => { setSeason(s => s + 1); setLoading(true); setTimedOut(false) }}>+</button>
                 </div>
               </div>
               <div className="nf-ep-group">
                 <span className="nf-ep-label">Episode</span>
                 <div className="nf-ep-controls">
-                  <button className="nf-ep-btn" onClick={() => { setEpisode(e => Math.max(1, e - 1)); setLoading(true) }}>−</button>
+                  <button className="nf-ep-btn" onClick={() => { setEpisode(e => Math.max(1, e - 1)); setLoading(true); setTimedOut(false) }}>−</button>
                   <span className="nf-ep-val">{episode}</span>
-                  <button className="nf-ep-btn" onClick={() => { setEpisode(e => e + 1); setLoading(true) }}>+</button>
+                  <button className="nf-ep-btn" onClick={() => { setEpisode(e => e + 1); setLoading(true); setTimedOut(false) }}>+</button>
                 </div>
               </div>
             </div>
@@ -203,7 +262,7 @@ export default function PlayerModal({ item, type, onClose }) {
                   <button
                     key={i}
                     className={`nf-server-btn ${srcIdx === i ? 'nf-server-active' : ''}`}
-                    onClick={() => { setSrcIdx(i); setLoading(true) }}
+                    onClick={() => switchServer(i)}
                   >
                     {s.label}
                   </button>
@@ -215,7 +274,7 @@ export default function PlayerModal({ item, type, onClose }) {
           <div className="nf-action-row">
             {embedUrl && (
               <a className="nf-action-link" href={embedUrl} target="_blank" rel="noreferrer">
-                ↗ New Tab
+                ↗ Open in New Tab
               </a>
             )}
             {id?.startsWith?.('tt') && (
