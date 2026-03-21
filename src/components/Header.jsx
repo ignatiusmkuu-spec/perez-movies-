@@ -13,7 +13,8 @@ export default function Header({ onSearch, activeTab }) {
     <header className="header">
       <div className="logo">
         <span className="logo-top">IGNATIUS</span>
-        <span className="logo-bottom">MOVIE STREAM</span>
+        <span className="logo-bottom">STREAMING</span>
+        <span className="logo-signal"><span /><span /><span /></span>
       </div>
       {activeTab !== 'sports' && activeTab !== 'developer' && (
         <form className="search-form" onSubmit={handleSubmit}>

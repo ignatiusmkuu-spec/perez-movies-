@@ -381,6 +381,19 @@
   border-color: var(--mb-green) !important;
   color: #fff !important;
 }
+.mb-tab-hd {
+  border-color: rgba(59,167,118,0.25);
+}
+.mb-hd-badge {
+  font-size: 0.52rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #3ba776, #22c55e);
+  color: #fff;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
 
 /* Action Row */
 .mb-action-row {
