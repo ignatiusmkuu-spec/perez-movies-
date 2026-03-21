@@ -33,22 +33,32 @@ function makeSources(domain) {
       { label: 'Server 10',      icon: '▶', hd: false, getUrl: (id)      => `https://embed.su/embed/movie/${id}` },
       { label: 'Server 11',      icon: '▶', hd: false, getUrl: (id)      => `https://embed.smashystream.com/playere.php?imdb=${id}` },
       { label: 'Server 12',      icon: '▶', hd: false, getUrl: (id)      => `https://vidsrc.me/embed/movie?imdb=${id}` },
-      { label: 'Server 13',      icon: '▶', hd: false, getUrl: (id)      => `https://moviesapi.club/movie/${id}` },
+      { label: 'Server 13',      icon: '▶', hd: false, getUrl: (id)          => `https://moviesapi.club/movie/${id}` },
+      { label: 'RidoMovies',    icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/ridomovies/?s=${encodeURIComponent(t||id)}` },
+      { label: 'YesMovies',     icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/yesmovies/search/${encodeURIComponent(t||id)}/` },
+      { label: 'HDToday',       icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/hdtoday/search?q=${encodeURIComponent(t||id)}` },
+      { label: 'FreeMovies123', icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/freemovies123/?s=${encodeURIComponent(t||id)}` },
+      { label: 'MoviesJoy',     icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/moviesjoy/search?q=${encodeURIComponent(t||id)}` },
     ],
     tv: [
-      { label: 'Server 1 HD',    icon: '▶', hd: true,  getUrl: (id,s,e) => `${d}/embed/tv/${id}/${s}/${e}` },
-      { label: 'Server 2 HD',    icon: '▶', hd: true,  getUrl: (id,s,e) => `https://autoembed.co/tv/imdb/${id}/${s}/${e}` },
-      { label: 'Server 3 4K',    icon: '▶', hd: true,  getUrl: (id,s,e) => `https://player.videasy.net/tv/${id}/${s}/${e}?colour=e50914` },
-      { label: 'Server 4 HD',    icon: '▶', hd: true,  getUrl: (id,s,e) => `https://vidsrc.rip/embed/tv/${id}?season=${s}&episode=${e}` },
-      { label: 'Server 5 HD',    icon: '▶', hd: true,  getUrl: (id,s,e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=e50914` },
+      { label: 'Server 1 HD',    icon: '▶', hd: true,  getUrl: (id,s,e)     => `${d}/embed/tv/${id}/${s}/${e}` },
+      { label: 'Server 2 HD',    icon: '▶', hd: true,  getUrl: (id,s,e)     => `https://autoembed.co/tv/imdb/${id}/${s}/${e}` },
+      { label: 'Server 3 4K',    icon: '▶', hd: true,  getUrl: (id,s,e)     => `https://player.videasy.net/tv/${id}/${s}/${e}?colour=e50914` },
+      { label: 'Server 4 HD',    icon: '▶', hd: true,  getUrl: (id,s,e)     => `https://vidsrc.rip/embed/tv/${id}?season=${s}&episode=${e}` },
+      { label: 'Server 5 HD',    icon: '▶', hd: true,  getUrl: (id,s,e)     => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=e50914` },
       { label: 'MultiEmbed',     icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://multiembed.mov/directstream.php?video_id=${id}&imdb=1&s=${s}&e=${e}` },
       { label: '2Embed',         icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
-      { label: 'Server 8',       icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
-      { label: 'Server 9',       icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
-      { label: 'Server 10',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://embed.su/embed/tv/${id}/${s}/${e}` },
-      { label: 'Server 11',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}` },
-      { label: 'Server 12',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
-      { label: 'Server 13',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://moviesapi.club/tv/${id}-${s}-${e}` },
+      { label: 'Server 8',       icon: '▶', hd: false, getUrl: (id,s,e)     => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
+      { label: 'Server 9',       icon: '▶', hd: false, getUrl: (id,s,e)     => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
+      { label: 'Server 10',      icon: '▶', hd: false, getUrl: (id,s,e)     => `https://embed.su/embed/tv/${id}/${s}/${e}` },
+      { label: 'Server 11',      icon: '▶', hd: false, getUrl: (id,s,e)     => `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}` },
+      { label: 'Server 12',      icon: '▶', hd: false, getUrl: (id,s,e)     => `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
+      { label: 'Server 13',      icon: '▶', hd: false, getUrl: (id,s,e)     => `https://moviesapi.club/tv/${id}-${s}-${e}` },
+      { label: 'RidoMovies',    icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/ridomovies/?s=${encodeURIComponent((t||id)+` S${String(s).padStart(2,'0')}E${String(e).padStart(2,'0')}`)}` },
+      { label: 'YesMovies',     icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/yesmovies/search/${encodeURIComponent((t||id)+` season ${s}`)}/` },
+      { label: 'HDToday',       icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/hdtoday/search?q=${encodeURIComponent((t||id)+` season ${s}`)}` },
+      { label: 'FreeMovies123', icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/freemovies123/?s=${encodeURIComponent((t||id)+` S${String(s).padStart(2,'0')}E${String(e).padStart(2,'0')}`)}` },
+      { label: 'MoviesJoy',     icon: '🎬', hd: true,  named: true, getUrl: (id,s,e,t)  => `/proxy/sites/moviesjoy/search?q=${encodeURIComponent((t||id)+` season ${s}`)}` },
     ]
   }
 }
@@ -106,7 +116,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const sources    = makeSources(domain)
   const sourceList = isAnime ? (resolvedImdb ? sources.tv : null) : isTV ? sources.tv : sources.movie
   const activeSrc  = sourceList?.[srcIdx]
-  const embedUrl   = id && activeSrc ? activeSrc.getUrl(id, season, episode) : null
+  const embedUrl   = id && activeSrc ? activeSrc.getUrl(id, season, episode, title) : null
   const showEps    = isTV || (isAnime && resolvedImdb)
   const poster     = item?.Poster || item?.poster || item?.images?.poster || item?.image_url
 
