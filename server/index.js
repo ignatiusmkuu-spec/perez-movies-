@@ -343,6 +343,38 @@ PROXY_ROUTES.forEach(({ prefix, target, rewrite }) => {
   })
 })
 
+// ── YouTube Live Video ID resolver ──────────────────────────────
+app.get('/api/yt-live', async (req, res) => {
+  const { channel } = req.query
+  if (!channel) return res.json({ videoId: null, live: false })
+  try {
+    const r = await fetch(`https://www.youtube.com/channel/${channel}/live`, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8000),
+    })
+    const html = await r.text()
+    const videoIdMatch = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/)
+    const isLive = html.includes('"isLive":true') || html.includes('isLiveBroadcast') || html.includes('"liveBroadcastDetails"')
+    if (videoIdMatch && isLive) {
+      return res.json({ videoId: videoIdMatch[1], live: true })
+    }
+    // Try a second match for ongoing stream even without explicit isLive flag
+    const canonical = html.match(/canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})"/)
+    if (canonical) {
+      return res.json({ videoId: canonical[1], live: true })
+    }
+    return res.json({ videoId: null, live: false })
+  } catch (e) {
+    return res.json({ videoId: null, live: false, error: e.message })
+  }
+})
+
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`Stream proxy server running on port ${PORT}`)

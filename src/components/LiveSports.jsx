@@ -30,6 +30,12 @@ const TV_CHANNELS = [
   { id: 'inooro-ke',  name: 'Inooro TV',         abbr: 'INOORO',country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya','StarTimes'], ytId: 'UC9FzEE3YAXU7XCTN1TP_AOQ', color: '#8d4b00', pkg: 'StarTimes Nova' },
   { id: 'ramogi-ke',  name: 'Ramogi TV',         abbr: 'RAMOGI',country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya','StarTimes'], ytId: 'UCqkjpL2cXh4OqAlBNBxvczQ', color: '#2e7d32', pkg: 'StarTimes Nova' },
   { id: 'hot96-ke',   name: 'Hot 96 FM TV',      abbr: 'HOT96', country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya'],            ytId: 'UCfwWBtKLsYWt-eCHBTIgFMQ', color: '#ff5722', pkg: '' },
+  { id: 'shifu-ke',   name: 'Shifu TV',          abbr: 'SHIFU', country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya'],            ytId: 'UCGToqevJvEbpFjXJZGXE-NA', color: '#7b1fa2', pkg: '' },
+  { id: 'swahili-ke', name: 'Swahili TV',        abbr: 'SWH',   country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya'],            ytId: 'UChBQgieUidXV1CmDxSdRm3g', color: '#00838f', pkg: '' },
+  { id: 'rembo-ke',   name: 'Rembo TV',          abbr: 'REMBO', country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya'],            ytId: 'UC660YaiakYmU1AfOW3sabvQ', color: '#ad1457', pkg: '' },
+  { id: 'kids-ke',    name: 'Kids TV Kenya',     abbr: 'KIDS',  country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya'],            ytId: 'UCHBIm_ITwYy_FG9iIfIZxGQ', color: '#f9a825', pkg: '' },
+  { id: 'kungfu-ke',  name: 'Kungfu TV',         abbr: 'KUNG',  country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya'],            ytId: 'UCw1QvdRwo7G-VskoLd5xaLg', color: '#c62828', pkg: '' },
+  { id: 'triplep-ke', name: 'Triple P TV',       abbr: '3P',    country: 'Kenya',    flag: '🇰🇪', cat: ['Kenya'],            ytId: 'UCCtBJ9MP1PE_A1Qz4AUi46Q', color: '#1565c0', pkg: '' },
   // Nigeria
   { id: 'ch-ng',      name: 'Channels TV',       abbr: 'CHS',   country: 'Nigeria',  flag: '🇳🇬', cat: ['Nigeria','News','StarTimes'], ytId: 'UCBkeCHBPrTNBL1R4TBRRzfA', color: '#006633', pkg: 'StarTimes Smart' },
   { id: 'arise-ng',   name: 'Arise News',        abbr: 'ARISE', country: 'Nigeria',  flag: '🇳🇬', cat: ['Nigeria','News'],   ytId: 'UCzH2kgVBSuuvkqzFwYmpHMw', color: '#b71c1c', pkg: '' },
@@ -58,6 +64,8 @@ const TV_CHANNELS = [
   { id: 'cgtn-int',   name: 'CGTN Africa',       abbr: 'CGTN',  country: 'Int\'l',   flag: '🌍', cat: ['International','News'], ytId: 'UC-JHMexnCJrAK5eYNFQ3pXw', color: '#c62828', pkg: '' },
   { id: 'rt-int',     name: 'RT News',           abbr: 'RT',    country: 'Int\'l',   flag: '🌍', cat: ['International','News'], ytId: 'UCpwvZwUam-URkxB7g4USKpg', color: '#ba0000', pkg: '' },
   { id: 'euro-int',   name: 'Euronews English',  abbr: 'EURO',  country: 'Int\'l',   flag: '🌍', cat: ['International','News'], ytId: 'UCSb5E4yRBR4KFz6QQhYNGnw', color: '#0055a4', pkg: '' },
+  // Music
+  { id: 'trace-muz',  name: 'Trace Muziki',      abbr: 'TRMUZ', country: 'Africa',   flag: '🌍', cat: ['International'],    ytId: 'UCQbbxLP4yfIIy9exVtdipUQ', color: '#00bcd4', pkg: '' },
   // Sports
   { id: 'ss-sport',   name: 'SuperSport',        abbr: 'SPSRT', country: 'Sports',   flag: '⚽', cat: ['Sports','StarTimes'], ytId: 'UCTVPTzKI7sEX7AhJeGfNkTQ', color: '#1a1a5e', pkg: 'StarTimes Super' },
   { id: 'espn-sport', name: 'ESPN FC',           abbr: 'ESPN',  country: 'Sports',   flag: '🏆', cat: ['Sports'],             ytId: 'UCiWLfSweyRNmLpgEHekhoAg', color: '#cc0000', pkg: '' },
@@ -189,6 +197,8 @@ export default function LiveSports() {
   const [tvCat, setTvCat]             = useState('All')
   const [activeChannel, setActiveChannel] = useState(null)
   const [tvPlayerLoading, setTvPlayerLoading] = useState(false)
+  const [tvLiveVideoId, setTvLiveVideoId] = useState(null)
+  const [tvOffline, setTvOffline] = useState(false)
   const tvPlayerRef = useRef(null)
 
   useEffect(() => {
@@ -229,14 +239,33 @@ export default function LiveSports() {
     setTimeout(() => playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
 
-  const handleChannelClick = (ch) => {
+  const handleChannelClick = async (ch) => {
     if (activeChannel?.id === ch.id) {
       setActiveChannel(null)
+      setTvLiveVideoId(null)
+      setTvOffline(false)
       return
     }
     setActiveChannel(ch)
+    setTvLiveVideoId(null)
+    setTvOffline(false)
     setTvPlayerLoading(true)
     setTimeout(() => tvPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    try {
+      const res = await fetch(`/api/yt-live?channel=${ch.ytId}`)
+      const data = await res.json()
+      if (data.live && data.videoId) {
+        setTvLiveVideoId(data.videoId)
+        setTvOffline(false)
+      } else {
+        setTvLiveVideoId(null)
+        setTvOffline(true)
+      }
+    } catch {
+      setTvLiveVideoId(null)
+      setTvOffline(true)
+    }
+    setTvPlayerLoading(false)
   }
 
   return (
@@ -434,21 +463,41 @@ export default function LiveSports() {
               <div className="tv-player-frame">
                 {tvPlayerLoading && (
                   <div className="match-player-loading">
-                    <div style={{ width: 40, height: 40, border: '3px solid #222', borderTopColor: '#e50914', borderRadius: '50%', animation: 'nf-spin 0.8s linear infinite' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 40, height: 40, border: '3px solid #222', borderTopColor: '#e50914', borderRadius: '50%', animation: 'nf-spin 0.8s linear infinite' }} />
+                      <span style={{ color: '#888', fontSize: '0.75rem' }}>Checking live stream…</span>
+                    </div>
                   </div>
                 )}
-                <iframe
-                  key={activeChannel.id}
-                  src={`https://www.youtube.com/embed/live_stream?channel=${activeChannel.ytId}&autoplay=1`}
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; fullscreen; encrypted-media"
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-                  onLoad={() => setTvPlayerLoading(false)}
-                />
+                {tvOffline && !tvPlayerLoading && (
+                  <div className="tv-offline-screen">
+                    <div className="tv-offline-icon">📡</div>
+                    <div className="tv-offline-title">{activeChannel.name} is not live right now</div>
+                    <div className="tv-offline-sub">This channel may be off-air or has no active stream at this moment.</div>
+                    <a
+                      href={`https://www.youtube.com/channel/${activeChannel.ytId}/live`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="tv-offline-yt-btn"
+                    >
+                      ▶ Try on YouTube
+                    </a>
+                  </div>
+                )}
+                {tvLiveVideoId && !tvPlayerLoading && (
+                  <iframe
+                    key={tvLiveVideoId}
+                    src={`https://www.youtube.com/embed/${tvLiveVideoId}?autoplay=1&rel=0`}
+                    frameBorder="0"
+                    allowFullScreen
+                    allow="autoplay; fullscreen; encrypted-media"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                    onLoad={() => setTvPlayerLoading(false)}
+                  />
+                )}
               </div>
               <div className="tv-player-note">
-                If the stream shows "No live stream right now", the channel may not be broadcasting at this moment. Try again later or open on YouTube.
+                Streams are verified live before loading. If a channel shows offline, it is not broadcasting on YouTube right now — click "Try on YouTube" to check.
               </div>
             </div>
           )}
