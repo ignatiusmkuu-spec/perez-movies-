@@ -402,7 +402,7 @@ export default function LiveSports() {
           📡 StarTimes Guide
         </button>
         <button className={`sport-tab yt-tab-btn ${tab === 'youtube' ? 'active' : ''}`} onClick={() => setTab('youtube')}>
-          ▶ YouTube
+          ▶ Ignatius Watch
         </button>
       </div>
 
