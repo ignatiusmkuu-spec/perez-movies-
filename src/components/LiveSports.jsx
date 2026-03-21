@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import './LiveSports.css'
 
 const LIVE_STREAM_SITES = [
+  { name: 'CricFy TV',    icon: '📡', url: 'https://cricfy.tv/football-streams',       color: '#10b981', badge: 'NEW' },
+  { name: 'ShowMax',      icon: '🎬', url: 'https://showmax.com',                      color: '#1d4ed8', badge: 'NEW' },
   { name: 'SportSurge',   icon: '⚡', url: 'https://sportsurge.net/#Soccer',          color: '#f97316' },
   { name: 'StreamEast',   icon: '🔴', url: 'https://streameast.to/soccer',             color: '#ef4444' },
   { name: 'VIPBox',       icon: '📺', url: 'https://vipboxtv.se/soccer/',              color: '#8b5cf6' },
@@ -405,9 +407,10 @@ export default function LiveSports() {
                 href={s.url}
                 target="_blank"
                 rel="noreferrer"
-                className="stream-site-card"
+                className={`stream-site-card${s.badge ? ' stream-site-card-new' : ''}`}
                 style={{ '--site-color': s.color }}
               >
+                {s.badge && <div className="stream-new-badge">{s.badge}</div>}
                 <div className="stream-site-icon">{s.icon}</div>
                 <div className="stream-site-name">{s.name}</div>
                 <div className="stream-live-pill">
