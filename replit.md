@@ -68,8 +68,21 @@ vite.config.js     # Proxies: /proxy/omdb, /proxy/tvmaze, /proxy/jikan, /api, /s
 1. **Movies** — 322+ movies (32 from TheFlixer + 290 from MovieBox), genre filter tabs including "New Releases", hero banner
 2. **Drama** — K-Drama, C-Drama, Thai-Drama, SA Drama, Turkish, Nollywood, Must-watch Black Shows
 3. **Anime** — MovieBox Anime (English Dubbed) + Jikan top airing + genre browse
-4. **Live TV** — Live football/cricket/TV channel streams (Scorebat + embedded channels)
+4. **Live TV** — 4 sub-tabs:
+   - 🎬 **Highlights & Replays** — Scorebat football match highlights with inline player
+   - 🔴 **Live Streams** — 8 football stream sites (SportSurge, StreamEast, VIPBox, etc.)
+   - 📺 **Live TV** — 37 channels across Kenya, Nigeria, South Africa, Ghana, International, Sports; YouTube Live inline player; category filter; channel cards with colored logo, country flag, StarTimes package badge
+   - 📡 **StarTimes Guide** — Nova/Smart/Classic/Super packages with channel listings + subscribe links; featured StarTimes channels; StarTimes Kenya contact info
 5. **Developer** — Contact: Ignatius, WhatsApp/Phone +254706535581
+
+## Live TV Channels (37)
+- **Kenya (9)**: NTV, Citizen TV, KBC, KTN News, K24, Ebru TV, Inooro TV, Ramogi TV, Hot96 FM TV
+- **Nigeria (5)**: Channels TV, Arise News, TVC, NTA Network, Wazobia TV
+- **South Africa (4)**: SABC News, eNCA, Newzroom Afrika, 3Talk SA
+- **Ghana (3)**: JoyNews, TV3 Ghana, GTV Ghana
+- **International News (11)**: Al Jazeera, DW News, France 24, BBC News, CNN, TRT World, Sky News, NHK World, Africa News, CGTN Africa, RT News, Euronews
+- **Sports (6)**: SuperSport, ESPN FC, Sky Sports, BT Sport/TNT, beIN Sports, DAZN, Eurosport
+- All channels use `youtube.com/embed/live_stream?channel={YOUTUBE_CHANNEL_ID}` — no CORS issues
 
 ## Development
 - `npm run dev` — starts both servers (concurrently): Express on 3001, Vite on 5000

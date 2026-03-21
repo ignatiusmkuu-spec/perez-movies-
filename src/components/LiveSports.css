@@ -421,62 +421,397 @@
 }
 .live-tip-box span { color: var(--text2); font-weight: 600; }
 
-/* === CHANNELS === */
-.channels-section { padding: 0 14px; }
-.channels-hint {
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text3);
-  margin-bottom: 12px;
-  padding: 8px;
-  background: rgba(255,255,255,0.03);
-  border-radius: 8px;
-  border: 1px solid var(--border);
+/* Shared spinner keyframe */
+@keyframes nf-spin { to { transform: rotate(360deg); } }
+
+/* ==================== LIVE TV TAB ==================== */
+.livetv-section { padding: 0 14px 20px; }
+
+.livetv-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(229,9,20,0.08), rgba(229,9,20,0.03));
+  border: 1px solid rgba(229,9,20,0.22);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
 }
-.channels-grid {
+.livetv-banner-icon { font-size: 1.8rem; flex-shrink: 0; }
+.livetv-banner-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.livetv-banner-sub { font-size: 0.72rem; color: var(--text3); }
+
+/* TV Player */
+.tv-player-wrap {
+  background: #0a0a0a;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.tv-player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #111;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tv-player-chinfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tv-player-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.3px;
+  flex-shrink: 0;
+  text-align: center;
+  line-height: 1.1;
+  padding: 2px;
+}
+.tv-player-chname {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.tv-player-chmeta {
+  font-size: 0.68rem;
+  color: var(--text3);
+  margin-top: 2px;
+}
+.tv-player-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.tv-open-yt-btn {
+  background: rgba(255,0,0,0.15);
+  border: 1px solid rgba(255,0,0,0.3);
+  color: #ff4444;
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.tv-open-yt-btn:hover { background: rgba(255,0,0,0.25); }
+.tv-player-close {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.tv-player-close:hover { background: #e50914; }
+.tv-player-frame {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: #000;
+}
+.tv-player-note {
+  padding: 8px 14px;
+  font-size: 0.68rem;
+  color: var(--text3);
+  background: #0d0d0d;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  line-height: 1.4;
+}
+
+/* Category Filter */
+.tv-cat-filter {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scrollbar-width: none;
+  margin-bottom: 12px;
+}
+.tv-cat-filter::-webkit-scrollbar { display: none; }
+.tv-cat-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 0.73rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tv-cat-btn:hover { color: #fff; border-color: #e50914; }
+.tv-cat-btn.active {
+  background: rgba(229,9,20,0.12);
+  border-color: #e50914;
+  color: #e50914;
+  font-weight: 600;
+}
+
+/* Channel Grid */
+.tv-channels-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
-@media (min-width: 500px) { .channels-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 700px) { .channels-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 480px) { .tv-channels-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 700px) { .tv-channels-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1000px) { .tv-channels-grid { grid-template-columns: repeat(5, 1fr); } }
 
-.channel-card {
-  background: linear-gradient(135deg, var(--bg2), var(--bg3));
+/* Channel Card (new TV style) */
+.tv-channel-card {
+  background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px 10px;
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  border-top: 3px solid var(--ch-color, #e50914);
+  border-top: 3px solid var(--ch-accent, #e50914);
+  position: relative;
 }
-.channel-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--ch-color, #e50914);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+.tv-channel-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--ch-accent, #e50914);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
 }
-.ch-logo { font-size: 1.8rem; }
-.ch-name {
-  font-size: 0.75rem;
+.tv-channel-card.tv-ch-active {
+  border-color: var(--ch-accent);
+  box-shadow: 0 0 0 2px var(--ch-accent), 0 6px 20px rgba(0,0,0,0.4);
+  background: rgba(255,255,255,0.03);
+}
+.tv-ch-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+  padding: 3px;
+  line-height: 1.15;
+  text-align: center;
+  word-break: break-word;
+  flex-shrink: 0;
+}
+.tv-ch-abbr { text-align: center; line-height: 1.2; }
+.tv-ch-body { width: 100%; text-align: center; }
+.tv-ch-name {
+  font-size: 0.73rem;
   font-weight: 600;
   color: var(--text);
-  text-align: center;
   line-height: 1.3;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.ch-live {
-  font-size: 0.6rem;
-  color: #e50914;
-  font-weight: 700;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-.ch-watch {
-  font-size: 0.65rem;
+.tv-ch-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.62rem;
   color: var(--text3);
 }
+.tv-ch-flag { font-size: 0.8rem; }
+.tv-ch-country { font-size: 0.6rem; }
+.tv-ch-st-badge {
+  font-size: 0.58rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+.tv-ch-live-dot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #e50914;
+  letter-spacing: 0.04em;
+}
+.tv-live-pulse {
+  width: 6px;
+  height: 6px;
+  background: #e50914;
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
 
-/* Shared spinner keyframe */
-@keyframes nf-spin { to { transform: rotate(360deg); } }
+.livetv-footer-note {
+  margin-top: 16px;
+  padding: 10px 14px;
+  font-size: 0.72rem;
+  color: var(--text3);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+/* ==================== STARTIMES TAB ==================== */
+.startimes-section { padding: 0 14px 20px; }
+
+.st-header-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(135deg, #0a1628 0%, #101d35 100%);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.st-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.st-logo-icon { font-size: 2rem; }
+.st-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.st-subtitle { font-size: 0.72rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
+.st-visit-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.st-visit-btn:hover { background: rgba(255,255,255,0.18); }
+
+.st-packages-label, .st-featured-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.st-featured-label { margin-top: 28px; }
+
+.st-packages-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 8px;
+}
+@media (min-width: 600px) { .st-packages-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.st-package-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--pkg-color, #e50914);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.st-pkg-header {
+  padding: 10px 12px 6px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04), transparent);
+}
+.st-pkg-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--pkg-color);
+  letter-spacing: -0.2px;
+}
+.st-pkg-price { font-size: 0.68rem; color: var(--text3); margin-top: 2px; }
+.st-pkg-channels {
+  padding: 8px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.st-pkg-ch {
+  font-size: 0.65rem;
+  color: var(--text2);
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.st-pkg-ch:last-child { border-bottom: none; }
+.st-pkg-subscribe {
+  display: block;
+  text-align: center;
+  padding: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  opacity: 0.9;
+  transition: opacity 0.15s;
+}
+.st-pkg-subscribe:hover { opacity: 1; }
+
+.st-footer-info {
+  margin-top: 24px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.st-info-item {
+  font-size: 0.78rem;
+  color: var(--text3);
+}
+.st-info-item strong { color: var(--text2); }
+.st-info-item a {
+  color: #e50914;
+  text-decoration: none;
+}
+.st-info-item a:hover { text-decoration: underline; }
