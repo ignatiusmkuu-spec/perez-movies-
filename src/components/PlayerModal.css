@@ -3,8 +3,8 @@
    =================================================== */
 
 :root {
-  --mb-green:   #3ba776;
-  --mb-green2:  #2d9166;
+  --mb-red:   #e50914;
+  --mb-red2:  #c40812;
   --mb-dark:    #0d0d0d;
   --mb-surface: #161616;
   --mb-border:  rgba(255,255,255,0.08);
@@ -67,8 +67,8 @@
   flex-shrink: 0;
 }
 .mb-back-btn:hover {
-  background: var(--mb-green);
-  border-color: var(--mb-green);
+  background: var(--mb-red);
+  border-color: var(--mb-red);
   color: #fff;
 }
 
@@ -99,15 +99,15 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.mb-ep-badge { color: var(--mb-green); border-color: rgba(59,167,118,0.35); }
+.mb-ep-badge { color: var(--mb-red); border-color: rgba(229,9,20,0.35); }
 
 .mb-ep-toggle-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(59,167,118,0.12);
-  border: 1px solid rgba(59,167,118,0.3);
-  color: var(--mb-green);
+  background: rgba(229,9,20,0.12);
+  border: 1px solid rgba(229,9,20,0.3);
+  color: var(--mb-red);
   padding: 7px 13px;
   border-radius: 6px;
   font-size: 0.78rem;
@@ -117,8 +117,8 @@
   flex-shrink: 0;
 }
 .mb-ep-toggle-btn:hover {
-  background: rgba(59,167,118,0.22);
-  border-color: var(--mb-green);
+  background: rgba(229,9,20,0.22);
+  border-color: var(--mb-red);
 }
 
 /* === MAIN AREA (screen) === */
@@ -169,8 +169,8 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 3px solid rgba(59,167,118,0.15);
-  border-top-color: var(--mb-green);
+  border: 3px solid rgba(229,9,20,0.15);
+  border-top-color: var(--mb-red);
   animation: mb-spin 0.75s linear infinite;
 }
 
@@ -201,8 +201,8 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  background: rgba(59,167,118,0.12);
-  border: 1px solid rgba(59,167,118,0.35);
+  background: rgba(229,9,20,0.12);
+  border: 1px solid rgba(229,9,20,0.35);
   color: rgba(200,255,230,0.9);
   font-size: 0.77rem;
   padding: 8px 18px;
@@ -280,13 +280,13 @@
   transition: all 0.15s;
 }
 .mb-season-tab:hover {
-  background: rgba(59,167,118,0.15);
-  border-color: rgba(59,167,118,0.4);
-  color: var(--mb-green);
+  background: rgba(229,9,20,0.15);
+  border-color: rgba(229,9,20,0.4);
+  color: var(--mb-red);
 }
 .mb-season-active {
-  background: var(--mb-green) !important;
-  border-color: var(--mb-green) !important;
+  background: var(--mb-red) !important;
+  border-color: var(--mb-red) !important;
   color: #fff !important;
 }
 
@@ -311,13 +311,13 @@
   justify-content: center;
 }
 .mb-ep-num:hover {
-  background: rgba(59,167,118,0.15);
-  border-color: rgba(59,167,118,0.4);
-  color: var(--mb-green);
+  background: rgba(229,9,20,0.15);
+  border-color: rgba(229,9,20,0.4);
+  color: var(--mb-red);
 }
 .mb-ep-active {
-  background: var(--mb-green) !important;
-  border-color: var(--mb-green) !important;
+  background: var(--mb-red) !important;
+  border-color: var(--mb-red) !important;
   color: #fff !important;
 }
 
@@ -372,37 +372,37 @@
   letter-spacing: 0.01em;
 }
 .mb-server-tab:hover {
-  background: rgba(59,167,118,0.12);
-  border-color: rgba(59,167,118,0.35);
-  color: var(--mb-green);
+  background: rgba(229,9,20,0.12);
+  border-color: rgba(229,9,20,0.35);
+  color: var(--mb-red);
 }
 .mb-tab-active {
-  background: var(--mb-green) !important;
-  border-color: var(--mb-green) !important;
+  background: var(--mb-red) !important;
+  border-color: var(--mb-red) !important;
   color: #fff !important;
 }
 .mb-tab-hd {
-  border-color: rgba(59,167,118,0.25);
+  border-color: rgba(229,9,20,0.25);
 }
 .mb-tab-named {
-  border-color: rgba(99,102,241,0.45) !important;
-  color: #a5b4fc !important;
-  background: rgba(99,102,241,0.08) !important;
+  border-color: rgba(229,9,20,0.45) !important;
+  color: #ff9999 !important;
+  background: rgba(229,9,20,0.08) !important;
 }
 .mb-tab-named:hover {
-  background: rgba(99,102,241,0.16) !important;
-  border-color: rgba(99,102,241,0.65) !important;
-  color: #c7d2fe !important;
+  background: rgba(229,9,20,0.16) !important;
+  border-color: rgba(229,9,20,0.65) !important;
+  color: #ffbbbb !important;
 }
 .mb-tab-active.mb-tab-named {
-  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
-  border-color: #6366f1 !important;
+  background: linear-gradient(135deg, #e50914, #ff2d3a) !important;
+  border-color: #e50914 !important;
   color: #fff !important;
 }
 .mb-hd-badge {
   font-size: 0.52rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #3ba776, #22c55e);
+  background: linear-gradient(135deg, #e50914, #e50914);
   color: #fff;
   padding: 1px 4px;
   border-radius: 3px;
@@ -410,7 +410,7 @@
   flex-shrink: 0;
 }
 .mb-hd-badge-named {
-  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+  background: linear-gradient(135deg, #e50914, #ff2d3a) !important;
 }
 
 /* Action Row */
@@ -471,7 +471,7 @@
 }
 
 .mb-ext-btn {
-  background: var(--mb-green);
+  background: var(--mb-red);
   color: #fff;
   padding: 10px 22px;
   border-radius: 6px;
@@ -535,7 +535,7 @@
 }
 
 .mb-dl-badge {
-  background: var(--mb-green);
+  background: var(--mb-red);
   color: #fff;
   font-size: 0.65rem;
   font-weight: 800;
@@ -566,8 +566,8 @@
   transition: border-color 0.15s, background 0.15s;
 }
 .mb-dl-item:hover {
-  background: rgba(59,167,118,0.06);
-  border-color: rgba(59,167,118,0.25);
+  background: rgba(229,9,20,0.06);
+  border-color: rgba(229,9,20,0.25);
 }
 
 .mb-dl-item-name {
@@ -596,14 +596,14 @@
   align-items: center;
   gap: 4px;
   font-size: 0.7rem;
-  color: var(--mb-green);
+  color: var(--mb-red);
 }
 
 .mb-dl-magnet-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--mb-green);
+  background: var(--mb-red);
   color: #fff;
   text-decoration: none;
   font-size: 0.75rem;
@@ -614,7 +614,7 @@
   transition: background 0.15s, transform 0.1s;
 }
 .mb-dl-magnet-btn:hover {
-  background: var(--mb-green2);
+  background: var(--mb-red2);
   transform: scale(1.02);
 }
 
@@ -634,7 +634,7 @@
   font-family: inherit;
 }
 .mb-dl-active {
-  color: var(--mb-green) !important;
+  color: var(--mb-red) !important;
 }
 
 /* === RESPONSIVE === */
