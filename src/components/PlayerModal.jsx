@@ -38,6 +38,9 @@ function makeSources(domain) {
       { label: 'SmashyPlayer',  icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://player.smashy.stream/movie/${id}` },
       { label: 'VidSrc Net',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidsrc.net/embed/movie/${id}` },
       { label: 'Frembed',       icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://frembed.pro/api/film.php?id=${id}` },
+      { label: '2Embed Skin',   icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://2embed.skin/embed/movie/${id}` },
+      { label: 'Embeds XYZ',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://embeds.xyz/embed/${id}` },
+      { label: '2Embed Org',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://2embed.org/embed/movie/${id}` },
     ],
     tv: [
       { label: 'Server 1',      icon: '▶', hd: true,  getUrl: (id,s,e) => `${d}/embed/tv/${id}/${s}/${e}` },
@@ -57,6 +60,9 @@ function makeSources(domain) {
       { label: 'SmashyPlayer',  icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://player.smashy.stream/tv/${id}/${s}/${e}` },
       { label: 'VidSrc Net',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidsrc.net/embed/tv/${id}/${s}/${e}` },
       { label: 'Frembed',       icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://frembed.pro/api/serie.php?id=${id}&s=${s}&e=${e}` },
+      { label: '2Embed Skin',   icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://2embed.skin/embed/tv/${id}/${s}/${e}` },
+      { label: 'Embeds XYZ',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://embeds.xyz/embed/${id}?s=${s}&e=${e}` },
+      { label: '2Embed Org',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://2embed.org/embed/tv/${id}/${s}/${e}` },
     ]
   }
 }
@@ -92,7 +98,7 @@ export default function PlayerModal({ item, type, onClose }) {
 
   const loadTimer      = useRef(null)
   const autoRetryTimer = useRef(null)
-  const srcListLenRef  = useRef(17)
+  const srcListLenRef  = useRef(20)
   const iframeRef      = useRef()
 
   const isAnime     = type === 'anime'
@@ -155,7 +161,7 @@ export default function PlayerModal({ item, type, onClose }) {
   }, [])
 
   useEffect(() => {
-    srcListLenRef.current = sourceList?.length ?? 17
+    srcListLenRef.current = sourceList?.length ?? 20
   }, [sourceList])
 
   useEffect(() => {
