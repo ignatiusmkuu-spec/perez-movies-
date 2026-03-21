@@ -384,63 +384,150 @@ app.use('/proxy/showmax', async (req, res) => {
 })
 
 // ── CricFy TV full-site proxy ────────────────────────────────────
-// Serves any cricfy.tv page through our server, strips X-Frame-Options
-// so the player embeds directly inside Ignatius Stream.
+// Comprehensive proxy: rewrites HTML attrs, CSS url(), JS strings,
+// and passes binaries through unchanged. Strips all frame-blocking headers.
+
+const CRICFY_ORIGIN = 'https://cricfy.tv'
+const PROXY_PREFIX  = '/proxy/cricfy'
+
+// Rewrite any URL that belongs to cricfy.tv into our proxy path
+function rewriteUrl(url) {
+  if (!url) return url
+  // Already proxied
+  if (url.startsWith(PROXY_PREFIX)) return url
+  // Absolute cricfy.tv URL
+  if (url.startsWith(CRICFY_ORIGIN)) {
+    return PROXY_PREFIX + url.slice(CRICFY_ORIGIN.length)
+  }
+  // Protocol-relative
+  if (url.startsWith('//cricfy.tv')) {
+    return PROXY_PREFIX + url.slice('//cricfy.tv'.length)
+  }
+  // Root-relative (starts with /)
+  if (url.startsWith('/') && !url.startsWith('//')) {
+    return PROXY_PREFIX + url
+  }
+  return url
+}
+
+// Rewrite all URLs in an HTML string
+function rewriteHtml(html) {
+  return html
+    // Absolute cricfy.tv URLs anywhere in text/attrs
+    .replace(/https?:\/\/cricfy\.tv\//g, PROXY_PREFIX + '/')
+    // protocol-relative
+    .replace(/\/\/cricfy\.tv\//g, PROXY_PREFIX + '/')
+    // href/src/action/data-src/srcset attributes with root-relative paths
+    .replace(/((?:href|src|action|data-src|data-href|data-url|content)=["'])\/(?!\/|proxy\/cricfy)/g,
+             `$1${PROXY_PREFIX}/`)
+    // srcset (multiple URLs separated by commas)
+    .replace(/srcset="([^"]+)"/g, (_, srcs) => {
+      const rewritten = srcs.replace(/(https?:\/\/cricfy\.tv)?(\S+\.(webp|jpg|jpeg|png|gif|avif))/g,
+        (m, origin, path) => origin ? `${PROXY_PREFIX}${path}` : m)
+      return `srcset="${rewritten}"`
+    })
+    // window.location / location.href assignments targeting cricfy.tv
+    .replace(/(['"`])https?:\/\/cricfy\.tv\/([^'"`]*)\1/g,
+             (_, q, p) => `${q}${PROXY_PREFIX}/${p}${q}`)
+    // Remove X-Frame / CSP meta tags
+    .replace(/<meta[^>]+(?:x-frame-options|content-security-policy)[^>]*>/gi, '')
+    // Inject script to intercept in-page navigation so it stays proxied
+    .replace('</head>',
+      `<script>
+       (function(){
+         var _push = history.pushState.bind(history);
+         var _replace = history.replaceState.bind(history);
+         function fix(u){ if(!u) return u;
+           if(typeof u==='string' && u.startsWith('https://cricfy.tv'))
+             return '${PROXY_PREFIX}' + u.slice('https://cricfy.tv'.length);
+           return u; }
+         history.pushState   = function(s,t,u){ _push(s,t,fix(u)); };
+         history.replaceState= function(s,t,u){ _replace(s,t,fix(u)); };
+         var _open = XMLHttpRequest.prototype.open;
+         XMLHttpRequest.prototype.open = function(m,u){ arguments[1]=fix(u)||u; _open.apply(this,arguments); };
+         var _fetch = window.fetch;
+         window.fetch = function(u,o){ return _fetch(typeof u==='string'?fix(u):u,o); };
+       })();
+      </script></head>`)
+}
+
+// Rewrite URLs inside CSS files
+function rewriteCss(css) {
+  return css
+    .replace(/url\(\s*['"]?(https?:\/\/cricfy\.tv)?\/([^'")]+)['"]?\s*\)/g,
+             (_, origin, path) => `url(${PROXY_PREFIX}/${path})`)
+    .replace(/https?:\/\/cricfy\.tv\//g, PROXY_PREFIX + '/')
+}
+
+// Rewrite string literals inside JS files
+function rewriteJs(js) {
+  return js
+    .replace(/(['"`])https?:\/\/cricfy\.tv\/([^'"`]*)\1/g,
+             (_, q, p) => `${q}${PROXY_PREFIX}/${p}${q}`)
+}
+
 app.use('/proxy/cricfy', async (req, res) => {
-  const subPath = req.path === '/' ? '/football-streams' : req.path
+  const subPath = req.path === '/' ? '/' : req.path
   const qs = Object.keys(req.query).length
     ? '?' + new URLSearchParams(req.query).toString()
     : ''
-  const targetUrl = `https://cricfy.tv${subPath}${qs}`
+  const targetUrl = `${CRICFY_ORIGIN}${subPath}${qs}`
 
   try {
     const upstream = await fetch(targetUrl, {
       agent: httpsAgent,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept':          req.headers['accept'] || '*/*',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'identity',
-        'Referer': 'https://cricfy.tv/',
+        'Referer':         CRICFY_ORIGIN + '/',
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(15000),
     })
 
-    const contentType = upstream.headers.get('content-type') || 'text/html'
+    const ct = (upstream.headers.get('content-type') || 'application/octet-stream').toLowerCase()
 
-    // Forward safe headers, drop anything that blocks framing or sets cookies
-    upstream.headers.forEach((value, key) => {
-      const drop = ['x-frame-options', 'content-security-policy', 'transfer-encoding',
-                    'connection', 'set-cookie', 'strict-transport-security']
-      if (!drop.includes(key.toLowerCase())) res.setHeader(key, value)
-    })
-    res.setHeader('Content-Type', contentType)
+    // Strip framing/security headers; pass the rest
+    const DROP = new Set(['x-frame-options','content-security-policy','transfer-encoding',
+                          'connection','set-cookie','strict-transport-security','content-encoding'])
+    upstream.headers.forEach((v, k) => { if (!DROP.has(k)) res.setHeader(k, v) })
+    res.setHeader('Content-Type', ct)
     res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Cache-Control', 'public, max-age=30')
 
-    const buf = Buffer.from(await upstream.arrayBuffer())
+    const isText = ct.includes('html') || ct.includes('css') ||
+                   ct.includes('javascript') || ct.includes('json') || ct.includes('xml')
 
-    if (contentType.includes('html')) {
-      let body = buf.toString('utf8')
-      // Rewrite absolute + root-relative URLs so all navigation stays in-proxy
-      body = body
-        .replace(/https:\/\/cricfy\.tv\//g, '/proxy/cricfy/')
-        .replace(/(href|src|action)="\/((?!proxy\/cricfy)[^"])/g, '$1="/proxy/cricfy/$2')
-        // Inject base tag so relative resources load correctly
-        .replace(/<head([^>]*)>/i, '<head$1><base href="https://cricfy.tv/">')
-      res.send(body)
+    if (isText) {
+      const text = await upstream.text()
+      if (ct.includes('html'))       return res.send(rewriteHtml(text))
+      if (ct.includes('css'))        return res.send(rewriteCss(text))
+      if (ct.includes('javascript')) return res.send(rewriteJs(text))
+      return res.send(text)
     } else {
+      // Binary: images, fonts, video segments, etc. — stream directly
+      const buf = Buffer.from(await upstream.arrayBuffer())
       res.send(buf)
     }
   } catch (e) {
-    res.status(502).send(
-      `<div style="color:#fff;font-family:sans-serif;padding:32px;text-align:center;">
-        <h2>⚽ Stream Unavailable</h2>
-        <p style="color:#aaa">${e.message}</p>
-        <a href="https://cricfy.tv/football-streams" target="_blank"
-           style="color:#e50914">Open CricFy TV directly ↗</a>
-       </div>`
-    )
+    const isHtml = (req.headers['accept'] || '').includes('html')
+    if (isHtml) {
+      res.status(502).send(
+        `<!DOCTYPE html><html><body style="background:#0a0a0f;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:16px">
+          <div style="font-size:3rem">⚽</div>
+          <h2 style="margin:0">Stream Unavailable</h2>
+          <p style="color:#888;margin:0">${e.message}</p>
+          <a href="${CRICFY_ORIGIN}" target="_blank"
+             style="background:#e50914;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700">
+            Open CricFy TV ↗
+          </a>
+        </body></html>`
+      )
+    } else {
+      res.status(502).end()
+    }
   }
 })
 
