@@ -383,6 +383,136 @@ app.use('/proxy/showmax', async (req, res) => {
   }
 })
 
+// ── CricFy TV full-site proxy ────────────────────────────────────
+// Serves any cricfy.tv page through our server, strips X-Frame-Options
+// so the player embeds directly inside Ignatius Stream.
+app.use('/proxy/cricfy', async (req, res) => {
+  const subPath = req.path === '/' ? '/football-streams' : req.path
+  const qs = Object.keys(req.query).length
+    ? '?' + new URLSearchParams(req.query).toString()
+    : ''
+  const targetUrl = `https://cricfy.tv${subPath}${qs}`
+
+  try {
+    const upstream = await fetch(targetUrl, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'identity',
+        'Referer': 'https://cricfy.tv/',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12000),
+    })
+
+    const contentType = upstream.headers.get('content-type') || 'text/html'
+
+    // Forward safe headers, drop anything that blocks framing or sets cookies
+    upstream.headers.forEach((value, key) => {
+      const drop = ['x-frame-options', 'content-security-policy', 'transfer-encoding',
+                    'connection', 'set-cookie', 'strict-transport-security']
+      if (!drop.includes(key.toLowerCase())) res.setHeader(key, value)
+    })
+    res.setHeader('Content-Type', contentType)
+    res.setHeader('Access-Control-Allow-Origin', '*')
+
+    const buf = Buffer.from(await upstream.arrayBuffer())
+
+    if (contentType.includes('html')) {
+      let body = buf.toString('utf8')
+      // Rewrite absolute + root-relative URLs so all navigation stays in-proxy
+      body = body
+        .replace(/https:\/\/cricfy\.tv\//g, '/proxy/cricfy/')
+        .replace(/(href|src|action)="\/((?!proxy\/cricfy)[^"])/g, '$1="/proxy/cricfy/$2')
+        // Inject base tag so relative resources load correctly
+        .replace(/<head([^>]*)>/i, '<head$1><base href="https://cricfy.tv/">')
+      res.send(body)
+    } else {
+      res.send(buf)
+    }
+  } catch (e) {
+    res.status(502).send(
+      `<div style="color:#fff;font-family:sans-serif;padding:32px;text-align:center;">
+        <h2>⚽ Stream Unavailable</h2>
+        <p style="color:#aaa">${e.message}</p>
+        <a href="https://cricfy.tv/football-streams" target="_blank"
+           style="color:#e50914">Open CricFy TV directly ↗</a>
+       </div>`
+    )
+  }
+})
+
+// ── CricFy TV match list parser ──────────────────────────────────
+// Returns live/upcoming football matches scraped from cricfy.tv
+let _cricfyCache = null
+let _cricfyCacheAt = 0
+const CRICFY_TTL = 2 * 60 * 1000 // 2-minute cache
+
+app.get('/api/cricfy-streams', async (req, res) => {
+  if (_cricfyCache && Date.now() - _cricfyCacheAt < CRICFY_TTL) {
+    return res.json(_cricfyCache)
+  }
+  try {
+    const upstream = await fetch('https://cricfy.tv/football-streams', {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://cricfy.tv/',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
+    })
+    const html = await upstream.text()
+
+    const matches = []
+    const seen = new Set()
+
+    // Strategy 1: anchor tags containing "vs" or "stream" in href/text
+    const anchorRe = /<a[^>]+href="([^"]*(?:stream|match|watch|football|live|vs)[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi
+    let m
+    while ((m = anchorRe.exec(html)) !== null) {
+      const href = m[1]
+      const inner = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+      if (!inner || inner.length < 4 || inner.length > 120) continue
+      if (seen.has(href)) continue
+      seen.add(href)
+      const proxyUrl = href.startsWith('http')
+        ? '/proxy/cricfy/' + href.replace(/^https?:\/\/cricfy\.tv\//, '')
+        : '/proxy/cricfy' + (href.startsWith('/') ? href : '/' + href)
+      matches.push({ title: inner, proxyUrl, originalUrl: href })
+    }
+
+    // Strategy 2: generic links with football-like text
+    if (matches.length === 0) {
+      const linkRe = /<a[^>]+href="(\/[^"]+)"[^>]*>([^<]{5,80})<\/a>/gi
+      while ((m = linkRe.exec(html)) !== null) {
+        const href = m[1]
+        const text = m[2].trim()
+        if (seen.has(href)) continue
+        if (!/vs|live|match|stream|fc |united|city|real |sport/i.test(text + href)) continue
+        seen.add(href)
+        matches.push({
+          title: text,
+          proxyUrl: '/proxy/cricfy' + href,
+          originalUrl: href,
+        })
+      }
+    }
+
+    const result = { matches: matches.slice(0, 30), fetchedAt: Date.now() }
+    _cricfyCache = result
+    _cricfyCacheAt = Date.now()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json(result)
+  } catch (e) {
+    res.status(502).json({ error: e.message, matches: [] })
+  }
+})
+
 // ── YouTube Live Video ID resolver ──────────────────────────────
 app.get('/api/yt-live', async (req, res) => {
   const { channel } = req.query
