@@ -793,11 +793,10 @@ export default function LiveSports() {
           <div className="yt-header">
             <div className="yt-header-left">
               <div className="yt-logo-wrap">
-                <svg className="yt-logo-icon" viewBox="0 0 90 20" fill="none" xmlns="http://www.w3.org/2000/svg" height="22">
-                  <path d="M27.9 3.5c-.3-1.1-1.2-2-2.3-2.3C23.4.6 14.4.6 14.4.6S5.5.6 3.2 1.2C2.1 1.5 1.2 2.4.9 3.5c-.6 2.3-.6 7-.6 7s0 4.7.6 7c.3 1.1 1.2 2 2.3 2.3 2.3.6 11.2.6 11.2.6s8.9 0 11.2-.6c1.1-.3 2-1.2 2.3-2.3.6-2.3.6-7 .6-7s0-4.7-.6-7z" fill="#FF0000"/>
-                  <path d="M11.5 14.6l7.5-4.1-7.5-4.1v8.2z" fill="white"/>
-                  <text x="32" y="15" fill="white" fontSize="13" fontFamily="Arial, sans-serif" fontWeight="bold">YouTube</text>
-                </svg>
+                <div className="ign-watch-logo">
+                  <span className="ign-watch-icon">▶</span>
+                  <span className="ign-watch-text">IGNATIUS</span>
+                </div>
               </div>
               <span className="yt-header-sub">Watch inside Ignatius Stream — no redirects</span>
             </div>
