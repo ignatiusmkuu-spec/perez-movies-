@@ -18,7 +18,7 @@ export default function Header({ onSearch, activeTab }) {
               <span key={i} className="logo-char" style={{ animationDelay: `${i * 0.12}s` }}>{ch}</span>
             ))}
           </span>
-          <span className="logo-bottom">STREAMING</span>
+          <span className="logo-bottom">STREAM</span>
           <div className="logo-scanline" />
         </div>
         <div className="logo-signal">

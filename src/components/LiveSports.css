@@ -433,6 +433,192 @@
   color: var(--text3);
 }
 
+/* ===== IGNATIUS INLINE STREAM SECTION ===== */
+.ign-streams-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ign-streams-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 14px 10px;
+}
+
+/* Ignatius Stream card */
+.ign-stream-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ign-color, #10b981);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+}
+.ign-stream-card:hover {
+  background: rgba(255,255,255,0.03);
+  border-color: var(--ign-color, #10b981);
+  transform: translateX(3px);
+}
+.ign-active {
+  background: rgba(var(--ign-color-rgb, 16,185,129), 0.06) !important;
+  border-color: var(--ign-color, #10b981) !important;
+  box-shadow: 0 0 0 1px rgba(var(--ign-color-rgb, 16,185,129), 0.2);
+}
+
+/* Animated pulse in background */
+.ign-card-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  height: 80%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse, var(--ign-color, #10b981) 0%, transparent 70%);
+  opacity: 0.04;
+  animation: ignPulse 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ignPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.03; }
+  50%       { transform: translate(-50%, -50%) scale(1.1);  opacity: 0.06; }
+}
+
+.ign-card-icon { font-size: 1.8rem; flex-shrink: 0; }
+.ign-card-body { flex: 1; min-width: 0; }
+.ign-card-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+.ign-card-sub {
+  font-size: 0.65rem;
+  color: var(--text3);
+  margin-top: 3px;
+}
+.ign-card-play {
+  background: var(--ign-color, #10b981);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.ign-stream-card:hover .ign-card-play { opacity: 0.85; }
+
+/* Inline Player Wrapper */
+.ign-player-wrap {
+  margin: 0 14px 14px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #000;
+}
+.ign-player-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #0d0d0d;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ign-player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+.ign-player-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.ign-player-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ign-player-src {
+  font-size: 0.62rem;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ign-player-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ign-ext-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.ign-ext-btn:hover { background: rgba(255,255,255,0.12); }
+.ign-close-btn {
+  background: rgba(229,9,20,0.12);
+  border: 1px solid rgba(229,9,20,0.25);
+  color: #e50914;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ign-close-btn:hover { background: rgba(229,9,20,0.22); }
+.ign-player-frame {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: #000;
+}
+
+/* More sources label */
+.live-streams-more-label {
+  padding: 6px 14px 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .live-tip-box {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);

@@ -1,9 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
 import './LiveSports.css'
 
+// Featured inline streams — play directly inside the site
+const IGNATIUS_STREAMS = [
+  {
+    id: 'ign-stream-1',
+    name: 'Ignatius Stream 1',
+    sub: 'Live Football • Powered by CricFy',
+    icon: '📡',
+    color: '#10b981',
+    embedUrl: 'https://cricfy.tv/football-streams',
+    extUrl: 'https://cricfy.tv/football-streams',
+  },
+  {
+    id: 'ign-stream-2',
+    name: 'Ignatius Stream 2',
+    sub: 'Sports & Entertainment • Powered by ShowMax',
+    icon: '🎬',
+    color: '#1d4ed8',
+    embedUrl: '/proxy/showmax',
+    extUrl: 'https://showmax.com',
+  },
+]
+
 const LIVE_STREAM_SITES = [
-  { name: 'CricFy TV',    icon: '📡', url: 'https://cricfy.tv/football-streams',       color: '#10b981', badge: 'NEW' },
-  { name: 'ShowMax',      icon: '🎬', url: 'https://showmax.com',                      color: '#1d4ed8', badge: 'NEW' },
   { name: 'SportSurge',   icon: '⚡', url: 'https://sportsurge.net/#Soccer',          color: '#f97316' },
   { name: 'StreamEast',   icon: '🔴', url: 'https://streameast.to/soccer',             color: '#ef4444' },
   { name: 'VIPBox',       icon: '📺', url: 'https://vipboxtv.se/soccer/',              color: '#8b5cf6' },
@@ -194,6 +214,11 @@ export default function LiveSports() {
   const [activeVideo, setActiveVideo] = useState(null)
   const [playerLoading, setPlayerLoading] = useState(false)
   const playerRef = useRef(null)
+
+  // Ignatius inline stream player state
+  const [activeIgnStream, setActiveIgnStream] = useState(null)
+  const [ignStreamLoading, setIgnStreamLoading] = useState(false)
+  const ignStreamRef = useRef(null)
 
   // TV Channels state
   const [tvCat, setTvCat]             = useState('All')
@@ -393,13 +418,83 @@ export default function LiveSports() {
       {/* ==================== LIVE STREAMS TAB ==================== */}
       {tab === 'live' && (
         <div className="live-streams-section">
-          <div className="live-streams-notice">
-            <div className="live-notice-icon">🔴</div>
-            <div>
-              <div className="live-notice-title">Live Football Streams</div>
-              <div className="live-notice-sub">Click any source below to watch live matches now. Streams open in a new tab.</div>
-            </div>
+
+          {/* ── Ignatius Inline Stream Players ── */}
+          <div className="ign-streams-header">
+            <div className="live-dot" />
+            <span>Ignatius Stream — Playing In-Site</span>
           </div>
+          <div className="ign-streams-row">
+            {IGNATIUS_STREAMS.map(s => (
+              <div
+                key={s.id}
+                className={`ign-stream-card ${activeIgnStream?.id === s.id ? 'ign-active' : ''}`}
+                style={{ '--ign-color': s.color }}
+                onClick={() => {
+                  if (activeIgnStream?.id === s.id) {
+                    setActiveIgnStream(null)
+                  } else {
+                    setActiveIgnStream(s)
+                    setIgnStreamLoading(true)
+                    setTimeout(() => ignStreamRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+                  }
+                }}
+              >
+                <div className="ign-card-pulse" />
+                <div className="ign-card-icon">{s.icon}</div>
+                <div className="ign-card-body">
+                  <div className="ign-card-name">{s.name}</div>
+                  <div className="ign-card-sub">{s.sub}</div>
+                </div>
+                <div className="ign-card-play">
+                  {activeIgnStream?.id === s.id ? '▼ Close' : '▶ Play'}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Inline Player ── */}
+          {activeIgnStream && (
+            <div className="ign-player-wrap" ref={ignStreamRef}>
+              <div className="ign-player-bar">
+                <div className="ign-player-info">
+                  <span className="ign-player-dot" />
+                  <span className="ign-player-name">{activeIgnStream.name}</span>
+                  <span className="ign-player-src">{activeIgnStream.sub}</span>
+                </div>
+                <div className="ign-player-actions">
+                  <a href={activeIgnStream.extUrl} target="_blank" rel="noreferrer" className="ign-ext-btn">↗ Open Tab</a>
+                  <button className="ign-close-btn" onClick={() => setActiveIgnStream(null)}>✕</button>
+                </div>
+              </div>
+              <div className="ign-player-frame">
+                {ignStreamLoading && (
+                  <div className="match-player-loading">
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                      <div style={{ width:40, height:40, border:'3px solid #222', borderTopColor: activeIgnStream.color, borderRadius:'50%', animation:'nf-spin 0.8s linear infinite' }} />
+                      <span style={{ color:'#888', fontSize:'0.75rem' }}>Loading {activeIgnStream.name}…</span>
+                    </div>
+                  </div>
+                )}
+                <iframe
+                  key={activeIgnStream.id}
+                  src={activeIgnStream.embedUrl}
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay; fullscreen; encrypted-media; clipboard-write"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
+                  style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
+                  onLoad={() => setIgnStreamLoading(false)}
+                />
+              </div>
+              <div className="tv-player-note">
+                {activeIgnStream.name} is playing in-site. Use ↗ Open Tab for full-screen experience.
+              </div>
+            </div>
+          )}
+
+          {/* ── More Stream Sources ── */}
+          <div className="live-streams-more-label">More Sources</div>
           <div className="live-streams-grid">
             {LIVE_STREAM_SITES.map((s, i) => (
               <a
@@ -407,22 +502,21 @@ export default function LiveSports() {
                 href={s.url}
                 target="_blank"
                 rel="noreferrer"
-                className={`stream-site-card${s.badge ? ' stream-site-card-new' : ''}`}
+                className="stream-site-card"
                 style={{ '--site-color': s.color }}
               >
-                {s.badge && <div className="stream-new-badge">{s.badge}</div>}
                 <div className="stream-site-icon">{s.icon}</div>
                 <div className="stream-site-name">{s.name}</div>
                 <div className="stream-live-pill">
                   <span className="stream-live-dot" />
                   LIVE
                 </div>
-                <div className="stream-watch-label">Watch Now →</div>
+                <div className="stream-watch-label">Opens in new tab →</div>
               </a>
             ))}
           </div>
           <div className="live-tip-box">
-            <span>💡 Tip:</span> Open streams in full screen for the best experience. Use VPN if a site is blocked in your region.
+            <span>💡 Tip:</span> Use Ignatius Stream 1 or 2 above to watch without leaving this page. VPN recommended if blocked.
           </div>
         </div>
       )}

@@ -343,6 +343,46 @@ PROXY_ROUTES.forEach(({ prefix, target, rewrite }) => {
   })
 })
 
+// ── ShowMax proxy (strips X-Frame-Options so it embeds in-site) ──
+app.use('/proxy/showmax', async (req, res) => {
+  const subPath = req.path === '/' ? '' : req.path
+  const qs = Object.keys(req.query).length ? '?' + new URLSearchParams(req.query).toString() : ''
+  const targetUrl = `https://showmax.com${subPath}${qs}`
+  try {
+    const upstream = await fetch(targetUrl, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': req.headers['accept'] || 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'identity',
+        'Referer': 'https://showmax.com/',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12000),
+    })
+    const contentType = upstream.headers.get('content-type') || 'text/html'
+    // Forward all headers except the ones that block embedding
+    upstream.headers.forEach((value, key) => {
+      const skip = ['x-frame-options', 'content-security-policy', 'transfer-encoding', 'connection']
+      if (!skip.includes(key.toLowerCase())) res.setHeader(key, value)
+    })
+    res.setHeader('Content-Type', contentType)
+    // Stream the body through
+    const buf = Buffer.from(await upstream.arrayBuffer())
+    let body = buf.toString('utf8')
+    // Rewrite absolute showmax.com URLs to use our proxy
+    if (contentType.includes('html')) {
+      body = body
+        .replace(/https:\/\/showmax\.com\//g, '/proxy/showmax/')
+        .replace(/(href|src|action)="\/(?!\/)/g, '$1="/proxy/showmax/')
+    }
+    res.send(body)
+  } catch (e) {
+    res.status(502).send(`<h3 style="color:#fff;font-family:sans-serif;padding:20px">ShowMax proxy error: ${e.message}</h3>`)
+  }
+})
+
 // ── YouTube Live Video ID resolver ──────────────────────────────
 app.get('/api/yt-live', async (req, res) => {
   const { channel } = req.query
