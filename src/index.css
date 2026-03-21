@@ -11,7 +11,7 @@
   --border: #2a2a3a;
   --card-bg: #16161f;
   --nav-h: 64px;
-  --header-h: 64px;
+  --header-h: 78px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
