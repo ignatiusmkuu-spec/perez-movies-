@@ -21,34 +21,34 @@ function makeSources(domain) {
   const d = domain || 'https://123movienow.cc'
   return {
     movie: [
-      { label: 'Server 1 HD',   icon: '▶', hd: true,  getUrl: (id)      => `${d}/embed/movie/${id}` },
-      { label: 'Server 2 HD',   icon: '▶', hd: true,  getUrl: (id)      => `https://autoembed.co/movie/imdb/${id}` },
-      { label: 'Server 3 4K',   icon: '▶', hd: true,  getUrl: (id)      => `https://player.videasy.net/movie/${id}?colour=e50914` },
-      { label: 'Server 4 HD',   icon: '▶', hd: true,  getUrl: (id)      => `https://vidsrc.rip/embed/movie/${id}` },
-      { label: 'Server 5 HD',   icon: '▶', hd: true,  getUrl: (id)      => `https://vidlink.pro/movie/${id}?primaryColor=e50914` },
-      { label: 'Server 6',      icon: '▶', hd: false, getUrl: (id)      => `https://vidsrc.xyz/embed/movie?imdb=${id}` },
-      { label: 'Server 7',      icon: '▶', hd: false, getUrl: (id)      => `https://vidsrc.to/embed/movie/${id}` },
-      { label: 'Server 8',      icon: '▶', hd: false, getUrl: (id)      => `https://embed.su/embed/movie/${id}` },
-      { label: 'Server 9',      icon: '▶', hd: false, getUrl: (id)      => `https://www.2embed.cc/embed/${id}` },
-      { label: 'Server 10',     icon: '▶', hd: false, getUrl: (id)      => `https://multiembed.mov/?video_id=${id}` },
-      { label: 'Server 11',     icon: '▶', hd: false, getUrl: (id)      => `https://embed.smashystream.com/playere.php?imdb=${id}` },
-      { label: 'Server 12',     icon: '▶', hd: false, getUrl: (id)      => `https://vidsrc.me/embed/movie?imdb=${id}` },
-      { label: 'Server 13',     icon: '▶', hd: false, getUrl: (id)      => `https://moviesapi.club/movie/${id}` },
+      { label: 'Server 1 HD',    icon: '▶', hd: true,  getUrl: (id)      => `${d}/embed/movie/${id}` },
+      { label: 'Server 2 HD',    icon: '▶', hd: true,  getUrl: (id)      => `https://autoembed.co/movie/imdb/${id}` },
+      { label: 'Server 3 4K',    icon: '▶', hd: true,  getUrl: (id)      => `https://player.videasy.net/movie/${id}?colour=e50914` },
+      { label: 'Server 4 HD',    icon: '▶', hd: true,  getUrl: (id)      => `https://vidsrc.rip/embed/movie/${id}` },
+      { label: 'Server 5 HD',    icon: '▶', hd: true,  getUrl: (id)      => `https://vidlink.pro/movie/${id}?primaryColor=e50914` },
+      { label: 'MultiEmbed',     icon: '▶', hd: true,  named: true, getUrl: (id)      => `https://multiembed.mov/directstream.php?video_id=${id}&imdb=1` },
+      { label: '2Embed',         icon: '▶', hd: true,  named: true, getUrl: (id)      => `https://www.2embed.cc/embed/${id}` },
+      { label: 'Server 8',       icon: '▶', hd: false, getUrl: (id)      => `https://vidsrc.xyz/embed/movie?imdb=${id}` },
+      { label: 'Server 9',       icon: '▶', hd: false, getUrl: (id)      => `https://vidsrc.to/embed/movie/${id}` },
+      { label: 'Server 10',      icon: '▶', hd: false, getUrl: (id)      => `https://embed.su/embed/movie/${id}` },
+      { label: 'Server 11',      icon: '▶', hd: false, getUrl: (id)      => `https://embed.smashystream.com/playere.php?imdb=${id}` },
+      { label: 'Server 12',      icon: '▶', hd: false, getUrl: (id)      => `https://vidsrc.me/embed/movie?imdb=${id}` },
+      { label: 'Server 13',      icon: '▶', hd: false, getUrl: (id)      => `https://moviesapi.club/movie/${id}` },
     ],
     tv: [
-      { label: 'Server 1 HD',   icon: '▶', hd: true,  getUrl: (id,s,e) => `${d}/embed/tv/${id}/${s}/${e}` },
-      { label: 'Server 2 HD',   icon: '▶', hd: true,  getUrl: (id,s,e) => `https://autoembed.co/tv/imdb/${id}/${s}/${e}` },
-      { label: 'Server 3 4K',   icon: '▶', hd: true,  getUrl: (id,s,e) => `https://player.videasy.net/tv/${id}/${s}/${e}?colour=e50914` },
-      { label: 'Server 4 HD',   icon: '▶', hd: true,  getUrl: (id,s,e) => `https://vidsrc.rip/embed/tv/${id}?season=${s}&episode=${e}` },
-      { label: 'Server 5 HD',   icon: '▶', hd: true,  getUrl: (id,s,e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=e50914` },
-      { label: 'Server 6',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
-      { label: 'Server 7',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
-      { label: 'Server 8',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://embed.su/embed/tv/${id}/${s}/${e}` },
-      { label: 'Server 9',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://www.2embed.cc/embedtvfull/${id}&s=${s}&e=${e}` },
-      { label: 'Server 10',     icon: '▶', hd: false, getUrl: (id,s,e) => `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}` },
-      { label: 'Server 11',     icon: '▶', hd: false, getUrl: (id,s,e) => `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}` },
-      { label: 'Server 12',     icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
-      { label: 'Server 13',     icon: '▶', hd: false, getUrl: (id,s,e) => `https://moviesapi.club/tv/${id}-${s}-${e}` },
+      { label: 'Server 1 HD',    icon: '▶', hd: true,  getUrl: (id,s,e) => `${d}/embed/tv/${id}/${s}/${e}` },
+      { label: 'Server 2 HD',    icon: '▶', hd: true,  getUrl: (id,s,e) => `https://autoembed.co/tv/imdb/${id}/${s}/${e}` },
+      { label: 'Server 3 4K',    icon: '▶', hd: true,  getUrl: (id,s,e) => `https://player.videasy.net/tv/${id}/${s}/${e}?colour=e50914` },
+      { label: 'Server 4 HD',    icon: '▶', hd: true,  getUrl: (id,s,e) => `https://vidsrc.rip/embed/tv/${id}?season=${s}&episode=${e}` },
+      { label: 'Server 5 HD',    icon: '▶', hd: true,  getUrl: (id,s,e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=e50914` },
+      { label: 'MultiEmbed',     icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://multiembed.mov/directstream.php?video_id=${id}&imdb=1&s=${s}&e=${e}` },
+      { label: '2Embed',         icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
+      { label: 'Server 8',       icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
+      { label: 'Server 9',       icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
+      { label: 'Server 10',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://embed.su/embed/tv/${id}/${s}/${e}` },
+      { label: 'Server 11',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}` },
+      { label: 'Server 12',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
+      { label: 'Server 13',      icon: '▶', hd: false, getUrl: (id,s,e) => `https://moviesapi.club/tv/${id}-${s}-${e}` },
     ]
   }
 }
@@ -413,12 +413,12 @@ export default function PlayerModal({ item, type, onClose }) {
               {(sourceList || []).map((s, i) => (
                 <button
                   key={i}
-                  className={`mb-server-tab ${srcIdx === i ? 'mb-tab-active' : ''} ${s.hd ? 'mb-tab-hd' : ''}`}
+                  className={`mb-server-tab ${srcIdx === i ? 'mb-tab-active' : ''} ${s.hd ? 'mb-tab-hd' : ''} ${s.named ? 'mb-tab-named' : ''}`}
                   onClick={() => switchServer(i)}
                 >
                   {i === 0 && <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>}
                   {s.label}
-                  {s.hd && <span className="mb-hd-badge">{s.label.includes('4K') ? '4K' : 'HD'}</span>}
+                  {s.hd && <span className={`mb-hd-badge ${s.named ? 'mb-hd-badge-named' : ''}`}>{s.label.includes('4K') ? '4K' : 'HD'}</span>}
                 </button>
               ))}
             </div>

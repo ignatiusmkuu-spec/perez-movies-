@@ -384,6 +384,21 @@
 .mb-tab-hd {
   border-color: rgba(59,167,118,0.25);
 }
+.mb-tab-named {
+  border-color: rgba(99,102,241,0.45) !important;
+  color: #a5b4fc !important;
+  background: rgba(99,102,241,0.08) !important;
+}
+.mb-tab-named:hover {
+  background: rgba(99,102,241,0.16) !important;
+  border-color: rgba(99,102,241,0.65) !important;
+  color: #c7d2fe !important;
+}
+.mb-tab-active.mb-tab-named {
+  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+  border-color: #6366f1 !important;
+  color: #fff !important;
+}
 .mb-hd-badge {
   font-size: 0.52rem;
   font-weight: 800;
@@ -393,6 +408,9 @@
   border-radius: 3px;
   letter-spacing: 0.03em;
   flex-shrink: 0;
+}
+.mb-hd-badge-named {
+  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
 }
 
 /* Action Row */
