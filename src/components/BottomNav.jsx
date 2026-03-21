@@ -4,7 +4,8 @@ const TABS = [
   { id: 'movies',    icon: '🎬', label: 'Movies' },
   { id: 'drama',     icon: '📺', label: 'Drama' },
   { id: 'anime',     icon: '⚡', label: 'Anime' },
-  { id: 'sports',    icon: '⚽', label: 'Live TV', live: true },
+  { id: 'football',  icon: '⚽', label: 'Football', live: true },
+  { id: 'sports',    icon: '📡', label: 'Live TV', live: true },
   { id: 'radio',     icon: '📻', label: 'Radio', live: true },
   { id: 'developer', icon: '👨‍💻', label: 'Developer' },
 ]

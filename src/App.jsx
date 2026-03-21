@@ -6,6 +6,7 @@ import MoviesSection from './components/MoviesSection'
 import DramaSection from './components/DramaSection'
 import AnimeSection from './components/AnimeSection'
 import LiveSports from './components/LiveSports'
+import LiveFootball from './components/LiveFootball'
 import RadioSection from './components/RadioSection'
 import DeveloperPage from './components/DeveloperPage'
 import PlayerModal from './components/PlayerModal'
@@ -51,6 +52,7 @@ export default function App() {
         {tab === 'anime' && (
           <AnimeSection searchQuery={searchQuery} onPlay={handlePlay} />
         )}
+        {tab === 'football' && <LiveFootball />}
         {tab === 'sports' && <LiveSports />}
         {tab === 'radio' && <RadioSection />}
         {tab === 'developer' && <DeveloperPage />}
