@@ -38,7 +38,6 @@ function makeSources(domain) {
       { label: 'SmashyPlayer',  icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://player.smashy.stream/movie/${id}` },
       { label: 'VidSrc Net',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidsrc.net/embed/movie/${id}` },
       { label: 'Frembed',       icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://frembed.pro/api/film.php?id=${id}` },
-      { label: 'FlixHQ',        icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://flixhq.pe/embed/movie/${id}` },
     ],
     tv: [
       { label: 'Server 1',      icon: '▶', hd: true,  getUrl: (id,s,e) => `${d}/embed/tv/${id}/${s}/${e}` },
@@ -58,7 +57,6 @@ function makeSources(domain) {
       { label: 'SmashyPlayer',  icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://player.smashy.stream/tv/${id}/${s}/${e}` },
       { label: 'VidSrc Net',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidsrc.net/embed/tv/${id}/${s}/${e}` },
       { label: 'Frembed',       icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://frembed.pro/api/serie.php?id=${id}&s=${s}&e=${e}` },
-      { label: 'FlixHQ',        icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://flixhq.pe/embed/tv/${id}/${s}/${e}` },
     ]
   }
 }
@@ -72,7 +70,7 @@ const ANIME_LINKS = [
 
 const MAX_EPISODES = 30
 const MAX_SEASONS  = 15
-const LOAD_TIMEOUT = 9000
+const LOAD_TIMEOUT = 14000
 
 export default function PlayerModal({ item, type, onClose }) {
   const [domain, setDomain]             = useState('https://123movienow.cc')
@@ -90,8 +88,12 @@ export default function PlayerModal({ item, type, onClose }) {
   const [dlGroups, setDlGroups]         = useState(null)
   const [dlError, setDlError]           = useState(null)
 
-  const loadTimer = useRef(null)
-  const iframeRef = useRef()
+  const [retryIn, setRetryIn]             = useState(null)
+
+  const loadTimer      = useRef(null)
+  const autoRetryTimer = useRef(null)
+  const srcListLenRef  = useRef(17)
+  const iframeRef      = useRef()
 
   const isAnime     = type === 'anime'
   const isTV        = type === 'moviebox-tv' || type === 'tv'
@@ -122,17 +124,47 @@ export default function PlayerModal({ item, type, onClose }) {
 
   const startLoadTimer = useCallback(() => {
     clearTimeout(loadTimer.current)
+    clearTimeout(autoRetryTimer.current)
     setTimedOut(false)
+    setRetryIn(null)
     loadTimer.current = setTimeout(() => {
       setLoading(false)
       setTimedOut(true)
+      let count = 3
+      setRetryIn(count)
+      const tick = () => {
+        count--
+        if (count <= 0) {
+          setRetryIn(null)
+          setSrcIdx(prev => {
+            const next = prev + 1
+            if (next < srcListLenRef.current) {
+              setLoading(true)
+              setTimedOut(false)
+              return next
+            }
+            return prev
+          })
+        } else {
+          setRetryIn(count)
+          autoRetryTimer.current = setTimeout(tick, 1000)
+        }
+      }
+      autoRetryTimer.current = setTimeout(tick, 1000)
     }, LOAD_TIMEOUT)
   }, [])
 
   useEffect(() => {
+    srcListLenRef.current = sourceList?.length ?? 17
+  }, [sourceList])
+
+  useEffect(() => {
     fetchMovieBoxDomain().then(setDomain)
     requestAnimationFrame(() => setVisible(true))
-    return () => clearTimeout(loadTimer.current)
+    return () => {
+      clearTimeout(loadTimer.current)
+      clearTimeout(autoRetryTimer.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -187,6 +219,8 @@ export default function PlayerModal({ item, type, onClose }) {
   }
 
   const switchServer = (i) => {
+    clearTimeout(autoRetryTimer.current)
+    setRetryIn(null)
     setSrcIdx(i)
     setLoading(true)
     setTimedOut(false)
@@ -268,13 +302,34 @@ export default function PlayerModal({ item, type, onClose }) {
               <div className="mb-loader">
                 <div className="mb-spinner" />
                 <p className="mb-loader-text">Loading {activeSrc?.label ?? 'Server'}…</p>
-                <p className="mb-loader-hint">Switch server below if this takes too long</p>
+                <p className="mb-loader-hint">Will auto-switch if unavailable · or pick below</p>
               </div>
             )}
             {!lookingUp && timedOut && embedUrl && (
               <div className="mb-blocked-banner">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                Server may be blocked — try another server
+                {retryIn !== null && srcIdx + 1 < srcListLenRef.current
+                  ? `${activeSrc?.label} unavailable — trying next in ${retryIn}s`
+                  : 'Server unavailable — pick another below'
+                }
+                {retryIn !== null && srcIdx + 1 < srcListLenRef.current && (
+                  <button
+                    className="mb-skip-btn"
+                    onClick={() => {
+                      clearTimeout(autoRetryTimer.current)
+                      setRetryIn(null)
+                      setSrcIdx(prev => {
+                        const next = prev + 1
+                        if (next < srcListLenRef.current) {
+                          setLoading(true); setTimedOut(false); return next
+                        }
+                        return prev
+                      })
+                    }}
+                  >
+                    Skip →
+                  </button>
+                )}
               </div>
             )}
 
