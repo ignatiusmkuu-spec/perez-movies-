@@ -59,6 +59,13 @@ export default function DeveloperPage() {
           </a>
         </div>
 
+        <a
+          href="#video"
+          className="dev-video-btn"
+        >
+          🎬 Watch My Story — Animated Film
+        </a>
+
         <div className="dev-built">
           Made with ❤️ by <span>Ignatius</span> · 2025
         </div>

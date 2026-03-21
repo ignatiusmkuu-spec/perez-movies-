@@ -112,3 +112,28 @@
 .dev-app-label { font-size: 0.65rem; color: var(--text3); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
 .dev-app-title { font-size: 1rem; font-weight: 900; }
 .dev-app-title .red { color: var(--accent); }
+
+.dev-video-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 14px 0 6px;
+  padding: 14px;
+  background: linear-gradient(135deg, #e50914, #c40812);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 20px rgba(229,9,20,0.35);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.dev-video-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(229,9,20,0.45);
+}
