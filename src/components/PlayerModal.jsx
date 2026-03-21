@@ -41,13 +41,15 @@ function makeSources(domain) {
       { label: '2Embed Skin',   icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://2embed.skin/embed/movie/${id}` },
       { label: 'Embeds XYZ',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://embeds.xyz/embed/${id}` },
       { label: '2Embed Org',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://2embed.org/embed/movie/${id}` },
+      { label: 'WarezCDN',      icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://warezcdn.link/embed/movie/${id}` },
+      { label: 'Filme.io',      icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://filme.io/embed/movie/${id}` },
     ],
     tv: [
       { label: 'Server 1',      icon: '▶', hd: true,  getUrl: (id,s,e) => `${d}/embed/tv/${id}/${s}/${e}` },
-      { label: 'AutoEmbed',     icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://autoembed.co/tv/imdb/${id}/${s}/${e}` },
+      { label: 'WarezCDN',      icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://warezcdn.link/serie/${id}/${s}/${e}` },
       { label: 'Videasy 4K',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://player.videasy.net/tv/${id}/${s}/${e}?colour=e50914` },
       { label: 'VidSrc RIP',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidsrc.rip/embed/tv/${id}?season=${s}&episode=${e}` },
-      { label: 'VidLink',       icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=e50914` },
+      { label: 'Filme.io',      icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://filme.io/embed/tv/${id}/${s}/${e}` },
       { label: 'MultiEmbed',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://multiembed.mov/directstream.php?video_id=${id}&imdb=1&s=${s}&e=${e}` },
       { label: '2Embed',        icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
       { label: 'VidSrc XYZ',   icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
@@ -98,7 +100,7 @@ export default function PlayerModal({ item, type, onClose }) {
 
   const loadTimer      = useRef(null)
   const autoRetryTimer = useRef(null)
-  const srcListLenRef  = useRef(20)
+  const srcListLenRef  = useRef(22)
   const iframeRef      = useRef()
 
   const isAnime     = type === 'anime'
@@ -161,7 +163,7 @@ export default function PlayerModal({ item, type, onClose }) {
   }, [])
 
   useEffect(() => {
-    srcListLenRef.current = sourceList?.length ?? 20
+    srcListLenRef.current = sourceList?.length ?? 22
   }, [sourceList])
 
   useEffect(() => {
