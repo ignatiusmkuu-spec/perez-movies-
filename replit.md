@@ -12,6 +12,7 @@ Made by **Ignatius** · Contact: +254 706 535 581
 - **Content APIs**: MovieBox (`h5-api.aoneroom.com`), OMDB (search), Jikan (anime browse)
 - **Streaming**: 123movienow.cc (MovieBox primary), VidSrc, EmbedSU, MultiEmbed, 2Embed, Smashy, VidSrc.me, MoviesAPI, VidLink
 - **Downloads**: apibay.org (Pirate Bay API) — real torrent/magnet links by quality (4K/1080p/720p/480p)
+- **YouTube**: `ytsr` npm package (search + categories) + `iv.melmac.space` Invidious API (trending); 5-min cache; 22 movie / 20 TV servers (all verified)
 
 ## Vercel Deployment
 - `vercel.json` configured with `@vercel/static-build` (frontend) + `@vercel/node` (backend)

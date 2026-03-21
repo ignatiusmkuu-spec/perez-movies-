@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import fetch from 'node-fetch'
 import https from 'https'
+import ytsr from 'ytsr'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -632,6 +633,174 @@ app.get('/api/yt-live', async (req, res) => {
     return res.json({ videoId: null, live: false })
   } catch (e) {
     return res.json({ videoId: null, live: false, error: e.message })
+  }
+})
+
+// ──────────────────────────────────────────────────────────────────────────────
+// YouTube — Invidious (trending) + ytsr (search/channel)
+// ──────────────────────────────────────────────────────────────────────────────
+
+const INVIDIOUS_INSTANCES = [
+  'https://iv.melmac.space',
+]
+
+const YT_CAT_MAP = {
+  trending: 'Default',
+  music:    'Music',
+  gaming:   'Gaming',
+  movies:   'Movies',
+  news:     'News',
+  sports:   'Sports',
+}
+
+// Category → search query fallback (used when Invidious is down)
+const YT_CAT_QUERY = {
+  trending: 'trending videos 2025',
+  music:    'top music hits 2025',
+  gaming:   'gaming videos 2025',
+  movies:   'movie trailers 2025',
+  news:     'world news today 2025',
+  sports:   'sports highlights 2025',
+}
+
+const _ytCache = {}
+const YT_TTL = 5 * 60 * 1000
+
+function mapInvVideo(v) {
+  if (!v || !v.videoId) return null
+  const thumb = `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`
+  const secs = v.lengthSeconds || 0
+  const duration = secs ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : (v.liveNow ? 'LIVE' : '')
+  const views = v.viewCount ? Number(v.viewCount).toLocaleString() + ' views' : ''
+  return {
+    vid: v.videoId,
+    title: v.title || '',
+    channel: v.author || '',
+    channelId: v.authorId || '',
+    views,
+    duration,
+    published: v.publishedText || '',
+    thumb,
+    isLive: !!(v.liveNow),
+  }
+}
+
+function mapYtsrVideo(v) {
+  if (!v || v.type !== 'video' || !v.id) return null
+  const thumb = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`
+  const views = v.views ? Number(v.views).toLocaleString() + ' views' : ''
+  return {
+    vid: v.id,
+    title: v.title || '',
+    channel: v.author?.name || '',
+    channelId: v.author?.channelID || '',
+    views,
+    duration: v.duration || '',
+    published: v.uploadedAt || '',
+    thumb,
+    isLive: !!(v.isLive),
+  }
+}
+
+async function invidiousFetch(path) {
+  for (const base of INVIDIOUS_INSTANCES) {
+    try {
+      const r = await fetch(`${base}${path}`, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'IgnatiusStream/1.0' },
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!r.ok) continue
+      const data = await r.json()
+      if (data && (Array.isArray(data) ? data.length > 0 : true)) return data
+    } catch { /* try next */ }
+  }
+  return null
+}
+
+async function ytsrSearch(query, limit = 50) {
+  const origError = console.error
+  console.error = () => {}
+  try {
+    let res
+    try {
+      const filters = await ytsr.getFilters(query)
+      const filter  = filters.get('Type')?.get('Video')
+      const url     = filter?.url || query
+      res = await ytsr(url, { limit, safeSearch: false })
+    } catch {
+      res = await ytsr(query, { limit, safeSearch: false })
+    }
+    return (res.items || []).map(mapYtsrVideo).filter(Boolean)
+  } finally {
+    console.error = origError
+  }
+}
+
+app.get('/api/youtube/trending', async (req, res) => {
+  const cat = req.query.category || 'trending'
+  const cacheKey = `trend_${cat}`
+  if (_ytCache[cacheKey] && Date.now() - _ytCache[cacheKey].at < YT_TTL) {
+    return res.json(_ytCache[cacheKey].data)
+  }
+  try {
+    let videos = []
+    if (cat === 'trending') {
+      // Use Invidious for general trending, fallback to ytsr
+      const invData = await invidiousFetch(`/api/v1/trending?region=US&type=Default`)
+      if (invData && Array.isArray(invData) && invData.length > 0) {
+        videos = invData.map(mapInvVideo).filter(Boolean).slice(0, 60)
+      } else {
+        videos = (await ytsrSearch('trending videos 2025', 50)).slice(0, 60)
+      }
+    } else {
+      // Use ytsr for category-specific results (more accurate)
+      videos = (await ytsrSearch(YT_CAT_QUERY[cat] || 'trending videos 2025', 50)).slice(0, 60)
+    }
+    const result = { videos, category: cat }
+    _ytCache[cacheKey] = { at: Date.now(), data: result }
+    res.json(result)
+  } catch (e) {
+    res.status(502).json({ videos: [], error: e.message })
+  }
+})
+
+app.get('/api/youtube/search', async (req, res) => {
+  const q = (req.query.q || '').trim()
+  if (!q) return res.json({ videos: [], query: '' })
+  const cacheKey = `search_${q.toLowerCase()}`
+  if (_ytCache[cacheKey] && Date.now() - _ytCache[cacheKey].at < YT_TTL) {
+    return res.json(_ytCache[cacheKey].data)
+  }
+  try {
+    const videos = (await ytsrSearch(q, 50)).slice(0, 60)
+    const result = { videos, query: q }
+    _ytCache[cacheKey] = { at: Date.now(), data: result }
+    res.json(result)
+  } catch (e) {
+    res.status(502).json({ videos: [], error: e.message })
+  }
+})
+
+app.get('/api/youtube/channel', async (req, res) => {
+  const { id } = req.query
+  if (!id) return res.json({ videos: [] })
+  const cacheKey = `chan_${id}`
+  if (_ytCache[cacheKey] && Date.now() - _ytCache[cacheKey].at < YT_TTL) {
+    return res.json(_ytCache[cacheKey].data)
+  }
+  try {
+    // Try Invidious first
+    const invData = await invidiousFetch(`/api/v1/channels/${id}/videos`)
+    let videos = []
+    if (invData) {
+      const list = Array.isArray(invData) ? invData : (invData.videos || [])
+      videos = list.map(mapInvVideo).filter(Boolean).slice(0, 60)
+    }
+    const result = { videos, channelId: id }
+    _ytCache[cacheKey] = { at: Date.now(), data: result }
+    res.json(result)
+  } catch (e) {
+    res.status(502).json({ videos: [], error: e.message })
   }
 })
 

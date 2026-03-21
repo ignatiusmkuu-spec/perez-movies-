@@ -204,6 +204,41 @@ function ChannelCard({ ch, active, onClick }) {
   )
 }
 
+const YT_CATS = [
+  { id: 'trending', label: '🔥 Trending' },
+  { id: 'music',    label: '🎵 Music' },
+  { id: 'gaming',   label: '🎮 Gaming' },
+  { id: 'sports',   label: '⚽ Sports' },
+  { id: 'news',     label: '📰 News' },
+  { id: 'movies',   label: '🎬 Movies' },
+]
+
+function fmtDuration(d) {
+  if (!d) return ''
+  return d
+}
+
+function YtVideoCard({ v, active, onClick }) {
+  return (
+    <div className={`yt-card ${active ? 'yt-card-active' : ''}`} onClick={onClick}>
+      <div className="yt-thumb-wrap">
+        <img src={v.thumb} alt={v.title} className="yt-thumb" loading="lazy" />
+        {v.duration && <span className="yt-duration">{fmtDuration(v.duration)}</span>}
+        {v.isLive && <span className="yt-live-badge">● LIVE</span>}
+        <div className="yt-play-overlay"><div className="yt-play-btn">▶</div></div>
+      </div>
+      <div className="yt-card-body">
+        <div className="yt-card-title">{v.title}</div>
+        <div className="yt-card-meta">
+          <span className="yt-channel">{v.channel}</span>
+          {v.views && <span className="yt-views">{v.views}</span>}
+          {v.published && <span className="yt-pub">{v.published}</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function LiveSports() {
   const [tab, setTab]               = useState('highlights')
   const [matches, setMatches]       = useState([])
@@ -227,6 +262,18 @@ export default function LiveSports() {
   const [tvLiveVideoId, setTvLiveVideoId] = useState(null)
   const [tvOffline, setTvOffline] = useState(false)
   const tvPlayerRef = useRef(null)
+
+  // YouTube state
+  const [ytVideos, setYtVideos]           = useState([])
+  const [ytLoading, setYtLoading]         = useState(false)
+  const [ytError, setYtError]             = useState(null)
+  const [ytCat, setYtCat]                 = useState('trending')
+  const [ytSearchInput, setYtSearchInput] = useState('')
+  const [ytSearchQuery, setYtSearchQuery] = useState('')
+  const [ytActiveVideo, setYtActiveVideo] = useState(null)
+  const [ytPlayerLoading, setYtPlayerLoading] = useState(false)
+  const ytPlayerRef = useRef(null)
+  const ytSearchRef = useRef(null)
 
   useEffect(() => {
     if (tab !== 'highlights') return
@@ -295,6 +342,44 @@ export default function LiveSports() {
     setTvPlayerLoading(false)
   }
 
+  // YouTube: fetch trending or search results
+  useEffect(() => {
+    if (tab !== 'youtube') return
+    if (ytSearchQuery.trim()) {
+      setYtLoading(true); setYtError(null)
+      fetch(`/api/youtube/search?q=${encodeURIComponent(ytSearchQuery)}`)
+        .then(r => r.json())
+        .then(d => { setYtVideos(d.videos || []); setYtLoading(false) })
+        .catch(() => { setYtError('Search failed. Please try again.'); setYtLoading(false) })
+    } else {
+      setYtLoading(true); setYtError(null)
+      fetch(`/api/youtube/trending?category=${ytCat}`)
+        .then(r => r.json())
+        .then(d => { setYtVideos(d.videos || []); setYtLoading(false) })
+        .catch(() => { setYtError('Could not load YouTube content.'); setYtLoading(false) })
+    }
+  }, [tab, ytCat, ytSearchQuery])
+
+  const handleYtSearch = (e) => {
+    e.preventDefault()
+    setYtSearchQuery(ytSearchInput.trim())
+    setYtActiveVideo(null)
+  }
+
+  const handleYtVideoClick = (v) => {
+    if (ytActiveVideo?.vid === v.vid) { setYtActiveVideo(null); return }
+    setYtActiveVideo(v)
+    setYtPlayerLoading(true)
+    setTimeout(() => ytPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }
+
+  const handleYtCat = (id) => {
+    setYtCat(id)
+    setYtSearchQuery('')
+    setYtSearchInput('')
+    setYtActiveVideo(null)
+  }
+
   return (
     <div className="sports-section">
       <div className="sports-header">
@@ -315,6 +400,9 @@ export default function LiveSports() {
         </button>
         <button className={`sport-tab ${tab === 'startimes' ? 'active' : ''}`} onClick={() => setTab('startimes')}>
           📡 StarTimes Guide
+        </button>
+        <button className={`sport-tab yt-tab-btn ${tab === 'youtube' ? 'active' : ''}`} onClick={() => setTab('youtube')}>
+          ▶ YouTube
         </button>
       </div>
 
@@ -693,6 +781,157 @@ export default function LiveSports() {
             <div className="st-info-item">📞 StarTimes Kenya: <strong>0800 723 050</strong> (Toll Free)</div>
             <div className="st-info-item">🌐 Website: <a href="https://www.startimes.com/kenya" target="_blank" rel="noreferrer">startimes.com/kenya</a></div>
             <div className="st-info-item">📧 Email: <a href="mailto:ke@startimes.com">ke@startimes.com</a></div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== YOUTUBE TAB ==================== */}
+      {tab === 'youtube' && (
+        <div className="yt-section">
+
+          {/* Header */}
+          <div className="yt-header">
+            <div className="yt-header-left">
+              <div className="yt-logo-wrap">
+                <svg className="yt-logo-icon" viewBox="0 0 90 20" fill="none" xmlns="http://www.w3.org/2000/svg" height="22">
+                  <path d="M27.9 3.5c-.3-1.1-1.2-2-2.3-2.3C23.4.6 14.4.6 14.4.6S5.5.6 3.2 1.2C2.1 1.5 1.2 2.4.9 3.5c-.6 2.3-.6 7-.6 7s0 4.7.6 7c.3 1.1 1.2 2 2.3 2.3 2.3.6 11.2.6 11.2.6s8.9 0 11.2-.6c1.1-.3 2-1.2 2.3-2.3.6-2.3.6-7 .6-7s0-4.7-.6-7z" fill="#FF0000"/>
+                  <path d="M11.5 14.6l7.5-4.1-7.5-4.1v8.2z" fill="white"/>
+                  <text x="32" y="15" fill="white" fontSize="13" fontFamily="Arial, sans-serif" fontWeight="bold">YouTube</text>
+                </svg>
+              </div>
+              <span className="yt-header-sub">Watch inside Ignatius Stream — no redirects</span>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <form className="yt-search-bar" onSubmit={handleYtSearch}>
+            <input
+              ref={ytSearchRef}
+              type="text"
+              className="yt-search-input"
+              placeholder="Search YouTube videos..."
+              value={ytSearchInput}
+              onChange={e => setYtSearchInput(e.target.value)}
+            />
+            {ytSearchInput && (
+              <button type="button" className="yt-search-clear" onClick={() => { setYtSearchInput(''); setYtSearchQuery(''); setYtActiveVideo(null) }}>✕</button>
+            )}
+            <button type="submit" className="yt-search-btn">
+              <svg viewBox="0 0 24 24" fill="currentColor" height="16" width="16"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>
+            </button>
+          </form>
+
+          {/* Category Filters */}
+          {!ytSearchQuery && (
+            <div className="yt-cats">
+              {YT_CATS.map(c => (
+                <button
+                  key={c.id}
+                  className={`yt-cat-btn ${ytCat === c.id ? 'active' : ''}`}
+                  onClick={() => handleYtCat(c.id)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {ytSearchQuery && (
+            <div className="yt-search-result-label">
+              Results for "<strong>{ytSearchQuery}</strong>"
+              <button className="yt-clear-search" onClick={() => { setYtSearchQuery(''); setYtSearchInput(''); setYtActiveVideo(null) }}>
+                ✕ Clear
+              </button>
+            </div>
+          )}
+
+          {/* Embedded Player */}
+          {ytActiveVideo && (
+            <div className="yt-player-wrap" ref={ytPlayerRef}>
+              <div className="yt-player-bar">
+                <div className="yt-player-info">
+                  <div className="yt-player-title">{ytActiveVideo.title}</div>
+                  <div className="yt-player-channel">{ytActiveVideo.channel}</div>
+                </div>
+                <div className="yt-player-actions">
+                  <a
+                    href={`https://www.youtube.com/watch?v=${ytActiveVideo.vid}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="yt-open-btn"
+                  >
+                    ↗ YouTube
+                  </a>
+                  <button className="yt-player-close" onClick={() => setYtActiveVideo(null)}>✕</button>
+                </div>
+              </div>
+              <div className="yt-player-frame">
+                {ytPlayerLoading && (
+                  <div className="match-player-loading">
+                    <div style={{ width:40, height:40, border:'3px solid #222', borderTopColor:'#FF0000', borderRadius:'50%', animation:'nf-spin 0.8s linear infinite' }} />
+                  </div>
+                )}
+                <iframe
+                  key={ytActiveVideo.vid}
+                  src={`https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1`}
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay; fullscreen; encrypted-media; accelerometer; gyroscope; picture-in-picture"
+                  style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
+                  onLoad={() => setYtPlayerLoading(false)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Loading Skeletons */}
+          {ytLoading && (
+            <div className="yt-grid">
+              {[...Array(12)].map((_, i) => (
+                <div key={i} className="yt-card yt-card-skel">
+                  <div className="yt-thumb-skel" />
+                  <div className="yt-card-body">
+                    <div className="skel-line long" />
+                    <div className="skel-line short" style={{ marginTop:6 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error */}
+          {ytError && !ytLoading && (
+            <div className="yt-error">
+              <div className="yt-error-icon">⚠</div>
+              <div>{ytError}</div>
+              <button className="yt-retry-btn" onClick={() => { setYtError(null); setYtLoading(true); fetch(`/api/youtube/trending?category=${ytCat}`).then(r=>r.json()).then(d=>{setYtVideos(d.videos||[]);setYtLoading(false)}).catch(()=>setYtLoading(false)) }}>Retry</button>
+            </div>
+          )}
+
+          {/* Video Grid */}
+          {!ytLoading && !ytError && ytVideos.length > 0 && (
+            <div className="yt-grid">
+              {ytVideos.map(v => (
+                <YtVideoCard
+                  key={v.vid}
+                  v={v}
+                  active={ytActiveVideo?.vid === v.vid}
+                  onClick={() => handleYtVideoClick(v)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Empty */}
+          {!ytLoading && !ytError && ytVideos.length === 0 && (
+            <div className="yt-empty">
+              <div className="yt-empty-icon">▶</div>
+              <div>No videos found. Try a different search.</div>
+            </div>
+          )}
+
+          <div className="yt-footer-note">
+            📺 All videos play inside Ignatius Stream using the official YouTube embed player.
           </div>
         </div>
       )}
