@@ -148,6 +148,35 @@ app.get('/api/imgproxy', async (req, res) => {
   }
 })
 
+app.get('/api/moviebox-search', async (req, res) => {
+  const { q, type } = req.query
+  if (!q) return res.status(400).json({ error: 'q required' })
+  try {
+    const url = `https://h5-api.aoneroom.com/wefeed-h5api-bff/web/search/subject/v2?keyword=${encodeURIComponent(q)}&pageSize=8`
+    const upstream = await fetch(url, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'origin': 'https://moviebox.ph',
+        'referer': 'https://moviebox.ph/',
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    const json = await upstream.json()
+    const items = json?.data?.items || json?.data?.subjects || json?.data?.list || []
+    const targetType = type === 'tv' ? 2 : 1
+    const match = items.find(i => i.subjectType === targetType) || items[0]
+    if (match) {
+      res.set('Access-Control-Allow-Origin', '*')
+      return res.json({ mbId: match.subjectId, detailPath: match.detailPath, subjectType: match.subjectType })
+    }
+    res.json({ mbId: null, detailPath: null })
+  } catch (err) {
+    res.status(502).json({ error: err.message, mbId: null, detailPath: null })
+  }
+})
+
 app.use('/api/moviebox', async (req, res) => {
   const path = req.path
   const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''

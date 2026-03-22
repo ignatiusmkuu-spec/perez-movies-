@@ -1,71 +1,28 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { getImdbId } from '../api/moviebox'
+import { useState, useEffect } from 'react'
 import { fetchDownloads, groupByQuality } from '../api/download'
 import './PlayerModal.css'
 
-const MB_DOMAIN_URL = '/proxy/moviebox-domain'
+const MB_BASE = 'https://123movienow.cc'
 
-async function fetchMovieBoxDomain() {
-  try {
-    const res = await fetch(MB_DOMAIN_URL)
-    if (!res.ok) throw new Error('bad')
-    const json = await res.json()
-    const raw = json?.data || 'https://123movienow.cc'
-    return raw.replace(/\/+$/, '')
-  } catch {
-    return 'https://123movienow.cc'
+function makePlayerUrl(mbId, detailPath, isTV, season, episode) {
+  if (!mbId || !detailPath) return null
+  if (isTV) {
+    return `${MB_BASE}/spa/videoPlayPage/tv/${detailPath}?id=${mbId}&type=/tv/detail&detailSe=${season}&detailEp=${episode}&lang=en`
   }
+  return `${MB_BASE}/spa/videoPlayPage/movies/${detailPath}?id=${mbId}&type=/movie/detail&detailSe=&detailEp=&lang=en`
 }
 
-function makeSources(domain) {
-  const d = domain || 'https://123movienow.cc'
-  return {
-    movie: [
-      { label: 'Server 1',      icon: '▶', hd: true,  getUrl: (id)     => `${d}/embed/movie/${id}` },
-      { label: 'AutoEmbed',     icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://autoembed.co/movie/imdb/${id}` },
-      { label: 'Videasy 4K',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://player.videasy.net/movie/${id}?colour=e50914` },
-      { label: 'VidSrc RIP',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidsrc.rip/embed/movie/${id}` },
-      { label: 'VidLink',       icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidlink.pro/movie/${id}?primaryColor=e50914` },
-      { label: 'MultiEmbed',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://multiembed.mov/directstream.php?video_id=${id}&imdb=1` },
-      { label: '2Embed',        icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://www.2embed.cc/embed/${id}` },
-      { label: 'VidSrc XYZ',   icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidsrc.xyz/embed/movie?imdb=${id}` },
-      { label: 'VidSrc TO',     icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidsrc.to/embed/movie/${id}` },
-      { label: 'VidFast',       icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidfast.pro/movie/${id}?autoPlay=true` },
-      { label: 'SmashyStream',  icon: '▶', hd: false, named: true, getUrl: (id)     => `https://embed.smashystream.com/playere.php?imdb=${id}` },
-      { label: 'VidSrc ME',     icon: '▶', hd: false, named: true, getUrl: (id)     => `https://vidsrc.me/embed/movie?imdb=${id}` },
-      { label: 'MoviesAPI',     icon: '▶', hd: false, named: true, getUrl: (id)     => `https://moviesapi.club/movie/${id}` },
-      { label: 'VidBinge',      icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidbinge.dev/embed/movie/${id}` },
-      { label: 'SmashyPlayer',  icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://player.smashy.stream/movie/${id}` },
-      { label: 'VidSrc Net',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://vidsrc.net/embed/movie/${id}` },
-      { label: 'Frembed',       icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://frembed.pro/api/film.php?id=${id}` },
-      { label: '2Embed Skin',   icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://2embed.skin/embed/movie/${id}` },
-      { label: 'Embeds XYZ',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://embeds.xyz/embed/${id}` },
-      { label: '2Embed Org',    icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://2embed.org/embed/movie/${id}` },
-      { label: 'WarezCDN',      icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://warezcdn.link/embed/movie/${id}` },
-      { label: 'Filme.io',      icon: '▶', hd: true,  named: true, getUrl: (id)     => `https://filme.io/embed/movie/${id}` },
-    ],
-    tv: [
-      { label: 'Server 1',      icon: '▶', hd: true,  getUrl: (id,s,e) => `${d}/embed/tv/${id}/${s}/${e}` },
-      { label: 'WarezCDN',      icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://warezcdn.link/serie/${id}/${s}/${e}` },
-      { label: 'Videasy 4K',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://player.videasy.net/tv/${id}/${s}/${e}?colour=e50914` },
-      { label: 'VidSrc RIP',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidsrc.rip/embed/tv/${id}?season=${s}&episode=${e}` },
-      { label: 'Filme.io',      icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://filme.io/embed/tv/${id}/${s}/${e}` },
-      { label: 'MultiEmbed',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://multiembed.mov/directstream.php?video_id=${id}&imdb=1&s=${s}&e=${e}` },
-      { label: '2Embed',        icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
-      { label: 'VidSrc XYZ',   icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
-      { label: 'VidSrc TO',     icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
-      { label: 'VidFast',       icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidfast.pro/tv/${id}/${s}/${e}?autoPlay=true` },
-      { label: 'SmashyStream',  icon: '▶', hd: false, named: true, getUrl: (id,s,e) => `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}` },
-      { label: 'VidSrc ME',     icon: '▶', hd: false, named: true, getUrl: (id,s,e) => `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` },
-      { label: 'MoviesAPI',     icon: '▶', hd: false, named: true, getUrl: (id,s,e) => `https://moviesapi.club/tv/${id}-${s}-${e}` },
-      { label: 'VidBinge',      icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidbinge.dev/embed/tv/${id}/${s}/${e}` },
-      { label: 'SmashyPlayer',  icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://player.smashy.stream/tv/${id}/${s}/${e}` },
-      { label: 'VidSrc Net',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://vidsrc.net/embed/tv/${id}/${s}/${e}` },
-      { label: 'Frembed',       icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://frembed.pro/api/serie.php?id=${id}&s=${s}&e=${e}` },
-      { label: '2Embed Skin',   icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://2embed.skin/embed/tv/${id}/${s}/${e}` },
-      { label: 'Embeds XYZ',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://embeds.xyz/embed/${id}?s=${s}&e=${e}` },
-      { label: '2Embed Org',    icon: '▶', hd: true,  named: true, getUrl: (id,s,e) => `https://2embed.org/embed/tv/${id}/${s}/${e}` },
-    ]
+async function searchMovieBox(title, isTV) {
+  try {
+    const type = isTV ? 'tv' : 'movie'
+    const res = await fetch(`/api/moviebox-search?q=${encodeURIComponent(title)}&type=${type}`, {
+      signal: AbortSignal.timeout(8000),
+    })
+    const data = await res.json()
+    if (data.mbId && data.detailPath) return data
+    return null
+  } catch {
+    return null
   }
 }
 
@@ -78,122 +35,74 @@ const ANIME_LINKS = [
 
 const MAX_EPISODES = 30
 const MAX_SEASONS  = 15
-const LOAD_TIMEOUT = 3000
-
-async function probeServers(urls) {
-  try {
-    const res = await fetch('/api/probe-servers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ urls }),
-      signal: AbortSignal.timeout(6000),
-    })
-    const data = await res.json()
-    return data.results
-  } catch {
-    return urls.map(url => ({ url, ok: null }))
-  }
-}
 
 export default function PlayerModal({ item, type, onClose }) {
-  const [domain, setDomain]             = useState('https://123movienow.cc')
-  const [srcIdx, setSrcIdx]             = useState(0)
-  const [loading, setLoading]           = useState(true)
-  const [timedOut, setTimedOut]         = useState(false)
-  const [season, setSeason]             = useState(1)
-  const [episode, setEpisode]           = useState(1)
-  const [resolvedImdb, setResolvedImdb] = useState(null)
-  const [lookingUp, setLookingUp]       = useState(false)
-  const [visible, setVisible]           = useState(false)
-  const [showEpPanel, setShowEpPanel]   = useState(false)
-  const [showDlPanel, setShowDlPanel]   = useState(false)
-  const [showServers, setShowServers]   = useState(false)
-  const [dlLoading, setDlLoading]       = useState(false)
-  const [dlGroups, setDlGroups]         = useState(null)
-  const [dlError, setDlError]           = useState(null)
-  const [autoSwitching, setAutoSwitching] = useState(false)
-  const [serverStatus, setServerStatus]   = useState({})
-  const [probing, setProbing]             = useState(false)
+  const [season, setSeason]           = useState(1)
+  const [episode, setEpisode]         = useState(1)
+  const [visible, setVisible]         = useState(false)
+  const [showEpPanel, setShowEpPanel] = useState(false)
+  const [showDlPanel, setShowDlPanel] = useState(false)
+  const [dlLoading, setDlLoading]     = useState(false)
+  const [dlGroups, setDlGroups]       = useState(null)
+  const [dlError, setDlError]         = useState(null)
+  const [iframeLoading, setIframeLoading] = useState(true)
+  const [mbId, setMbId]               = useState(null)
+  const [detailPath, setDetailPath]   = useState(null)
+  const [lookingUp, setLookingUp]     = useState(false)
+  const [imdbId, setImdbId]           = useState(null)
 
-  const loadTimer      = useRef(null)
-  const autoRetryTimer = useRef(null)
-  const srcListLenRef  = useRef(22)
-  const iframeRef      = useRef()
-  const probeAbort     = useRef(null)
+  const isAnime = type === 'anime'
+  const isTV    = type === 'moviebox-tv' || type === 'tv'
 
-  const isAnime     = type === 'anime'
-  const isTV        = type === 'moviebox-tv' || type === 'tv'
-  const needsLookup = item?._source === 'moviebox' || item?._mbId || item?._source === 'flixer' || isAnime
-  const animeTitle  = isAnime ? (item.title_english || item.title || item.Title || '') : ''
-
-  let title, year, id
+  let title, year
   if (isAnime) {
-    title = animeTitle
+    title = item.title_english || item.title || item.Title || ''
     year  = item.year || item.Year
-    id    = resolvedImdb || ''
   } else if (isTV) {
     title = item.name || item.Title || item.title
     year  = item.premiered?.slice(0,4) || item.Year || item.releaseDate?.slice(0,4)
-    id    = resolvedImdb || item.externals?.imdb || item.imdbID || ''
   } else {
     title = item.Title || item.title || item.name
     year  = item.Year || item.releaseDate?.slice(0,4) || item.premiered?.slice(0,4)
-    id    = resolvedImdb || item.imdbID || ''
   }
 
-  const sources    = makeSources(domain)
-  const sourceList = isAnime ? (resolvedImdb ? sources.tv : null) : isTV ? sources.tv : sources.movie
-  const activeSrc  = sourceList?.[srcIdx]
-  const embedUrl   = id && activeSrc ? activeSrc.getUrl(id, season, episode, title) : null
-  const showEps    = isTV || (isAnime && resolvedImdb)
-  const poster     = item?.Poster || item?.poster || item?.images?.poster || item?.image_url
+  const showEps  = isTV || (isAnime && mbId)
+  const embedUrl = makePlayerUrl(mbId, detailPath, isTV || isAnime, season, episode)
 
-  const findNextServer = useCallback((fromIdx, statusSnapshot) => {
-    const len = srcListLenRef.current
-    for (let i = fromIdx + 1; i < len; i++) {
-      if (statusSnapshot[i] !== false) return i
+  useEffect(() => {
+    setMbId(null)
+    setDetailPath(null)
+    setImdbId(null)
+    setSeason(1)
+    setEpisode(1)
+    setShowDlPanel(false)
+    setDlGroups(null)
+    setDlError(null)
+    setIframeLoading(true)
+
+    if (item._mbId && item._detailPath) {
+      setMbId(item._mbId)
+      setDetailPath(item._detailPath)
+      if (item.imdbID) setImdbId(item.imdbID)
+      return
     }
-    return null
-  }, [])
 
-  const startLoadTimer = useCallback((statusSnapshot = {}) => {
-    clearTimeout(loadTimer.current)
-    clearTimeout(autoRetryTimer.current)
-    setTimedOut(false)
-    setAutoSwitching(false)
-    loadTimer.current = setTimeout(() => {
-      setServerStatus(prev => {
-        const updated = { ...prev }
-        setSrcIdx(cur => {
-          updated[cur] = false
-          const next = findNextServer(cur, { ...updated })
-          if (next !== null) {
-            setAutoSwitching(true)
-            setLoading(true)
-            setTimedOut(false)
-            autoRetryTimer.current = setTimeout(() => setAutoSwitching(false), 600)
-            return next
-          }
-          setLoading(false)
-          setTimedOut(true)
-          return cur
-        })
-        return updated
+    if (item.imdbID) setImdbId(item.imdbID)
+
+    if (title) {
+      setLookingUp(true)
+      searchMovieBox(title, isTV || isAnime).then(result => {
+        if (result) {
+          setMbId(result.mbId)
+          setDetailPath(result.detailPath)
+        }
+        setLookingUp(false)
       })
-    }, LOAD_TIMEOUT)
-  }, [findNextServer])
-
-  useEffect(() => {
-    srcListLenRef.current = sourceList?.length ?? 22
-  }, [sourceList])
-
-  useEffect(() => {
-    fetchMovieBoxDomain().then(setDomain)
-    requestAnimationFrame(() => setVisible(true))
-    return () => {
-      clearTimeout(loadTimer.current)
-      clearTimeout(autoRetryTimer.current)
     }
+  }, [item])
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true))
   }, [])
 
   useEffect(() => {
@@ -208,83 +117,16 @@ export default function PlayerModal({ item, type, onClose }) {
   }, [])
 
   useEffect(() => {
-    setResolvedImdb(null)
-    setSrcIdx(0)
-    setLoading(true)
-    setTimedOut(false)
-    setSeason(1)
-    setEpisode(1)
-    setShowDlPanel(false)
-    setDlGroups(null)
-    setDlError(null)
-    setServerStatus({})
-    setProbing(false)
-
-    if (item.imdbID && !isAnime) { setResolvedImdb(item.imdbID); return }
-    if (item.externals?.imdb && isTV) { setResolvedImdb(item.externals.imdb); return }
-
-    if (needsLookup && !item.imdbID) {
-      const lt = isAnime ? animeTitle : (item.Title || item.title)
-      const ly = isAnime ? year : (item.Year || item.releaseDate?.slice(0,4))
-      const isSeries = isTV || isAnime || item._mbType === 2
-      if (!lt) return
-      setLookingUp(true)
-      getImdbId(lt, ly, isSeries).then(f => {
-        if (f) setResolvedImdb(f)
-        setLookingUp(false)
-      })
-    }
-  }, [item])
-
-  // Background probe: when we have an ID + sourceList, check all server origins
-  useEffect(() => {
-    if (!id || !sourceList || sourceList.length === 0) return
-    setServerStatus({})
-    setProbing(true)
-    const urls = sourceList.map(s => s.getUrl(id, season, episode, title))
-    probeServers(urls).then(results => {
-      const status = {}
-      results.forEach((r, i) => { status[i] = r.ok === false ? false : r.ok === true ? true : null })
-      setServerStatus(status)
-      setProbing(false)
-      // If current server (0) probed as dead, jump to first live one
-      if (status[0] === false) {
-        const firstLive = results.findIndex(r => r.ok === true)
-        if (firstLive > 0) {
-          setSrcIdx(firstLive)
-          setLoading(true)
-          setTimedOut(false)
-        }
-      }
-    })
-  }, [id, season, episode])
-
-  useEffect(() => {
-    if (id && !lookingUp) {
-      setLoading(true)
-      setTimedOut(false)
-      startLoadTimer()
-    }
-  }, [id, srcIdx, season, episode, lookingUp])
+    setIframeLoading(true)
+  }, [season, episode, mbId])
 
   const handleClose = () => {
     setVisible(false)
     setTimeout(onClose, 250)
   }
 
-  const switchServer = (i) => {
-    clearTimeout(loadTimer.current)
-    clearTimeout(autoRetryTimer.current)
-    setAutoSwitching(false)
-    setSrcIdx(i)
-    setLoading(true)
-    setTimedOut(false)
-  }
-
   const changeEpisode = (ep) => {
     setEpisode(ep)
-    setLoading(true)
-    setTimedOut(false)
     setDlGroups(null)
     setDlError(null)
   }
@@ -292,8 +134,6 @@ export default function PlayerModal({ item, type, onClose }) {
   const changeSeason = (s) => {
     setSeason(s)
     setEpisode(1)
-    setLoading(true)
-    setTimedOut(false)
     setDlGroups(null)
     setDlError(null)
   }
@@ -309,7 +149,7 @@ export default function PlayerModal({ item, type, onClose }) {
       const data = await fetchDownloads({
         title,
         year,
-        imdb: id,
+        imdb: imdbId,
         type: mediaType,
         season: showEps ? season : undefined,
         episode: showEps ? episode : undefined,
@@ -324,7 +164,6 @@ export default function PlayerModal({ item, type, onClose }) {
 
   return (
     <div className={`mb-overlay ${visible ? 'mb-visible' : ''}`}>
-
       <div className="mb-layout">
 
         <div className="mb-top-bar">
@@ -351,71 +190,48 @@ export default function PlayerModal({ item, type, onClose }) {
 
         <div className="mb-main">
           <div className="mb-screen">
+
             {lookingUp && (
               <div className="mb-loader">
                 <div className="mb-spinner" />
                 <p className="mb-loader-text">Finding stream…</p>
               </div>
             )}
-            {!lookingUp && loading && !timedOut && (
+
+            {!lookingUp && iframeLoading && embedUrl && (
               <div className="mb-loader">
                 <div className="mb-spinner" />
-                <p className="mb-loader-text">Loading {activeSrc?.label ?? 'Server'}…</p>
-                <p className="mb-loader-hint">Will auto-switch if unavailable · or pick below</p>
-              </div>
-            )}
-            {!lookingUp && autoSwitching && (
-              <div className="mb-blocked-banner mb-switching-banner">
-                <div className="mb-mini-spinner" />
-                Auto-switching to {activeSrc?.label}…
-              </div>
-            )}
-            {!lookingUp && timedOut && !autoSwitching && (
-              <div className="mb-blocked-banner">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                All servers tried — pick one below
-                <button
-                  className="mb-skip-btn"
-                  onClick={() => { setSrcIdx(0); setLoading(true); setTimedOut(false) }}
-                >
-                  Retry
-                </button>
+                <p className="mb-loader-text">Loading player…</p>
               </div>
             )}
 
             {!lookingUp && embedUrl ? (
               <iframe
-                ref={iframeRef}
-                key={`${srcIdx}-${id}-${season}-${episode}`}
-                className={`mb-iframe ${loading && !timedOut ? 'mb-iframe-hidden' : ''}`}
+                key={`${mbId}-${season}-${episode}`}
+                className={`mb-iframe ${iframeLoading ? 'mb-iframe-hidden' : ''}`}
                 src={embedUrl}
                 allowFullScreen
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
                 referrerPolicy="no-referrer-when-downgrade"
-                onLoad={() => {
-                  clearTimeout(loadTimer.current)
-                  setLoading(false)
-                  setTimedOut(false)
-                }}
+                onLoad={() => setIframeLoading(false)}
               />
-            ) : !lookingUp && isAnime && !resolvedImdb ? (
+            ) : !lookingUp && isAnime && !mbId ? (
               <div className="mb-fallback">
-                <div className="mb-fallback-title">Watch "{animeTitle}" on:</div>
+                <div className="mb-fallback-title">Watch "{title}" on:</div>
                 <div className="mb-link-grid">
                   {ANIME_LINKS.map((s, i) => (
-                    <a key={i} href={s.url(animeTitle)} target="_blank" rel="noreferrer" className="mb-ext-btn">
+                    <a key={i} href={s.url(title)} target="_blank" rel="noreferrer" className="mb-ext-btn">
                       {s.label}
                     </a>
                   ))}
                 </div>
               </div>
-            ) : !lookingUp && !id ? (
+            ) : !lookingUp && !mbId ? (
               <div className="mb-fallback">
                 <div className="mb-fallback-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3ba776" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
                 <p>Stream not found for "<strong>{title}</strong>"</p>
-                <p className="mb-fallback-sub">Try a different server below</p>
               </div>
             ) : null}
 
@@ -425,30 +241,23 @@ export default function PlayerModal({ item, type, onClose }) {
                   <span>Download</span>
                   <button className="mb-ep-panel-close" onClick={() => setShowDlPanel(false)}>✕</button>
                 </div>
-
                 {dlLoading && (
                   <div className="mb-dl-loading">
                     <div className="mb-spinner" style={{ width: 32, height: 32, borderWidth: 2 }} />
                     <span>Searching torrents…</span>
                   </div>
                 )}
-
-                {dlError && (
-                  <div className="mb-dl-error">{dlError}</div>
-                )}
-
+                {dlError && <div className="mb-dl-error">{dlError}</div>}
                 {!dlLoading && dlGroups !== null && dlGroups.length === 0 && (
                   <div className="mb-dl-empty">
                     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3ba776" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     <p>No downloads found for "{title}"</p>
-                    <p className="mb-fallback-sub">Try searching on YTS or Nyaa</p>
                     <div className="mb-dl-fallback-links">
                       <a href={`https://yts.mx/browse-movies/${encodeURIComponent(title)}`} target="_blank" rel="noreferrer" className="mb-ext-btn">YTS Movies</a>
                       <a href={`https://nyaa.si/?q=${encodeURIComponent(title)}`} target="_blank" rel="noreferrer" className="mb-ext-btn">Nyaa Anime</a>
                     </div>
                   </div>
                 )}
-
                 {!dlLoading && dlGroups !== null && dlGroups.length > 0 && (
                   <div className="mb-dl-groups">
                     {dlGroups.map(({ quality, items }) => (
@@ -458,21 +267,17 @@ export default function PlayerModal({ item, type, onClose }) {
                           <span className="mb-dl-count">{items.length} result{items.length !== 1 ? 's' : ''}</span>
                         </div>
                         <div className="mb-dl-items">
-                          {items.map((item, i) => (
+                          {items.map((it, i) => (
                             <div key={i} className="mb-dl-item">
-                              <div className="mb-dl-item-name">{item.name}</div>
+                              <div className="mb-dl-item-name">{it.name}</div>
                               <div className="mb-dl-item-meta">
-                                <span className="mb-dl-size">{item.size}</span>
+                                <span className="mb-dl-size">{it.size}</span>
                                 <span className="mb-dl-seeds">
                                   <svg width="10" height="10" viewBox="0 0 24 24" fill="#3ba776"><circle cx="12" cy="12" r="10"/></svg>
-                                  {item.seeders} seeds
+                                  {it.seeders} seeds
                                 </span>
                               </div>
-                              <a
-                                href={item.magnet}
-                                className="mb-dl-magnet-btn"
-                                title="Open with torrent client"
-                              >
+                              <a href={it.magnet} className="mb-dl-magnet-btn" title="Open with torrent client">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                 Magnet Download
                               </a>
@@ -481,9 +286,7 @@ export default function PlayerModal({ item, type, onClose }) {
                         </div>
                       </div>
                     ))}
-                    <div className="mb-dl-note">
-                      Downloads open in your torrent client (qBittorrent, uTorrent, etc.)
-                    </div>
+                    <div className="mb-dl-note">Downloads open in your torrent client (qBittorrent, uTorrent, etc.)</div>
                   </div>
                 )}
               </div>
@@ -518,42 +321,11 @@ export default function PlayerModal({ item, type, onClose }) {
                 </div>
               </div>
             )}
+
           </div>
         </div>
 
         <div className="mb-bottom-bar">
-          <div className="mb-server-row">
-            <div className="mb-server-current" onClick={() => setShowServers(p => !p)}>
-              <span className="mb-server-label">Source</span>
-              <span className="mb-active-server-name">
-                {serverStatus[srcIdx] === true && <span className="mb-probe-dot mb-probe-ok" title="Server is reachable" />}
-                {serverStatus[srcIdx] === false && <span className="mb-probe-dot mb-probe-dead" title="Server may be down" />}
-                {serverStatus[srcIdx] == null && probing && <span className="mb-probe-dot mb-probe-checking" title="Checking…" />}
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-                {activeSrc?.label ?? 'Server 1'}
-                {activeSrc?.hd && <span className="mb-hd-badge" style={{marginLeft:4}}>{activeSrc?.label?.includes('4K') ? '4K' : 'HD'}</span>}
-              </span>
-              <span className="mb-server-toggle-arrow">{showServers ? '▲' : '▼'}</span>
-            </div>
-            {showServers && (
-              <div className="mb-server-tabs">
-                {(sourceList || []).map((s, i) => (
-                  <button
-                    key={i}
-                    className={`mb-server-tab ${srcIdx === i ? 'mb-tab-active' : ''} ${s.hd ? 'mb-tab-hd' : ''} ${s.named ? 'mb-tab-named' : ''} ${serverStatus[i] === false ? 'mb-tab-dead' : ''}`}
-                    onClick={() => { switchServer(i); setShowServers(false) }}
-                    title={serverStatus[i] === true ? 'Reachable ✓' : serverStatus[i] === false ? 'May be down ✗' : ''}
-                  >
-                    <span className={`mb-probe-dot ${serverStatus[i] === true ? 'mb-probe-ok' : serverStatus[i] === false ? 'mb-probe-dead' : probing ? 'mb-probe-checking' : 'mb-probe-unknown'}`} />
-                    {i === 0 && <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>}
-                    {s.label}
-                    {s.hd && <span className={`mb-hd-badge ${s.named ? 'mb-hd-badge-named' : ''}`}>{s.label.includes('4K') ? '4K' : 'HD'}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div className="mb-action-row">
             {embedUrl && (
               <a className="mb-action-link" href={embedUrl} target="_blank" rel="noreferrer">
@@ -561,8 +333,8 @@ export default function PlayerModal({ item, type, onClose }) {
                 Open in Tab
               </a>
             )}
-            {id?.startsWith?.('tt') && (
-              <a className="mb-action-link" href={`https://www.imdb.com/title/${id}/`} target="_blank" rel="noreferrer">
+            {imdbId?.startsWith?.('tt') && (
+              <a className="mb-action-link" href={`https://www.imdb.com/title/${imdbId}/`} target="_blank" rel="noreferrer">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                 IMDB
               </a>
