@@ -138,7 +138,8 @@ export default function PlayerModal({ item, type, onClose }) {
   const [iframeLoading, setIframeLoading] = useState(true)
   const [imdbId, setImdbId]               = useState(null)
   const [lookingUp, setLookingUp]         = useState(false)
-  const [serverIdx, setServerIdx]         = useState(0)
+  const [serverIdx, setServerIdx]         = useState(19)
+  const [showServers, setShowServers]     = useState(false)
 
   const imdbRef = useRef(null)
 
@@ -171,7 +172,8 @@ export default function PlayerModal({ item, type, onClose }) {
     imdbRef.current = null
     setSeason(1)
     setEpisode(1)
-    setServerIdx(0)
+    setServerIdx(19)
+    setShowServers(false)
     setShowDlPanel(false)
     setDlGroups(null)
     setDlError(null)
@@ -432,20 +434,30 @@ export default function PlayerModal({ item, type, onClose }) {
         </div>
 
         <div className="mb-bottom-bar">
-          <div className="mb-server-row">
-            <div className="mb-server-tabs">
-              {visibleServers.map((s, i) => (
-                <button
-                  key={i}
-                  className={`mb-server-tab ${i === safeIdx ? 'mb-tab-active' : ''}`}
-                  onClick={() => setServerIdx(i)}
-                >
-                  {s.label}
-                </button>
-              ))}
+          {showServers && (
+            <div className="mb-server-row">
+              <div className="mb-server-tabs">
+                {visibleServers.map((s, i) => (
+                  <button
+                    key={i}
+                    className={`mb-server-tab ${i === safeIdx ? 'mb-tab-active' : ''}`}
+                    onClick={() => { setServerIdx(i); setShowServers(false) }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <div className="mb-action-row">
+            <button
+              className={`mb-action-link mb-server-toggle ${showServers ? 'mb-dl-active' : ''}`}
+              onClick={() => { setShowServers(s => !s); setShowDlPanel(false) }}
+              title={`Current: ${srv?.label}`}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+              {showServers ? 'Hide Servers' : `${srv?.label} ▾`}
+            </button>
             {embedUrl && (
               <a className="mb-action-link" href={embedUrl} target="_blank" rel="noreferrer">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>

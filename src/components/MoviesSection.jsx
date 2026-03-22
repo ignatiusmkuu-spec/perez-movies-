@@ -26,6 +26,8 @@ const YTS_GENRES = new Set([
   'mystery','fantasy','family','music','war','western','sport','popular',
 ])
 
+const OMDB_SEEDS = ['marvel','batman','fast furious','avatar','spider','inception','mission impossible']
+
 function Skeleton() {
   return (
     <div className="loading-grid">
@@ -107,12 +109,19 @@ export default function MoviesSection({ searchQuery, onPlay }) {
         setHasMore(false)
 
       } else {
-        const [sections, yts] = await Promise.all([
+        // "All" tab — fetch MovieBox + YTS + OMDB in parallel for maximum reliability
+        const [mbResult, ytsResult, ...omdbResults] = await Promise.allSettled([
           fetchHomeData(),
           fetchFlixerMovies(),
+          omdbSearch(OMDB_SEEDS[0], 1),
+          omdbSearch(OMDB_SEEDS[1], 1),
+          omdbSearch(OMDB_SEEDS[2], 1),
         ])
+
+        // Normalize MovieBox items
         let mbNormalized = []
-        if (sections?.length) {
+        const sections = mbResult.status === 'fulfilled' ? (mbResult.value || []) : []
+        if (sections.length) {
           const allSections = sections.filter(s =>
             s.type === 'SUBJECTS_MOVIE' && s.subjectType !== 2 && s.subjects?.length > 0
           )
@@ -122,21 +131,42 @@ export default function MoviesSection({ searchQuery, onPlay }) {
           )
           mbNormalized = unique.map(normalizeMbItem)
         }
-        const seen = new Set(yts.map(m => m.imdbID).filter(Boolean))
-        const mbFiltered = mbNormalized.filter(m => !seen.has(m.imdbID))
-        let combined = [...yts, ...mbFiltered]
-        if (combined.length === 0) {
+
+        // YTS movies
+        const yts = ytsResult.status === 'fulfilled' ? (ytsResult.value || []) : []
+
+        // OMDB fallback movies (use when both YTS and MovieBox empty)
+        let omdbMovies = []
+        if (yts.length === 0 && mbNormalized.length === 0) {
+          const allOmdb = omdbResults.flatMap(r =>
+            r.status === 'fulfilled' ? (r.value || []) : []
+          )
+          const seen = new Set()
+          omdbMovies = allOmdb
+            .filter(m => { if (seen.has(m.imdbID)) return false; seen.add(m.imdbID); return true })
+            .map(r => ({ ...r, _source: 'omdb', Poster: r.Poster !== 'N/A' ? r.Poster : null }))
+        }
+
+        // Merge: YTS first, then MovieBox (skip duplicates), then OMDB fallback
+        const seenIds = new Set(yts.map(m => m.imdbID).filter(Boolean))
+        const mbFiltered = mbNormalized.filter(m => !seenIds.has(m.imdbID))
+        let combined = [...yts, ...mbFiltered, ...omdbMovies]
+
+        // Last resort: OMDB seeds even if we got some results
+        if (combined.length < 10) {
           try {
-            const [r1, r2, r3] = await Promise.all([
-              omdbSearch('marvel', 1),
-              omdbSearch('the dark', 1),
-              omdbSearch('avatar', 1),
-            ])
-            combined = [...r1, ...r2, ...r3]
-              .filter((m, i, a) => a.findIndex(x => x.imdbID === m.imdbID) === i)
+            const extra = await Promise.all(
+              OMDB_SEEDS.slice(3).map(kw => omdbSearch(kw, 1))
+            )
+            const extraFlat = extra.flat()
+            const existingIds = new Set(combined.map(m => m.imdbID).filter(Boolean))
+            const extraNorm = extraFlat
+              .filter(m => !existingIds.has(m.imdbID))
               .map(r => ({ ...r, _source: 'omdb', Poster: r.Poster !== 'N/A' ? r.Poster : null }))
+            combined = [...combined, ...extraNorm]
           } catch {}
         }
+
         if (p === 1) setMovies(combined)
         setHasMore(false)
         setLoading(false)
