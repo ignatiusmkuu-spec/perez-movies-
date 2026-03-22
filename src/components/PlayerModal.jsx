@@ -84,6 +84,7 @@ export default function PlayerModal({ item, type, onClose }) {
     : null
 
   useEffect(() => {
+    setLookingUp(false)
     setImdbId(null)
     imdbRef.current = null
     setSeason(1)
