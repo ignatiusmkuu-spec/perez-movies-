@@ -290,6 +290,7 @@ async function fetchYtsMovies({ genre, sort = 'download_count', page = 1, limit 
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)', 'Accept': 'application/json' },
   })
+  if (!res.ok) throw new Error(`YTS upstream error: ${res.status} ${res.statusText}`)
   const json = await res.json()
   const raw = json?.data?.movies || []
   const movies = raw.map(m => ({
