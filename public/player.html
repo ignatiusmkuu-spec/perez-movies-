@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Ignite Movies Player</title>
+  <title>Ignatius Streaming Site Player</title>
 
   <!-- Speed: preconnect to CDNs we'll load from -->
   <link rel="preconnect" href="https://vjs.zencdn.net" crossorigin />
@@ -341,7 +341,7 @@
   <div class="top-bar">
     <a class="back-btn" id="backBtn" href="/">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      Ignite Movies
+      Ignatius Streaming Site
     </a>
     <div class="top-title">
       <div class="top-title-name" id="titleEl">Loading…</div>
@@ -451,7 +451,7 @@
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 01-14.14 14.14M4.93 4.93a10 10 0 0114.14 14.14"/></svg>
         <span id="qualLabel">Quality</span>
       </button>
-      <button class="action-btn protected" id="protectedBtn" style="display:none" title="Stream is proxied through Ignite Movies servers — real URL is hidden">
+      <button class="action-btn protected" id="protectedBtn" style="display:none" title="Stream is proxied through Ignatius Streaming Site servers — real URL is hidden">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Stream Protected
       </button>
@@ -468,7 +468,7 @@
 <!-- Shaka Player (DASH + HLS) — loaded on demand -->
 <script>
 /* ══════════════════════════════════════════════════════════════
-   IGNITE MOVIES — HIGH-PERFORMANCE STREAMING PLAYER v2.0
+   IGNATIUS STREAMING SITE — HIGH-PERFORMANCE STREAMING PLAYER v2.0
    Features:
      ✓ Video.js + HLS (via VHS) for .m3u8 streams
      ✓ Shaka Player for MPEG-DASH (.mpd) streams
@@ -528,7 +528,7 @@ if (SERVERS.length === 0) {
 /* ── 2. Populate metadata ── */
 document.getElementById('titleEl').textContent = TITLE;
 document.getElementById('metaEl').textContent  = [YEAR, GENRE].filter(Boolean).join(' · ');
-document.title = TITLE + ' — Ignite Movies';
+document.title = TITLE + ' — Ignatius Streaming Site';
 if (IS_PROXY) {
   document.getElementById('proxyBadge').classList.add('show');
   document.getElementById('protectedBtn').style.display = '';
@@ -1192,7 +1192,7 @@ document.getElementById('backBtn').addEventListener('click', (e) => {
 });
 
 document.getElementById('protectedBtn').addEventListener('click', () => {
-  toast('Stream is routed through Ignite Movies — original URL is hidden', 4000);
+  toast('Stream is routed through Ignatius Streaming Site — original URL is hidden', 4000);
 });
 
 /* ── 18. Boot ── */

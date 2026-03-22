@@ -11,7 +11,7 @@ export default function DeveloperPage() {
         <div className="dev-app-name">
           <div className="dev-app-label">Application</div>
           <div className="dev-app-title">
-            <span className="red">IGNATIUS</span> MOVIE STREAM
+            <span className="red">IGNATIUS</span> STREAMING SITE
           </div>
         </div>
 

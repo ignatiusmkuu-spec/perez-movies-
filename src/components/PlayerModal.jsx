@@ -432,6 +432,19 @@ export default function PlayerModal({ item, type, onClose }) {
         </div>
 
         <div className="mb-bottom-bar">
+          <div className="mb-server-row">
+            <div className="mb-server-tabs">
+              {visibleServers.map((s, i) => (
+                <button
+                  key={i}
+                  className={`mb-server-tab ${i === safeIdx ? 'mb-tab-active' : ''}`}
+                  onClick={() => setServerIdx(i)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="mb-action-row">
             {embedUrl && (
               <a className="mb-action-link" href={embedUrl} target="_blank" rel="noreferrer">

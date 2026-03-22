@@ -14,11 +14,11 @@ export default function Header({ onSearch, activeTab }) {
       <div className="logo">
         <div className="logo-inner">
           <span className="logo-top">
-            {'IGNITE'.split('').map((ch, i) => (
+            {'IGNATIUS'.split('').map((ch, i) => (
               <span key={i} className="logo-char" style={{ animationDelay: `${i * 0.12}s` }}>{ch}</span>
             ))}
           </span>
-          <span className="logo-bottom">MOVIES</span>
+          <span className="logo-bottom">STREAMING SITE</span>
           <div className="logo-scanline" />
         </div>
         <div className="logo-signal">

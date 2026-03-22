@@ -362,6 +362,7 @@
   border-top: 1px solid var(--mb-border);
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
 /* Server Row */
