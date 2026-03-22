@@ -18,11 +18,16 @@ const STREAM_SOURCES = {
     (imdb) => `https://vidsrc.pm/embed/movie/${imdb}`,
     (imdb) => `https://flixerz.to/embed/movie/${imdb}`,
     (imdb) => `https://embedder.cc/e/?imdb=${imdb}`,
+    (imdb) => `https://vsys.kora-top.zip/frame.php?ch=${imdb}&p=12`,
+    (imdb) => `https://ar.kora-top.zip/frame.php?ch=${imdb}&p=12`,
+    (imdb) => `https://live.kora-top.zip/frame.php?ch=${imdb}&p=12`,
   ],
   tv: [
     (imdb, s, e) => `https://moviesapi.to/tv/${imdb}-${s}-${e}`,
     (imdb, s, e) => `https://www.2embed.cc/embedtv/${imdb}&s=${s}&e=${e}`,
     (imdb, s, e) => `https://vidsrc.xyz/embed/tv?imdb=${imdb}&season=${s}&episode=${e}`,
+    (imdb, s, e) => `https://vsys.kora-top.zip/frame.php?ch=${imdb}&p=12`,
+    (imdb, s, e) => `https://live.kora-top.zip/frame.php?ch=${imdb}&p=12`,
   ],
 }
 
@@ -633,6 +638,126 @@ app.get('/api/yt-live', async (req, res) => {
     return res.json({ videoId: null, live: false })
   } catch (e) {
     return res.json({ videoId: null, live: false, error: e.message })
+  }
+})
+
+// ── Koora Live — Matches & Channels (koora-lives.space) ─────────────────────
+
+const KOORA_MATCHES_API = 'https://ws.kora-api.space/'
+const KOORA_MATCH_API   = 'https://ws.kora-api.top/'
+const KOORA_CDN         = 'https://cdn.kora-api.space/'
+
+let _kooraMatchesCache = {}
+const KOORA_TTL = 90 * 1000
+
+function getTodayDate() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+app.get('/api/koora/matches', async (req, res) => {
+  const date = req.query.date || getTodayDate()
+  if (_kooraMatchesCache[date] && Date.now() - _kooraMatchesCache[date].at < KOORA_TTL) {
+    return res.json(_kooraMatchesCache[date].data)
+  }
+  try {
+    const url = `${KOORA_MATCHES_API}api/matches/${date}/1?t=${Date.now()}`
+    const upstream = await fetch(url, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://koora-lives.space/',
+        'Origin':  'https://koora-lives.space',
+      },
+      signal: AbortSignal.timeout(12000),
+    })
+    if (!upstream.ok) return res.status(upstream.status).json({ matches: [], error: 'Upstream error' })
+    const data = await upstream.json()
+    _kooraMatchesCache[date] = { at: Date.now(), data }
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json(data)
+  } catch (e) {
+    res.status(502).json({ matches: [], error: e.message })
+  }
+})
+
+let _kooraMatchDetailCache = {}
+const KOORA_DETAIL_TTL = 60 * 1000
+
+app.get('/api/koora/match/:id', async (req, res) => {
+  const { id } = req.params
+  if (_kooraMatchDetailCache[id] && Date.now() - _kooraMatchDetailCache[id].at < KOORA_DETAIL_TTL) {
+    return res.json(_kooraMatchDetailCache[id].data)
+  }
+  try {
+    const url = `${KOORA_MATCH_API}api/matche/${id}/en?t=${Date.now()}`
+    const upstream = await fetch(url, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://xyzkoora-lives-space.smartagro.mov/',
+        'Origin':  'https://xyzkoora-lives-space.smartagro.mov',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12000),
+    })
+    if (!upstream.ok) return res.status(upstream.status).json({ channels: [], error: 'Upstream error' })
+    const data = await upstream.json()
+    _kooraMatchDetailCache[id] = { at: Date.now(), data }
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json(data)
+  } catch (e) {
+    res.status(502).json({ channels: [], error: e.message })
+  }
+})
+
+app.use('/proxy/koora-cdn', async (req, res) => {
+  const targetUrl = KOORA_CDN + req.path.replace(/^\//, '') + (Object.keys(req.query).length ? '?' + new URLSearchParams(req.query) : '')
+  try {
+    const upstream = await fetch(targetUrl, {
+      agent: httpsAgent,
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://koora-lives.space/' },
+      signal: AbortSignal.timeout(10000),
+    })
+    const ct = upstream.headers.get('content-type') || 'application/octet-stream'
+    res.setHeader('Content-Type', ct)
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Cache-Control', 'public, max-age=86400')
+    const buf = Buffer.from(await upstream.arrayBuffer())
+    res.send(buf)
+  } catch (e) {
+    res.status(502).end()
+  }
+})
+
+app.use('/proxy/koora-stream', async (req, res) => {
+  const rawTarget = req.query.url
+  if (!rawTarget) return res.status(400).send('Missing ?url=')
+  try {
+    const targetUrl = decodeURIComponent(rawTarget)
+    const upstream = await fetch(targetUrl, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://koora-lives.space/',
+        'Origin':  'https://koora-lives.space',
+        'Accept':  '*/*',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15000),
+    })
+    const ct = (upstream.headers.get('content-type') || 'text/html').toLowerCase()
+    const DROP = new Set(['x-frame-options','content-security-policy','transfer-encoding','connection','strict-transport-security'])
+    upstream.headers.forEach((v, k) => { if (!DROP.has(k)) res.setHeader(k, v) })
+    res.setHeader('Content-Type', ct)
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Cache-Control', 'no-store')
+    const buf = Buffer.from(await upstream.arrayBuffer())
+    res.send(buf)
+  } catch (e) {
+    res.status(502).send('Proxy error: ' + e.message)
   }
 })
 
