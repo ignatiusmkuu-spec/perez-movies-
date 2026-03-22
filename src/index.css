@@ -25,9 +25,24 @@
   }
 }
 
+:root {
+  --bg:       #0a0a0f;
+  --bg2:      #141420;
+  --bg3:      #1c1c2e;
+  --card-bg:  #141420;
+  --text:     #e8e8ec;
+  --text2:    #a0a0b4;
+  --text3:    #5a5a72;
+  --accent:   #e50914;
+  --border:   rgba(255,255,255,0.1);
+  --gold:     #f5c518;
+  --header-h: 60px;
+  --nav-h:    65px;
+}
+
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans);
   margin: 0;
   padding: 0;

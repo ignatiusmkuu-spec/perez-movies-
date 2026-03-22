@@ -30,9 +30,9 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://pstream.mov/embed/tv/${id}/${s}/${e}`,
   },
   {
-    label: 'VidLink',
-    movie: (id) => `https://vidlink.pro/movie/${id}?primaryColor=e50914`,
-    tv:    (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=e50914`,
+    label: 'VidSrc.to',
+    movie: (id) => `https://vidsrc.to/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
   },
   {
     label: 'MoviesAPI',

@@ -1,27 +1,34 @@
-let _cache = null
-let _cacheAt = 0
+const _cache = {}
+const _cacheAt = {}
 const TTL = 10 * 60 * 1000
 
-export async function fetchFlixerMovies() {
-  if (_cache && Date.now() - _cacheAt < TTL) return _cache
+export async function fetchFlixerMovies(genre = 'all', sort = 'download_count') {
+  const key = `${genre}_${sort}`
+  if (_cache[key] && Date.now() - _cacheAt[key] < TTL) return _cache[key]
   try {
-    const res = await fetch('/api/flixer/movies')
+    const params = new URLSearchParams()
+    if (genre && genre !== 'all') params.set('genre', genre)
+    if (sort && sort !== 'download_count') params.set('sort', sort)
+    const qs = params.toString()
+    const res = await fetch(`/api/flixer/movies${qs ? '?' + qs : ''}`)
     const json = await res.json()
     const movies = (json.movies || []).map(m => ({
-      _source: 'flixer',
-      _flixerId: m.id,
+      _source: 'yts',
+      _ytsId: m.id,
       Title: m.title,
-      Poster: m.poster,
+      Poster: m.poster || null,
       Year: m.year,
-      Genre: 'Movie',
-      quality: m.quality,
-      href: m.href,
-      imdbID: null,
+      Genre: m.genre || 'Movie',
+      quality: m.quality || 'HD',
+      imdbID: m.imdb_code || null,
+      imdbRating: m.rating ? String(m.rating) : null,
     }))
-    _cache = movies
-    _cacheAt = Date.now()
+    if (movies.length > 0) {
+      _cache[key] = movies
+      _cacheAt[key] = Date.now()
+    }
     return movies
   } catch (e) {
-    return _cache || []
+    return _cache[key] || []
   }
 }

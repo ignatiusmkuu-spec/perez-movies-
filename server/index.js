@@ -82,7 +82,7 @@ const STREAM_SOURCES = {
     (imdb) => `https://xprime.tv/embed/${imdb}`,
     (imdb) => `https://vidsrc.me/embed/movie/${imdb}`,
     (imdb) => `https://multiembed.mov/?video_id=${imdb}&tmdb=1`,
-    (imdb) => `https://vidlink.pro/movie/${imdb}`,
+    (imdb) => `https://vidsrc.to/embed/movie/${imdb}`,
     (imdb) => `https://pstream.mov/embed/movie/${imdb}`,
     (imdb) => `https://flixer.su/embed/${imdb}`,
   ],
@@ -95,7 +95,7 @@ const STREAM_SOURCES = {
     (imdb, s, e) => `https://xprime.tv/embed/tv/${imdb}?season=${s}&episode=${e}`,
     (imdb, s, e) => `https://vidsrc.me/embed/tv/${imdb}/${s}/${e}`,
     (imdb, s, e) => `https://multiembed.mov/?video_id=${imdb}&tmdb=1&s=${s}&e=${e}`,
-    (imdb, s, e) => `https://vidlink.pro/tv/${imdb}/${s}/${e}`,
+    (imdb, s, e) => `https://vidsrc.to/embed/tv/${imdb}/${s}/${e}`,
   ],
 }
 
@@ -266,64 +266,56 @@ app.use('/api/moviebox', async (req, res) => {
   }
 })
 
-let _flixerCache = null
-let _flixerCacheAt = 0
-const FLIXER_TTL = 10 * 60 * 1000
+const _ytsCache = {}
+const _ytsCacheAt = {}
+const YTS_TTL = 10 * 60 * 1000
 
-function parseFlixerHtml(html) {
-  const movies = []
-  const seen = new Set()
-  const linkRe = /href="(\/movie\/watch-[^"]+)"[^>]*title="([^"]+)"/g
-  const posterRe = /data-src="(https:\/\/f\.woowoowoowoo[^"]+)"/g
-  const yearRe = /<span class="fdi-item"[^>]*>(\d{4})<\/span>/g
-  const qualityRe = /<span class="film-poster-quality">([^<]+)<\/span>/g
+const YTS_GENRE_MAP = {
+  action: 'Action', horror: 'Horror', romance: 'Romance',
+  'sci-fi': 'Sci-Fi', thriller: 'Thriller', animation: 'Animation',
+  crime: 'Crime', drama: 'Drama', comedy: 'Comedy', adventure: 'Adventure',
+  documentary: 'Documentary', biography: 'Biography', history: 'History',
+  mystery: 'Mystery', fantasy: 'Fantasy', family: 'Family', music: 'Music',
+  war: 'War', western: 'Western', sport: 'Sport',
+}
 
-  const links = [...html.matchAll(linkRe)]
-  const posters = [...html.matchAll(posterRe)]
-  const years = [...html.matchAll(yearRe)]
-  const qualities = [...html.matchAll(qualityRe)]
-
-  links.forEach((m, idx) => {
-    const href = m[1]
-    if (seen.has(href)) return
-    seen.add(href)
-    const idMatch = href.match(/(\d+)$/)
-    const i = movies.length
-    movies.push({
-      id: idMatch ? idMatch[1] : String(idx),
-      title: m[2].replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'"),
-      href,
-      poster: posters[i]?.[1] || '',
-      year: years[i]?.[1] || '',
-      quality: qualities[i]?.[1]?.trim() || 'HD',
-      _source: 'flixer',
-    })
+async function fetchYtsMovies({ genre, sort = 'download_count', page = 1, limit = 50 } = {}) {
+  const ytsGenre = YTS_GENRE_MAP[genre?.toLowerCase()] || null
+  const cacheKey = `${ytsGenre || 'all'}_${sort}_${page}`
+  if (_ytsCache[cacheKey] && Date.now() - _ytsCacheAt[cacheKey] < YTS_TTL) {
+    return _ytsCache[cacheKey]
+  }
+  let url = `https://yts.mx/api/v2/list_movies.json?sort_by=${sort}&order_by=desc&limit=${limit}&page=${page}&minimum_rating=5`
+  if (ytsGenre) url += `&genre=${encodeURIComponent(ytsGenre)}`
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)', 'Accept': 'application/json' },
   })
+  const json = await res.json()
+  const raw = json?.data?.movies || []
+  const movies = raw.map(m => ({
+    id: String(m.id),
+    title: m.title,
+    year: String(m.year),
+    poster: m.medium_cover_image || m.large_cover_image || '',
+    quality: m.torrents?.[0]?.quality || 'HD',
+    imdb_code: m.imdb_code || null,
+    genre: (m.genres || []).join(', '),
+    rating: m.rating || null,
+    _source: 'yts',
+  }))
+  _ytsCache[cacheKey] = movies
+  _ytsCacheAt[cacheKey] = Date.now()
   return movies
 }
 
 app.get('/api/flixer/movies', async (req, res) => {
-  if (_flixerCache && Date.now() - _flixerCacheAt < FLIXER_TTL) {
-    return res.json({ movies: _flixerCache })
-  }
   try {
-    const upstream = await fetch('https://theflixertv.to/movie', {
-      agent: httpsAgent,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://theflixertv.to/',
-      },
-    })
-    const html = await upstream.text()
-    const movies = parseFlixerHtml(html)
-    _flixerCache = movies
-    _flixerCacheAt = Date.now()
+    const { genre, sort, page = '1' } = req.query
+    const movies = await fetchYtsMovies({ genre, sort, page: parseInt(page, 10) || 1 })
     res.set('Access-Control-Allow-Origin', '*')
     res.json({ movies })
   } catch (err) {
-    res.status(502).json({ error: 'Flixer fetch error', message: err.message })
+    res.status(502).json({ movies: [], error: err.message })
   }
 })
 
