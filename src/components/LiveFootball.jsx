@@ -290,8 +290,7 @@ function MatchPlayer({ match, channels, loading, activeChIdx, setActiveChIdx, if
             src={iframeSrc}
             className={`pf-iframe ${iframeLoading ? 'pf-iframe-hidden' : ''}`}
             allowFullScreen
-            allow="*"
-            referrerPolicy="no-referrer-when-downgrade"
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             onLoad={() => setIframeLoading(false)}
           />
         ) : !loading && channels.length === 0 ? (

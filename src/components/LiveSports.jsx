@@ -433,8 +433,7 @@ export default function LiveSports() {
                   src={activeVideo}
                   frameBorder="0"
                   allowFullScreen
-                  allow="*"
-                  referrerPolicy="no-referrer-when-downgrade"
+                  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
                   onLoad={() => setPlayerLoading(false)}
                 />
@@ -570,8 +569,7 @@ export default function LiveSports() {
                   src={activeIgnStream.embedUrl}
                   frameBorder="0"
                   allowFullScreen
-                  allow="*"
-                  referrerPolicy="no-referrer-when-downgrade"
+                  allow="autoplay; fullscreen; encrypted-media; clipboard-write"
                   style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
                   onLoad={() => setIgnStreamLoading(false)}
                 />
@@ -676,8 +674,7 @@ export default function LiveSports() {
                     src={`https://www.youtube.com/embed/${tvLiveVideoId}?autoplay=1&rel=0`}
                     frameBorder="0"
                     allowFullScreen
-                    allow="*"
-                    referrerPolicy="no-referrer-when-downgrade"
+                    allow="autoplay; fullscreen; encrypted-media"
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
                     onLoad={() => setTvPlayerLoading(false)}
                   />
@@ -877,8 +874,7 @@ export default function LiveSports() {
                   src={`https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1`}
                   frameBorder="0"
                   allowFullScreen
-                  allow="*"
-                  referrerPolicy="no-referrer-when-downgrade"
+                  allow="autoplay; fullscreen; encrypted-media; accelerometer; gyroscope; picture-in-picture"
                   style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
                   onLoad={() => setYtPlayerLoading(false)}
                 />
