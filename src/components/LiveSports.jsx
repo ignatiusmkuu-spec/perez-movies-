@@ -570,7 +570,6 @@ export default function LiveSports() {
                   frameBorder="0"
                   allowFullScreen
                   allow="autoplay; fullscreen; encrypted-media; clipboard-write"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
                   style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
                   onLoad={() => setIgnStreamLoading(false)}
                 />

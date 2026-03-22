@@ -289,7 +289,6 @@ function InAppBrowser({ site, onClose }) {
             onError={handleError}
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             allowFullScreen
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
             title={site.label}
           />
         )}

@@ -291,7 +291,6 @@ function MatchPlayer({ match, channels, loading, activeChIdx, setActiveChIdx, if
             className={`pf-iframe ${iframeLoading ? 'pf-iframe-hidden' : ''}`}
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
             onLoad={() => setIframeLoading(false)}
           />
         ) : !loading && channels.length === 0 ? (
