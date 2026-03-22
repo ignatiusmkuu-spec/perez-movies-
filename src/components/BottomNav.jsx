@@ -7,6 +7,7 @@ const TABS = [
   { id: 'football',  icon: '⚽', label: 'Football', live: true },
   { id: 'sports',    icon: '📡', label: 'Live TV', live: true },
   { id: 'radio',     icon: '📻', label: 'Radio', live: true },
+  { id: 'premium',   icon: '💎', label: 'Premium' },
   { id: 'developer', icon: '👨‍💻', label: 'Developer' },
 ]
 

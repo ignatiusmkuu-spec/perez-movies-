@@ -21,6 +21,12 @@ const STREAM_SOURCES = {
     (imdb) => `https://vsys.kora-top.zip/frame.php?ch=${imdb}&p=12`,
     (imdb) => `https://ar.kora-top.zip/frame.php?ch=${imdb}&p=12`,
     (imdb) => `https://live.kora-top.zip/frame.php?ch=${imdb}&p=12`,
+    (imdb) => `https://xprime.tv/embed/${imdb}`,
+    (imdb) => `https://vidsrc.me/embed/movie/${imdb}`,
+    (imdb) => `https://multiembed.mov/?video_id=${imdb}&tmdb=1`,
+    (imdb) => `https://vidlink.pro/movie/${imdb}`,
+    (imdb) => `https://pstream.mov/embed/movie/${imdb}`,
+    (imdb) => `https://flixer.su/embed/${imdb}`,
   ],
   tv: [
     (imdb, s, e) => `https://moviesapi.to/tv/${imdb}-${s}-${e}`,
@@ -28,6 +34,10 @@ const STREAM_SOURCES = {
     (imdb, s, e) => `https://vidsrc.xyz/embed/tv?imdb=${imdb}&season=${s}&episode=${e}`,
     (imdb, s, e) => `https://vsys.kora-top.zip/frame.php?ch=${imdb}&p=12`,
     (imdb, s, e) => `https://live.kora-top.zip/frame.php?ch=${imdb}&p=12`,
+    (imdb, s, e) => `https://xprime.tv/embed/tv/${imdb}?season=${s}&episode=${e}`,
+    (imdb, s, e) => `https://vidsrc.me/embed/tv/${imdb}/${s}/${e}`,
+    (imdb, s, e) => `https://multiembed.mov/?video_id=${imdb}&tmdb=1&s=${s}&e=${e}`,
+    (imdb, s, e) => `https://vidlink.pro/tv/${imdb}/${s}/${e}`,
   ],
 }
 

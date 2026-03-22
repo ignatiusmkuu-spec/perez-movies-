@@ -9,6 +9,7 @@ import LiveSports from './components/LiveSports'
 import LiveFootball from './components/LiveFootball'
 import RadioSection from './components/RadioSection'
 import DeveloperPage from './components/DeveloperPage'
+import PremiumAccess from './components/PremiumAccess'
 import PlayerModal from './components/PlayerModal'
 import VideoTemplate from './VideoTemplate'
 
@@ -94,6 +95,7 @@ function IgnatiusStream() {
         {tab === 'football' && <LiveFootball />}
         {tab === 'sports' && <LiveSports />}
         {tab === 'radio' && <RadioSection />}
+        {tab === 'premium' && <PremiumAccess />}
         {tab === 'developer' && <DeveloperPage />}
       </div>
       <BottomNav active={tab} onChange={handleTabChange} />
