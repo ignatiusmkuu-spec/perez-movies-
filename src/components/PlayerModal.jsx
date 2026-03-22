@@ -34,6 +34,86 @@ const ALL_SERVERS = [
     movie: (id) => `https://vidlink.pro/movie/${id}?primaryColor=e50914`,
     tv:    (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=e50914`,
   },
+  {
+    label: 'MoviesAPI',
+    movie: (id) => `https://moviesapi.to/movie/${id}`,
+    tv:    (id, s, e) => `https://moviesapi.to/tv/${id}-${s}-${e}`,
+  },
+  {
+    label: '2Embed',
+    movie: (id) => `https://www.2embed.cc/embed/${id}`,
+    tv:    (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
+  },
+  {
+    label: 'VidSrc',
+    movie: (id) => `https://vidsrc.xyz/embed/movie?imdb=${id}`,
+    tv:    (id, s, e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}`,
+  },
+  {
+    label: 'VidSrc.pm',
+    movie: (id) => `https://vidsrc.pm/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'XPrime.tv',
+    movie: (id) => `https://xprime.tv/embed/${id}`,
+    tv:    (id, s, e) => `https://xprime.tv/embed/tv/${id}?season=${s}&episode=${e}`,
+  },
+  {
+    label: 'VidSrc.me',
+    movie: (id) => `https://vidsrc.me/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://vidsrc.me/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'MultiEmbed',
+    movie: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
+    tv:    (id, s, e) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
+  },
+  {
+    label: 'AutoEmbed',
+    movie: (id) => `https://autoembed.cc/movie/imdb/${id}`,
+    tv:    (id, s, e) => `https://autoembed.cc/tv/imdb/${id}-${s}-${e}`,
+  },
+  {
+    label: 'Smashy',
+    movie: (id) => `https://embed.smashystream.com/playere.php?imdb=${id}`,
+    tv:    (id, s, e) => `https://embed.smashystream.com/playere.php?imdb=${id}&season=${s}&episode=${e}`,
+  },
+  {
+    label: 'RiveStream',
+    movie: (id) => `https://rivestream.live/embed?type=movie&id=${id}`,
+    tv:    (id, s, e) => `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}`,
+  },
+  {
+    label: 'VidFast',
+    movie: (id) => `https://vidfast.pro/movie/${id}`,
+    tv:    (id, s, e) => `https://vidfast.pro/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'SuperEmbed',
+    movie: (id) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1`,
+    tv:    (id, s, e) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
+  },
+  {
+    label: '2Embed v3',
+    movie: (id) => `https://www.2embed.skin/embed/${id}`,
+    tv:    (id, s, e) => `https://www.2embed.skin/embedtv/${id}&s=${s}&e=${e}`,
+  },
+  {
+    label: 'NontonGo',
+    movie: (id) => `https://www.nontongo.win/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://www.nontongo.win/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'FlixerZ',
+    movieOnly: true,
+    movie: (id) => `https://flixerz.to/embed/movie/${id}`,
+  },
+  {
+    label: 'Embedder',
+    movieOnly: true,
+    movie: (id) => `https://embedder.cc/e/?imdb=${id}`,
+  },
 ]
 
 const ANIME_LINKS = [
@@ -77,8 +157,10 @@ export default function PlayerModal({ item, type, onClose }) {
     year  = item.Year || item.releaseDate?.slice(0,4) || item.premiered?.slice(0,4)
   }
 
-  const showEps = isTV || isAnime
-  const srv     = ALL_SERVERS[serverIdx]
+  const showEps      = isTV || isAnime
+  const visibleServers = showEps ? ALL_SERVERS.filter(s => !s.movieOnly) : ALL_SERVERS
+  const safeIdx      = Math.min(serverIdx, visibleServers.length - 1)
+  const srv          = visibleServers[safeIdx]
   const embedUrl = imdbId && srv
     ? (showEps ? srv.tv(imdbId, season, episode) : srv.movie(imdbId))
     : null
@@ -230,7 +312,7 @@ export default function PlayerModal({ item, type, onClose }) {
 
             {!lookingUp && embedUrl ? (
               <iframe
-                key={`${serverIdx}-${imdbId}-${season}-${episode}`}
+                key={`${safeIdx}-${imdbId}-${season}-${episode}`}
                 className={`mb-iframe ${iframeLoading ? 'mb-iframe-hidden' : ''}`}
                 src={embedUrl}
                 allowFullScreen
@@ -352,10 +434,10 @@ export default function PlayerModal({ item, type, onClose }) {
         <div className="mb-bottom-bar">
           <div className="mb-server-row">
             <div className="mb-server-tabs">
-              {ALL_SERVERS.map((s, i) => (
+              {visibleServers.map((s, i) => (
                 <button
                   key={i}
-                  className={`mb-server-tab ${serverIdx === i ? 'mb-tab-active' : ''}`}
+                  className={`mb-server-tab ${safeIdx === i ? 'mb-tab-active' : ''}`}
                   onClick={() => switchServer(i)}
                 >
                   {i === 0 && (

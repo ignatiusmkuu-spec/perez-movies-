@@ -39,7 +39,7 @@ src/
     SectionHeader.jsx/css   # Genre filter tabs
     MediaCard.jsx/css       # Movie/TV/anime card (supports moviebox, moviebox-tv, omdb, jikan types)
     MediaGrid.css           # Grid + skeleton loaders
-    PlayerModal.jsx/css     # Multi-server iframe player (6 servers for movies, 5 for TV)
+    PlayerModal.jsx/css     # Multi-server iframe player (22 servers for movies, 20 for TV)
     MoviesSection.jsx       # Movies tab (MovieBox sections, 272+ movies)
     DramaSection.jsx        # Drama tab (K-Drama, C-Drama, Thai, SA, Turkish, etc.)
     AnimeSection.jsx        # Anime tab (MovieBox + Jikan)
