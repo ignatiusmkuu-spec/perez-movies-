@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import './PremiumAccess.css'
 
 const SECTIONS = [
@@ -141,10 +141,184 @@ const SECTIONS = [
   },
 ]
 
+function InAppBrowser({ site, onClose }) {
+  const iframeRef = useRef(null)
+  const [currentUrl, setCurrentUrl] = useState(site.url)
+  const [displayUrl, setDisplayUrl] = useState(site.url)
+  const [loading, setLoading] = useState(true)
+  const [blocked, setBlocked] = useState(false)
+  const [history, setHistory] = useState([site.url])
+  const [historyIndex, setHistoryIndex] = useState(0)
+  const loadTimer = useRef(null)
+
+  const navigate = useCallback((url) => {
+    setBlocked(false)
+    setLoading(true)
+    setCurrentUrl(url)
+    setDisplayUrl(url)
+    setHistory(prev => {
+      const cut = prev.slice(0, historyIndex + 1)
+      return [...cut, url]
+    })
+    setHistoryIndex(prev => prev + 1)
+
+    clearTimeout(loadTimer.current)
+    loadTimer.current = setTimeout(() => {
+      setLoading(false)
+      setBlocked(true)
+    }, 8000)
+  }, [historyIndex])
+
+  const handleLoad = useCallback(() => {
+    clearTimeout(loadTimer.current)
+    setLoading(false)
+    setBlocked(false)
+    try {
+      const src = iframeRef.current?.contentWindow?.location?.href
+      if (src && src !== 'about:blank') {
+        setDisplayUrl(src)
+      }
+    } catch {
+    }
+  }, [])
+
+  const handleError = useCallback(() => {
+    clearTimeout(loadTimer.current)
+    setLoading(false)
+    setBlocked(true)
+  }, [])
+
+  const goBack = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1
+      setHistoryIndex(newIndex)
+      const url = history[newIndex]
+      setCurrentUrl(url)
+      setDisplayUrl(url)
+      setLoading(true)
+      setBlocked(false)
+    }
+  }
+
+  const goForward = () => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1
+      setHistoryIndex(newIndex)
+      const url = history[newIndex]
+      setCurrentUrl(url)
+      setDisplayUrl(url)
+      setLoading(true)
+      setBlocked(false)
+    }
+  }
+
+  const refresh = () => {
+    setLoading(true)
+    setBlocked(false)
+    const same = currentUrl
+    setCurrentUrl('')
+    setTimeout(() => setCurrentUrl(same), 50)
+  }
+
+  const openExternal = () => {
+    window.open(currentUrl, '_blank', 'noreferrer')
+  }
+
+  const handleUrlKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      let val = e.target.value.trim()
+      if (val && !val.startsWith('http')) val = 'https://' + val
+      if (val) navigate(val)
+    }
+  }
+
+  const canBack = historyIndex > 0
+  const canForward = historyIndex < history.length - 1
+
+  return (
+    <div className="pa-browser">
+      <div className="pa-browser-bar">
+        <button className="pa-bar-btn" onClick={onClose} title="Close">✕</button>
+        <button className="pa-bar-btn" onClick={goBack} disabled={!canBack} title="Back">‹</button>
+        <button className="pa-bar-btn" onClick={goForward} disabled={!canForward} title="Forward">›</button>
+        <button className="pa-bar-btn" onClick={refresh} title="Refresh">↺</button>
+        <input
+          className="pa-bar-url"
+          defaultValue={displayUrl}
+          key={displayUrl}
+          onKeyDown={handleUrlKeyDown}
+          spellCheck={false}
+        />
+        <button className="pa-bar-btn pa-bar-ext" onClick={openExternal} title="Open in browser">↗</button>
+      </div>
+
+      <div className="pa-browser-label">
+        <span className="pa-browser-site-icon">{
+          SECTIONS.flatMap(s => s.links).find(l => l.url === site.url)?.label || site.url
+        }</span>
+      </div>
+
+      <div className="pa-browser-frame">
+        {loading && !blocked && (
+          <div className="pa-browser-loading">
+            <div className="pa-spinner" />
+            <span>Loading…</span>
+          </div>
+        )}
+
+        {blocked && (
+          <div className="pa-browser-blocked">
+            <div className="pa-blocked-icon">🚫</div>
+            <div className="pa-blocked-title">This site can't be embedded</div>
+            <div className="pa-blocked-desc">
+              {site.label || 'This site'} has restrictions that prevent it from loading inside the app.
+            </div>
+            <button className="pa-blocked-btn" onClick={openExternal}>
+              Open {site.label} in Browser ↗
+            </button>
+          </div>
+        )}
+
+        {!blocked && (
+          <iframe
+            ref={iframeRef}
+            key={currentUrl}
+            src={currentUrl}
+            className="pa-iframe"
+            onLoad={handleLoad}
+            onError={handleError}
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allowFullScreen
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
+            title={site.label}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function PremiumAccess() {
   const [activeSection, setActiveSection] = useState('movies')
+  const [openSite, setOpenSite] = useState(null)
 
   const section = SECTIONS.find(s => s.id === activeSection)
+
+  const handleOpen = (link) => {
+    setOpenSite(link)
+  }
+
+  const handleClose = () => {
+    setOpenSite(null)
+  }
+
+  if (openSite) {
+    return (
+      <div className="pa-page">
+        <InAppBrowser site={openSite} onClose={handleClose} />
+      </div>
+    )
+  }
 
   return (
     <div className="pa-page">
@@ -181,20 +355,18 @@ export default function PremiumAccess() {
             </div>
             <div className="pa-links-grid">
               {section.links.map((link, i) => (
-                <a
+                <button
                   key={i}
-                  href={link.url}
-                  target="_blank"
-                  rel="noreferrer"
                   className="pa-link-card"
+                  onClick={() => handleOpen(link)}
                 >
                   <div className="pa-link-num">{i + 1}</div>
                   <div className="pa-link-body">
                     <div className="pa-link-name">{link.label}</div>
                     <div className="pa-link-desc">{link.desc}</div>
                   </div>
-                  <div className="pa-link-arrow">↗</div>
-                </a>
+                  <div className="pa-link-arrow">▶</div>
+                </button>
               ))}
             </div>
           </>
