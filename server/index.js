@@ -6,10 +6,14 @@ import ytsr from 'ytsr'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import streamingRoutes from './streaming/routes.js'
+import proxyRoutes from './streaming/proxy.js'
 import { startHealthChecks } from './streaming/servers.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
+
+/* ── Trust proxy (Replit / Nginx / CloudFlare) ── */
+app.set('trust proxy', 1)
 
 /* ── Security headers ── */
 app.use(helmet({
@@ -50,6 +54,16 @@ app.use('/api/stream', streamLimiter)
 
 /* ── Mount streaming routes ── */
 app.use('/api', streamingRoutes)
+
+/* ── Mount silent proxy streaming ── */
+const segProxyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.includes('/seg/'),
+})
+app.use('/stream', segProxyLimiter, proxyRoutes)
 
 /* ── Start background health checks ── */
 startHealthChecks()
