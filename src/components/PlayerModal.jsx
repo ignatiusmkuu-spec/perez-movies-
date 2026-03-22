@@ -1,16 +1,45 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { getImdbId } from '../api/moviebox'
 import { fetchDownloads, groupByQuality } from '../api/download'
 import './PlayerModal.css'
 
 const MB_BASE = 'https://123movienow.cc'
 
-function makePlayerUrl(mbId, detailPath, isTV, season, episode) {
+function makeMbUrl(mbId, detailPath, isTV, season, episode) {
   if (!mbId || !detailPath) return null
   if (isTV) {
     return `${MB_BASE}/spa/videoPlayPage/tv/${detailPath}?id=${mbId}&type=/tv/detail&detailSe=${season}&detailEp=${episode}&lang=en`
   }
   return `${MB_BASE}/spa/videoPlayPage/movies/${detailPath}?id=${mbId}&type=/movie/detail&detailSe=&detailEp=&lang=en`
 }
+
+const IMDB_SERVERS = [
+  {
+    label: 'Cineby',
+    movie: (id) => `https://embed.su/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'Flixer',
+    movie: (id) => `https://flixer.su/embed/${id}`,
+    tv:    (id, s, e) => `https://flixer.su/embed/${id}?s=${s}&e=${e}`,
+  },
+  {
+    label: 'XPrime',
+    movie: (id) => `https://xprime.tv/embed/${id}`,
+    tv:    (id, s, e) => `https://xprime.tv/embed/tv/${id}?season=${s}&episode=${e}`,
+  },
+  {
+    label: 'PStream',
+    movie: (id) => `https://pstream.mov/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://pstream.mov/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'VidLink',
+    movie: (id) => `https://vidlink.pro/movie/${id}?primaryColor=e50914`,
+    tv:    (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=e50914`,
+  },
+]
 
 async function searchMovieBox(title, isTV) {
   try {
@@ -37,19 +66,25 @@ const MAX_EPISODES = 30
 const MAX_SEASONS  = 15
 
 export default function PlayerModal({ item, type, onClose }) {
-  const [season, setSeason]           = useState(1)
-  const [episode, setEpisode]         = useState(1)
-  const [visible, setVisible]         = useState(false)
-  const [showEpPanel, setShowEpPanel] = useState(false)
-  const [showDlPanel, setShowDlPanel] = useState(false)
-  const [dlLoading, setDlLoading]     = useState(false)
-  const [dlGroups, setDlGroups]       = useState(null)
-  const [dlError, setDlError]         = useState(null)
+  const [season, setSeason]             = useState(1)
+  const [episode, setEpisode]           = useState(1)
+  const [visible, setVisible]           = useState(false)
+  const [showEpPanel, setShowEpPanel]   = useState(false)
+  const [showDlPanel, setShowDlPanel]   = useState(false)
+  const [dlLoading, setDlLoading]       = useState(false)
+  const [dlGroups, setDlGroups]         = useState(null)
+  const [dlError, setDlError]           = useState(null)
   const [iframeLoading, setIframeLoading] = useState(true)
-  const [mbId, setMbId]               = useState(null)
-  const [detailPath, setDetailPath]   = useState(null)
-  const [lookingUp, setLookingUp]     = useState(false)
-  const [imdbId, setImdbId]           = useState(null)
+
+  const [mbId, setMbId]             = useState(null)
+  const [detailPath, setDetailPath] = useState(null)
+  const [imdbId, setImdbId]         = useState(null)
+  const [lookingUp, setLookingUp]   = useState(false)
+  const [imdbLookingUp, setImdbLookingUp] = useState(false)
+
+  const [serverIdx, setServerIdx]   = useState(0)
+
+  const imdbRef = useRef(null)
 
   const isAnime = type === 'anime'
   const isTV    = type === 'moviebox-tv' || type === 'tv'
@@ -66,15 +101,29 @@ export default function PlayerModal({ item, type, onClose }) {
     year  = item.Year || item.releaseDate?.slice(0,4) || item.premiered?.slice(0,4)
   }
 
-  const showEps  = isTV || (isAnime && mbId)
-  const embedUrl = makePlayerUrl(mbId, detailPath, isTV || isAnime, season, episode)
+  const showEps = isTV || (isAnime && mbId)
+
+  const getEmbedUrl = () => {
+    if (serverIdx === 0) {
+      return makeMbUrl(mbId, detailPath, isTV || isAnime, season, episode)
+    }
+    const srv = IMDB_SERVERS[serverIdx - 1]
+    if (!imdbId || !srv) return null
+    return isTV || isAnime
+      ? srv.tv(imdbId, season, episode)
+      : srv.movie(imdbId)
+  }
+
+  const embedUrl = getEmbedUrl()
 
   useEffect(() => {
     setMbId(null)
     setDetailPath(null)
     setImdbId(null)
+    imdbRef.current = null
     setSeason(1)
     setEpisode(1)
+    setServerIdx(0)
     setShowDlPanel(false)
     setDlGroups(null)
     setDlError(null)
@@ -83,19 +132,17 @@ export default function PlayerModal({ item, type, onClose }) {
     if (item._mbId && item._detailPath) {
       setMbId(item._mbId)
       setDetailPath(item._detailPath)
-      if (item.imdbID) setImdbId(item.imdbID)
+      if (item.imdbID) { setImdbId(item.imdbID); imdbRef.current = item.imdbID }
       return
     }
 
-    if (item.imdbID) setImdbId(item.imdbID)
+    if (item.imdbID) { setImdbId(item.imdbID); imdbRef.current = item.imdbID }
+    if (item.externals?.imdb) { setImdbId(item.externals.imdb); imdbRef.current = item.externals.imdb }
 
     if (title) {
       setLookingUp(true)
       searchMovieBox(title, isTV || isAnime).then(result => {
-        if (result) {
-          setMbId(result.mbId)
-          setDetailPath(result.detailPath)
-        }
+        if (result) { setMbId(result.mbId); setDetailPath(result.detailPath) }
         setLookingUp(false)
       })
     }
@@ -118,11 +165,22 @@ export default function PlayerModal({ item, type, onClose }) {
 
   useEffect(() => {
     setIframeLoading(true)
-  }, [season, episode, mbId])
+  }, [season, episode, serverIdx, mbId, imdbId])
 
   const handleClose = () => {
     setVisible(false)
     setTimeout(onClose, 250)
+  }
+
+  const switchServer = async (idx) => {
+    setServerIdx(idx)
+    setIframeLoading(true)
+    if (idx > 0 && !imdbRef.current && title) {
+      setImdbLookingUp(true)
+      const found = await getImdbId(title, year, isTV || isAnime)
+      if (found) { setImdbId(found); imdbRef.current = found }
+      setImdbLookingUp(false)
+    }
   }
 
   const changeEpisode = (ep) => {
@@ -147,9 +205,8 @@ export default function PlayerModal({ item, type, onClose }) {
     try {
       const mediaType = isTV || isAnime ? 'tv' : 'movie'
       const data = await fetchDownloads({
-        title,
-        year,
-        imdb: imdbId,
+        title, year,
+        imdb: imdbRef.current || imdbId,
         type: mediaType,
         season: showEps ? season : undefined,
         episode: showEps ? episode : undefined,
@@ -161,6 +218,14 @@ export default function PlayerModal({ item, type, onClose }) {
       setDlLoading(false)
     }
   }
+
+  const allServers = [
+    { label: '123Movies' },
+    ...IMDB_SERVERS,
+  ]
+
+  const isLoading = lookingUp || (serverIdx === 0 && !mbId && !lookingUp && !isAnime)
+  const noStream = !lookingUp && serverIdx === 0 && !mbId && !isAnime
 
   return (
     <div className={`mb-overlay ${visible ? 'mb-visible' : ''}`}>
@@ -191,23 +256,23 @@ export default function PlayerModal({ item, type, onClose }) {
         <div className="mb-main">
           <div className="mb-screen">
 
-            {lookingUp && (
+            {(lookingUp || imdbLookingUp) && (
               <div className="mb-loader">
                 <div className="mb-spinner" />
-                <p className="mb-loader-text">Finding stream…</p>
+                <p className="mb-loader-text">{lookingUp ? 'Finding stream…' : 'Switching server…'}</p>
               </div>
             )}
 
-            {!lookingUp && iframeLoading && embedUrl && (
+            {!lookingUp && !imdbLookingUp && iframeLoading && embedUrl && (
               <div className="mb-loader">
                 <div className="mb-spinner" />
-                <p className="mb-loader-text">Loading player…</p>
+                <p className="mb-loader-text">Loading {allServers[serverIdx]?.label}…</p>
               </div>
             )}
 
-            {!lookingUp && embedUrl ? (
+            {!lookingUp && !imdbLookingUp && embedUrl ? (
               <iframe
-                key={`${mbId}-${season}-${episode}`}
+                key={`${serverIdx}-${mbId ?? imdbId}-${season}-${episode}`}
                 className={`mb-iframe ${iframeLoading ? 'mb-iframe-hidden' : ''}`}
                 src={embedUrl}
                 allowFullScreen
@@ -215,7 +280,7 @@ export default function PlayerModal({ item, type, onClose }) {
                 referrerPolicy="no-referrer-when-downgrade"
                 onLoad={() => setIframeLoading(false)}
               />
-            ) : !lookingUp && isAnime && !mbId ? (
+            ) : !lookingUp && !imdbLookingUp && isAnime && !mbId && serverIdx === 0 ? (
               <div className="mb-fallback">
                 <div className="mb-fallback-title">Watch "{title}" on:</div>
                 <div className="mb-link-grid">
@@ -226,12 +291,13 @@ export default function PlayerModal({ item, type, onClose }) {
                   ))}
                 </div>
               </div>
-            ) : !lookingUp && !mbId ? (
+            ) : !lookingUp && !imdbLookingUp && noStream ? (
               <div className="mb-fallback">
                 <div className="mb-fallback-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3ba776" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
                 <p>Stream not found for "<strong>{title}</strong>"</p>
+                <p className="mb-fallback-sub">Try a different server below</p>
               </div>
             ) : null}
 
@@ -326,6 +392,25 @@ export default function PlayerModal({ item, type, onClose }) {
         </div>
 
         <div className="mb-bottom-bar">
+          <div className="mb-server-row">
+            <div className="mb-server-tabs">
+              {allServers.map((srv, i) => (
+                <button
+                  key={i}
+                  className={`mb-server-tab ${serverIdx === i ? 'mb-tab-active' : ''}`}
+                  onClick={() => switchServer(i)}
+                >
+                  {i === 0 && (
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 3 }}>
+                      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+                    </svg>
+                  )}
+                  {srv.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="mb-action-row">
             {embedUrl && (
               <a className="mb-action-link" href={embedUrl} target="_blank" rel="noreferrer">
@@ -333,8 +418,8 @@ export default function PlayerModal({ item, type, onClose }) {
                 Open in Tab
               </a>
             )}
-            {imdbId?.startsWith?.('tt') && (
-              <a className="mb-action-link" href={`https://www.imdb.com/title/${imdbId}/`} target="_blank" rel="noreferrer">
+            {(imdbRef.current || imdbId)?.startsWith?.('tt') && (
+              <a className="mb-action-link" href={`https://www.imdb.com/title/${imdbRef.current || imdbId}/`} target="_blank" rel="noreferrer">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                 IMDB
               </a>
