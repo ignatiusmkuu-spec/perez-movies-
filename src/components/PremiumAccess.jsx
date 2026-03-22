@@ -287,8 +287,9 @@ function InAppBrowser({ site, onClose }) {
             className="pa-iframe"
             onLoad={handleLoad}
             onError={handleError}
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allow="*"
             allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
             title={site.label}
           />
         )}

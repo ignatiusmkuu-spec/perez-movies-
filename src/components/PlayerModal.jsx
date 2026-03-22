@@ -316,7 +316,7 @@ export default function PlayerModal({ item, type, onClose }) {
                 className={`mb-iframe ${iframeLoading ? 'mb-iframe-hidden' : ''}`}
                 src={embedUrl}
                 allowFullScreen
-                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
+                allow="*"
                 referrerPolicy="no-referrer-when-downgrade"
                 onLoad={() => setIframeLoading(false)}
               />
