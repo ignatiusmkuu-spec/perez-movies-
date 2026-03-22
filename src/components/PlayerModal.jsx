@@ -20,9 +20,9 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://flixer.su/embed/${id}?s=${s}&e=${e}`,
   },
   {
-    label: 'XPrime',
-    movie: (id) => `https://xprime.stream/watch/${id}`,
-    tv:    (id, s, e) => `https://xprime.stream/watch/${id}?season=${s}&episode=${e}`,
+    label: 'VidSrc.rip',
+    movie: (id) => `https://vidsrc.rip/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://vidsrc.rip/embed/tv/${id}/${s}/${e}`,
   },
   {
     label: 'PStream',
@@ -55,9 +55,9 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`,
   },
   {
-    label: 'XPrime.tv',
-    movie: (id) => `https://xprime.tv/embed/${id}`,
-    tv:    (id, s, e) => `https://xprime.tv/embed/tv/${id}?season=${s}&episode=${e}`,
+    label: 'EmbedSU',
+    movie: (id) => `https://embed.su/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
   },
   {
     label: 'VidSrc.me',
@@ -85,9 +85,9 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}`,
   },
   {
-    label: 'VidFast',
-    movie: (id) => `https://vidfast.pro/movie/${id}`,
-    tv:    (id, s, e) => `https://vidfast.pro/tv/${id}/${s}/${e}`,
+    label: 'FilmPrime',
+    movie: (id) => `https://filmprime.link/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://filmprime.link/embed/tv/${id}/${s}/${e}`,
   },
   {
     label: 'SuperEmbed',
@@ -140,8 +140,11 @@ export default function PlayerModal({ item, type, onClose }) {
   const [lookingUp, setLookingUp]         = useState(false)
   const [serverIdx, setServerIdx]         = useState(19)
   const [showServers, setShowServers]     = useState(false)
+  const [failoverMsg, setFailoverMsg]     = useState(null)
+  const [manualSwitch, setManualSwitch]   = useState(false)
 
-  const imdbRef = useRef(null)
+  const imdbRef        = useRef(null)
+  const failoverRef    = useRef(null)
 
   const isAnime = type === 'anime'
   const isTV    = type === 'moviebox-tv' || type === 'tv'
@@ -178,6 +181,12 @@ export default function PlayerModal({ item, type, onClose }) {
     setDlGroups(null)
     setDlError(null)
     setIframeLoading(true)
+    setFailoverMsg(null)
+    setManualSwitch(false)
+    if (failoverRef.current) {
+      clearTimeout(failoverRef.current)
+      failoverRef.current = null
+    }
 
     const directId =
       item.imdbID ||
@@ -219,7 +228,34 @@ export default function PlayerModal({ item, type, onClose }) {
 
   useEffect(() => {
     setIframeLoading(true)
+    setFailoverMsg(null)
   }, [season, episode, serverIdx, imdbId])
+
+  useEffect(() => {
+    if (failoverRef.current) {
+      clearTimeout(failoverRef.current)
+      failoverRef.current = null
+    }
+
+    if (!embedUrl || !iframeLoading || lookingUp || manualSwitch) return
+
+    const failoverIdx = visibleServers.findIndex(s => s.label === '2Embed v3')
+    if (failoverIdx === -1 || failoverIdx === safeIdx) return
+
+    failoverRef.current = setTimeout(() => {
+      setFailoverMsg('Stream timed out — switching to 2Embed v3…')
+      setServerIdx(failoverIdx)
+      setIframeLoading(true)
+      failoverRef.current = null
+    }, 15000)
+
+    return () => {
+      if (failoverRef.current) {
+        clearTimeout(failoverRef.current)
+        failoverRef.current = null
+      }
+    }
+  }, [embedUrl, iframeLoading, lookingUp, manualSwitch])
 
   const handleClose = () => {
     setVisible(false)
@@ -227,8 +263,14 @@ export default function PlayerModal({ item, type, onClose }) {
   }
 
   const switchServer = (idx) => {
+    setManualSwitch(true)
     setServerIdx(idx)
     setIframeLoading(true)
+    setFailoverMsg(null)
+    if (failoverRef.current) {
+      clearTimeout(failoverRef.current)
+      failoverRef.current = null
+    }
   }
 
   const changeEpisode = (ep) => {
@@ -308,7 +350,12 @@ export default function PlayerModal({ item, type, onClose }) {
             {!lookingUp && iframeLoading && embedUrl && (
               <div className="mb-loader">
                 <div className="mb-spinner" />
-                <p className="mb-loader-text">Loading {srv?.label}…</p>
+                <p className="mb-loader-text">
+                  {failoverMsg || `Loading ${srv?.label}…`}
+                </p>
+                {!failoverMsg && (
+                  <p className="mb-loader-sub">Auto-switching to 2Embed v3 if stream is slow…</p>
+                )}
               </div>
             )}
 
@@ -320,7 +367,15 @@ export default function PlayerModal({ item, type, onClose }) {
                 allowFullScreen
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; web-share"
                 referrerPolicy="no-referrer-when-downgrade"
-                onLoad={() => setIframeLoading(false)}
+                onLoad={() => { setIframeLoading(false); setFailoverMsg(null) }}
+                onError={() => {
+                  const failIdx = visibleServers.findIndex(s => s.label === '2Embed v3')
+                  if (failIdx !== -1 && failIdx !== safeIdx) {
+                    setFailoverMsg('Stream error — switching to 2Embed v3…')
+                    setServerIdx(failIdx)
+                    setIframeLoading(true)
+                  }
+                }}
               />
             ) : !lookingUp && isAnime && noStream ? (
               <div className="mb-fallback">

@@ -190,6 +190,14 @@
   text-align: center;
 }
 
+.mb-loader-sub {
+  color: rgba(255,255,255,0.28);
+  font-size: 0.71rem;
+  margin-top: -10px;
+  text-align: center;
+  max-width: 260px;
+}
+
 /* === BLOCKED BANNER === */
 
 .mb-blocked-banner {
