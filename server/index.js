@@ -41,6 +41,40 @@ const STREAM_SOURCES = {
   ],
 }
 
+// Parallel server probe — checks which embed origins are reachable
+app.post('/api/probe-servers', async (req, res) => {
+  const { urls } = req.body
+  if (!Array.isArray(urls)) return res.status(400).json({ error: 'urls array required' })
+
+  const results = await Promise.allSettled(
+    urls.map(async (url) => {
+      const t0 = Date.now()
+      try {
+        const origin = new URL(url).origin
+        const r = await fetch(origin, {
+          method: 'HEAD',
+          agent: httpsAgent,
+          signal: AbortSignal.timeout(2500),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,*/*',
+          },
+          redirect: 'follow',
+        })
+        return { url, ok: r.status < 500, ms: Date.now() - t0 }
+      } catch {
+        return { url, ok: false, ms: Date.now() - t0 }
+      }
+    })
+  )
+
+  res.json({
+    results: results.map(r =>
+      r.status === 'fulfilled' ? r.value : { url: '', ok: false, ms: 9999 }
+    ),
+  })
+})
+
 app.get('/api/sources/:type/:imdb', (req, res) => {
   const { type, imdb } = req.params
   const { s = 1, e = 1 } = req.query

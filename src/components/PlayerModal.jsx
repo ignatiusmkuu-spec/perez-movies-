@@ -78,7 +78,22 @@ const ANIME_LINKS = [
 
 const MAX_EPISODES = 30
 const MAX_SEASONS  = 15
-const LOAD_TIMEOUT = 5000
+const LOAD_TIMEOUT = 3000
+
+async function probeServers(urls) {
+  try {
+    const res = await fetch('/api/probe-servers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls }),
+      signal: AbortSignal.timeout(6000),
+    })
+    const data = await res.json()
+    return data.results
+  } catch {
+    return urls.map(url => ({ url, ok: null }))
+  }
+}
 
 export default function PlayerModal({ item, type, onClose }) {
   const [domain, setDomain]             = useState('https://123movienow.cc')
@@ -97,11 +112,14 @@ export default function PlayerModal({ item, type, onClose }) {
   const [dlGroups, setDlGroups]         = useState(null)
   const [dlError, setDlError]           = useState(null)
   const [autoSwitching, setAutoSwitching] = useState(false)
+  const [serverStatus, setServerStatus]   = useState({})
+  const [probing, setProbing]             = useState(false)
 
   const loadTimer      = useRef(null)
   const autoRetryTimer = useRef(null)
   const srcListLenRef  = useRef(22)
   const iframeRef      = useRef()
+  const probeAbort     = useRef(null)
 
   const isAnime     = type === 'anime'
   const isTV        = type === 'moviebox-tv' || type === 'tv'
@@ -130,28 +148,40 @@ export default function PlayerModal({ item, type, onClose }) {
   const showEps    = isTV || (isAnime && resolvedImdb)
   const poster     = item?.Poster || item?.poster || item?.images?.poster || item?.image_url
 
-  const startLoadTimer = useCallback(() => {
+  const findNextServer = useCallback((fromIdx, statusSnapshot) => {
+    const len = srcListLenRef.current
+    for (let i = fromIdx + 1; i < len; i++) {
+      if (statusSnapshot[i] !== false) return i
+    }
+    return null
+  }, [])
+
+  const startLoadTimer = useCallback((statusSnapshot = {}) => {
     clearTimeout(loadTimer.current)
     clearTimeout(autoRetryTimer.current)
     setTimedOut(false)
-    setRetryIn(null)
     setAutoSwitching(false)
     loadTimer.current = setTimeout(() => {
-      setLoading(false)
-      setTimedOut(true)
-      setSrcIdx(prev => {
-        const next = prev + 1
-        if (next < srcListLenRef.current) {
-          setAutoSwitching(true)
-          setLoading(true)
-          setTimedOut(false)
-          autoRetryTimer.current = setTimeout(() => setAutoSwitching(false), 800)
-          return next
-        }
-        return prev
+      setServerStatus(prev => {
+        const updated = { ...prev }
+        setSrcIdx(cur => {
+          updated[cur] = false
+          const next = findNextServer(cur, { ...updated })
+          if (next !== null) {
+            setAutoSwitching(true)
+            setLoading(true)
+            setTimedOut(false)
+            autoRetryTimer.current = setTimeout(() => setAutoSwitching(false), 600)
+            return next
+          }
+          setLoading(false)
+          setTimedOut(true)
+          return cur
+        })
+        return updated
       })
     }, LOAD_TIMEOUT)
-  }, [])
+  }, [findNextServer])
 
   useEffect(() => {
     srcListLenRef.current = sourceList?.length ?? 22
@@ -187,6 +217,8 @@ export default function PlayerModal({ item, type, onClose }) {
     setShowDlPanel(false)
     setDlGroups(null)
     setDlError(null)
+    setServerStatus({})
+    setProbing(false)
 
     if (item.imdbID && !isAnime) { setResolvedImdb(item.imdbID); return }
     if (item.externals?.imdb && isTV) { setResolvedImdb(item.externals.imdb); return }
@@ -204,6 +236,29 @@ export default function PlayerModal({ item, type, onClose }) {
     }
   }, [item])
 
+  // Background probe: when we have an ID + sourceList, check all server origins
+  useEffect(() => {
+    if (!id || !sourceList || sourceList.length === 0) return
+    setServerStatus({})
+    setProbing(true)
+    const urls = sourceList.map(s => s.getUrl(id, season, episode, title))
+    probeServers(urls).then(results => {
+      const status = {}
+      results.forEach((r, i) => { status[i] = r.ok === false ? false : r.ok === true ? true : null })
+      setServerStatus(status)
+      setProbing(false)
+      // If current server (0) probed as dead, jump to first live one
+      if (status[0] === false) {
+        const firstLive = results.findIndex(r => r.ok === true)
+        if (firstLive > 0) {
+          setSrcIdx(firstLive)
+          setLoading(true)
+          setTimedOut(false)
+        }
+      }
+    })
+  }, [id, season, episode])
+
   useEffect(() => {
     if (id && !lookingUp) {
       setLoading(true)
@@ -220,7 +275,6 @@ export default function PlayerModal({ item, type, onClose }) {
   const switchServer = (i) => {
     clearTimeout(loadTimer.current)
     clearTimeout(autoRetryTimer.current)
-    setRetryIn(null)
     setAutoSwitching(false)
     setSrcIdx(i)
     setLoading(true)
@@ -472,6 +526,9 @@ export default function PlayerModal({ item, type, onClose }) {
             <div className="mb-server-current" onClick={() => setShowServers(p => !p)}>
               <span className="mb-server-label">Source</span>
               <span className="mb-active-server-name">
+                {serverStatus[srcIdx] === true && <span className="mb-probe-dot mb-probe-ok" title="Server is reachable" />}
+                {serverStatus[srcIdx] === false && <span className="mb-probe-dot mb-probe-dead" title="Server may be down" />}
+                {serverStatus[srcIdx] == null && probing && <span className="mb-probe-dot mb-probe-checking" title="Checking…" />}
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
                 {activeSrc?.label ?? 'Server 1'}
                 {activeSrc?.hd && <span className="mb-hd-badge" style={{marginLeft:4}}>{activeSrc?.label?.includes('4K') ? '4K' : 'HD'}</span>}
@@ -483,9 +540,11 @@ export default function PlayerModal({ item, type, onClose }) {
                 {(sourceList || []).map((s, i) => (
                   <button
                     key={i}
-                    className={`mb-server-tab ${srcIdx === i ? 'mb-tab-active' : ''} ${s.hd ? 'mb-tab-hd' : ''} ${s.named ? 'mb-tab-named' : ''}`}
+                    className={`mb-server-tab ${srcIdx === i ? 'mb-tab-active' : ''} ${s.hd ? 'mb-tab-hd' : ''} ${s.named ? 'mb-tab-named' : ''} ${serverStatus[i] === false ? 'mb-tab-dead' : ''}`}
                     onClick={() => { switchServer(i); setShowServers(false) }}
+                    title={serverStatus[i] === true ? 'Reachable ✓' : serverStatus[i] === false ? 'May be down ✗' : ''}
                   >
+                    <span className={`mb-probe-dot ${serverStatus[i] === true ? 'mb-probe-ok' : serverStatus[i] === false ? 'mb-probe-dead' : probing ? 'mb-probe-checking' : 'mb-probe-unknown'}`} />
                     {i === 0 && <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>}
                     {s.label}
                     {s.hd && <span className={`mb-hd-badge ${s.named ? 'mb-hd-badge-named' : ''}`}>{s.label.includes('4K') ? '4K' : 'HD'}</span>}

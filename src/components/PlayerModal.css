@@ -421,6 +421,25 @@
   padding: 4px 0 2px;
 }
 
+/* === PROBE STATUS DOTS === */
+.mb-probe-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mb-probe-ok       { background: #3ba776; box-shadow: 0 0 4px rgba(59,167,118,0.6); }
+.mb-probe-dead     { background: #e50914; opacity: 0.75; }
+.mb-probe-checking { background: rgba(255,255,255,0.2); animation: mb-probe-pulse 1s ease infinite; }
+.mb-probe-unknown  { background: rgba(255,255,255,0.12); }
+.mb-tab-dead { opacity: 0.45 !important; }
+
+@keyframes mb-probe-pulse {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.7; }
+}
+
 .mb-server-tab {
   display: flex;
   align-items: center;
