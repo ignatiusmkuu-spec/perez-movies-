@@ -21,8 +21,8 @@ const ALL_SERVERS = [
   },
   {
     label: 'XPrime',
-    movie: (id) => `https://xprime.tv/embed/${id}`,
-    tv:    (id, s, e) => `https://xprime.tv/embed/tv/${id}?season=${s}&episode=${e}`,
+    movie: (id) => `https://xprime.stream/watch/${id}`,
+    tv:    (id, s, e) => `https://xprime.stream/watch/${id}?season=${s}&episode=${e}`,
   },
   {
     label: 'PStream',
