@@ -58,7 +58,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const [iframeLoading, setIframeLoading] = useState(true)
   const [imdbId, setImdbId]               = useState(null)
   const [lookingUp, setLookingUp]         = useState(false)
-  const [serverIdx, setServerIdx]         = useState(0)
+  const [serverIdx, setServerIdx]         = useState(3)
 
   const imdbRef = useRef(null)
 
@@ -89,7 +89,7 @@ export default function PlayerModal({ item, type, onClose }) {
     imdbRef.current = null
     setSeason(1)
     setEpisode(1)
-    setServerIdx(0)
+    setServerIdx(3)
     setShowDlPanel(false)
     setDlGroups(null)
     setDlError(null)
