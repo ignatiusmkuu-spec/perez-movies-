@@ -3,12 +3,56 @@ import cors from 'cors'
 import fetch from 'node-fetch'
 import https from 'https'
 import ytsr from 'ytsr'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
+import streamingRoutes from './streaming/routes.js'
+import { startHealthChecks } from './streaming/servers.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
 
-app.use(cors())
-app.use(express.json())
+/* ── Security headers ── */
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false,
+}))
+
+/* ── CORS — allow configured origins ── */
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean)
+app.use(cors({
+  origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Range'],
+  exposedHeaders: ['Content-Range', 'Accept-Ranges'],
+}))
+
+app.use(express.json({ limit: '2mb' }))
+
+/* ── Global rate limit (all routes) ── */
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, please slow down.' },
+})
+app.use(globalLimiter)
+
+/* ── Streaming API rate limit (stricter) ── */
+const streamLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Stream rate limit exceeded.' },
+})
+app.use('/api/stream', streamLimiter)
+
+/* ── Mount streaming routes ── */
+app.use('/api', streamingRoutes)
+
+/* ── Start background health checks ── */
+startHealthChecks()
 
 const STREAM_SOURCES = {
   movie: [

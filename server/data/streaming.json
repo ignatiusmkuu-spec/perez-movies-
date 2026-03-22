@@ -1,0 +1,56 @@
+{
+  "movies": [],
+  "sources": [],
+  "tokens": [
+    {
+      "jti": "06c835ba-49c4-4828-95cd-741d83348336",
+      "movieId": "0182b344-28d0-419a-87f8-44650d158606",
+      "quality": "720p",
+      "protocol": "hls",
+      "clientIp": null,
+      "singleUse": false,
+      "expiresAt": "2026-03-22T09:46:48.000Z",
+      "createdAt": "2026-03-22T05:46:48.720Z",
+      "usedAt": null,
+      "useCount": 0
+    }
+  ],
+  "servers": [
+    {
+      "id": "primary",
+      "name": "Primary HLS",
+      "protocol": "hls",
+      "baseUrl": "https://stream1.example.com",
+      "active": true,
+      "priority": 1,
+      "healthUrl": "",
+      "lastCheck": "2026-03-22T05:47:25.152Z",
+      "healthy": false,
+      "failCount": 4
+    },
+    {
+      "id": "backup1",
+      "name": "Backup HLS",
+      "protocol": "hls",
+      "baseUrl": "https://stream2.example.com",
+      "active": true,
+      "priority": 2,
+      "healthUrl": "",
+      "lastCheck": "2026-03-22T05:47:25.153Z",
+      "healthy": false,
+      "failCount": 4
+    },
+    {
+      "id": "backup2",
+      "name": "DASH CDN",
+      "protocol": "dash",
+      "baseUrl": "https://dash.example.com",
+      "active": true,
+      "priority": 3,
+      "healthUrl": "",
+      "lastCheck": "2026-03-22T05:47:25.154Z",
+      "healthy": false,
+      "failCount": 4
+    }
+  ]
+}

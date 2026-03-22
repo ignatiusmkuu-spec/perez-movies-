@@ -1,0 +1,287 @@
+# ═══════════════════════════════════════════════════════════════
+#  Ignite Movies — Kubernetes Deployment
+#
+#  Deploys:
+#    - Streaming API (3 replicas, auto-scaling)
+#    - Frontend (2 replicas)
+#    - Redis (1 replica)
+#    - Nginx Ingress (with SSL termination)
+#
+#  Usage:
+#    kubectl apply -f kubernetes.yml
+#    kubectl get pods -n ignite-movies
+#    kubectl logs -f deployment/ignite-api -n ignite-movies
+#
+#  Prerequisites:
+#    - kubectl configured for your cluster
+#    - Nginx Ingress Controller installed
+#    - cert-manager for TLS (optional)
+# ═══════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ignite-movies
+
+---
+# ── Secrets ───────────────────────────────────────────────────
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignite-secrets
+  namespace: ignite-movies
+type: Opaque
+stringData:
+  STREAM_SECRET: "change-me-to-random-secret"
+  OMDB_API_KEY: "your-omdb-key"
+  POSTGRES_PASSWORD: "your-db-password"
+
+---
+# ── ConfigMap ─────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ignite-config
+  namespace: ignite-movies
+data:
+  NODE_ENV: "production"
+  PORT: "3001"
+  PRIMARY_STREAM_URL: "https://stream1.yourdomain.com"
+  BACKUP_STREAM_URL: "https://stream2.yourdomain.com"
+  CDN_BASE_URL: "https://cdn.yourdomain.com"
+  HEALTH_CHECK_INTERVAL_MS: "30000"
+
+---
+# ── API Deployment ────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ignite-api
+  namespace: ignite-movies
+  labels:
+    app: ignite-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ignite-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: ignite-api
+    spec:
+      containers:
+        - name: api
+          image: your-registry/ignite-api:latest
+          ports:
+            - containerPort: 3001
+          envFrom:
+            - configMapRef:
+                name: ignite-config
+            - secretRef:
+                name: ignite-secrets
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /api/stream/health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/stream/health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+# ── API Service ───────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignite-api-svc
+  namespace: ignite-movies
+spec:
+  selector:
+    app: ignite-api
+  ports:
+    - protocol: TCP
+      port: 3001
+      targetPort: 3001
+
+---
+# ── Frontend Deployment ───────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ignite-frontend
+  namespace: ignite-movies
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ignite-frontend
+  template:
+    metadata:
+      labels:
+        app: ignite-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: your-registry/ignite-frontend:latest
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignite-frontend-svc
+  namespace: ignite-movies
+spec:
+  selector:
+    app: ignite-frontend
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+
+---
+# ── Redis ─────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ignite-redis
+  namespace: ignite-movies
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ignite-redis
+  template:
+    metadata:
+      labels:
+        app: ignite-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignite-redis-svc
+  namespace: ignite-movies
+spec:
+  selector:
+    app: ignite-redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+
+---
+# ── Horizontal Pod Autoscaler (API) ──────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ignite-api-hpa
+  namespace: ignite-movies
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ignite-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# ── Ingress (Nginx + TLS) ─────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ignite-ingress
+  namespace: ignite-movies
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - yourdomain.com
+        - stream.yourdomain.com
+      secretName: ignite-tls
+  rules:
+    - host: yourdomain.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: ignite-api-svc
+                port:
+                  number: 3001
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ignite-frontend-svc
+                port:
+                  number: 5000
+    - host: stream.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ignite-api-svc
+                port:
+                  number: 3001

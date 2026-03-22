@@ -85,9 +85,64 @@ vite.config.js     # Proxies: /proxy/omdb, /proxy/tvmaze, /proxy/jikan, /api, /s
 - **Sports (6)**: SuperSport, ESPN FC, Sky Sports, BT Sport/TNT, beIN Sports, DAZN, Eurosport
 - All channels use `youtube.com/embed/live_stream?channel={YOUTUBE_CHANNEL_ID}` — no CORS issues
 
+## Streaming Backend (server/streaming/)
+
+Full production-grade streaming infrastructure added:
+
+| Module | Purpose |
+|--------|---------|
+| `db.js` | JSON file store (swap for PostgreSQL in prod). CRUD for movies, sources, tokens, servers. |
+| `token.js` | JWT-signed expiring stream tokens (4h default TTL). Single-use + IP-binding options. |
+| `servers.js` | Multi-server manager with auto health checks every 30s and priority-ordered failover. |
+| `ffmpeg.js` | FFmpeg command generators: HLS multi-bitrate (360p/480p/720p/1080p), DASH packaging, thumbnails. |
+| `routes.js` | Full REST API — see API Endpoints section below. |
+
+### API Endpoints
+- `POST /api/movies` — Create movie
+- `GET  /api/movies` — List movies (filters: genre, year, q/search; pagination: limit/offset)
+- `GET  /api/movies/:id` — Get movie + sources
+- `PUT  /api/movies/:id` — Update metadata
+- `DELETE /api/movies/:id` — Delete movie
+- `POST /api/movies/:id/sources` — Add streaming source URL
+- `GET  /api/movies/:id/sources` — List sources
+- `DELETE /api/movies/:id/sources/:sid` — Remove source
+- `POST /api/movies/:id/poster` — Upload poster (multipart/form-data)
+- `POST /api/stream/token` — Generate expiring JWT stream token
+- `GET  /api/stream/play/:token` — Validate token → return real stream URL
+- `GET  /api/stream/manifest/:id` — Full HLS/DASH/RTMP/WebRTC manifest for all qualities
+- `GET  /api/stream/servers` — List all servers + health status
+- `GET  /api/stream/health` — Trigger health checks now (returns 200 or 207)
+- `POST /api/stream/failover` — Manually mark server down + elect next server
+- `GET  /api/encode/pipeline/:id` — FFmpeg commands for a movie (for your media server)
+- `GET  /api/cdn/url/:id` — CDN URL for a given protocol + quality
+
+### Security Middleware (added to server/index.js)
+- **Helmet** — Security headers (X-Frame-Options, XSS protection, etc.)
+- **Global rate limit** — 200 req/min per IP
+- **Stream rate limit** — 60 req/min per IP on `/api/stream/*`
+- **CORS** — Configurable via `CORS_ORIGINS` env var (comma-separated)
+
+### Environment Variables
+| Variable | Purpose |
+|----------|---------|
+| `STREAM_SECRET` | JWT signing secret (required in production) |
+| `PRIMARY_STREAM_URL` | Base URL of primary HLS server |
+| `BACKUP_STREAM_URL` | Base URL of backup HLS server |
+| `DASH_STREAM_URL` | Base URL of DASH server |
+| `CDN_BASE_URL` | CDN base URL for media delivery |
+| `CORS_ORIGINS` | Comma-separated allowed origins |
+| `HEALTH_CHECK_INTERVAL_MS` | Health check frequency (default: 30000) |
+
+### Infrastructure Config Files (streaming-config/)
+- `nginx-rtmp.conf` — Full Nginx RTMP config (HLS, DASH, live streams, SSL, rate limiting)
+- `ffmpeg-encode.sh` — Shell pipeline: probe → poster → HLS → DASH → stream-info.json
+- `docker-compose.yml` — Full stack: Nginx-RTMP, API, Frontend, PostgreSQL, Redis, CoTURN, FFmpeg worker
+- `kubernetes.yml` — K8s manifests: 3-replica API HPA, 2-replica frontend, Nginx Ingress, Redis, Secrets
+
 ## Development
 - `npm run dev` — starts both servers (concurrently): Express on 3001, Vite on 5000
 
 ## Deployment
 - Build: `npm run build` → `dist/`
 - Server: Node.js (Express) must run alongside Vite/static build
+- Production: use `streaming-config/docker-compose.yml` or `kubernetes.yml`

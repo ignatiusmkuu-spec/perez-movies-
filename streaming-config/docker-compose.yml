@@ -1,0 +1,171 @@
+# ═══════════════════════════════════════════════════════════════
+#  Ignite Movies — Docker Compose Stack
+#
+#  Services:
+#    nginx-rtmp   — Nginx with RTMP module (HLS, DASH, live)
+#    api          — Node.js Express streaming API (port 3001)
+#    frontend     — Vite React frontend (port 5000)
+#    redis        — Rate limiting & token cache
+#    postgres     — Movie metadata database
+#    coturn        — WebRTC TURN/STUN server
+#
+#  Usage:
+#    docker compose up -d
+#    docker compose logs -f api
+#    docker compose down
+#
+#  Set environment variables in .env file (copy .env.example)
+# ═══════════════════════════════════════════════════════════════
+
+version: "3.9"
+
+networks:
+  stream-net:
+    driver: bridge
+
+volumes:
+  streams-data:
+  postgres-data:
+  redis-data:
+  uploads-data:
+
+services:
+
+  # ── Nginx RTMP streaming server ──────────────────────────────
+  nginx-rtmp:
+    image: tiangolo/nginx-rtmp
+    container_name: ignite-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+      - "1935:1935"     # RTMP
+    volumes:
+      - ./nginx-rtmp.conf:/etc/nginx/nginx.conf:ro
+      - streams-data:/var/www/streams
+      - uploads-data:/var/www/uploads
+      - ./ssl:/etc/ssl/certs:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - stream-net
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+
+  # ── Node.js Streaming API ────────────────────────────────────
+  api:
+    build:
+      context: ..
+      dockerfile: streaming-config/Dockerfile.api
+    container_name: ignite-api
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      STREAM_SECRET: ${STREAM_SECRET:-change-me-in-production}
+      PRIMARY_STREAM_URL: ${PRIMARY_STREAM_URL:-http://nginx-rtmp}
+      BACKUP_STREAM_URL: ${BACKUP_STREAM_URL:-http://nginx-rtmp-backup}
+      DASH_STREAM_URL: ${DASH_STREAM_URL:-http://nginx-rtmp}
+      CDN_BASE_URL: ${CDN_BASE_URL:-https://cdn.yourdomain.com}
+      DATABASE_URL: postgres://ignite:${POSTGRES_PASSWORD:-password}@postgres:5432/ignite_movies
+      REDIS_URL: redis://redis:6379
+      OMDB_API_KEY: ${OMDB_API_KEY}
+    volumes:
+      - uploads-data:/app/public/uploads
+      - streams-data:/var/www/streams
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - stream-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/stream/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── React Frontend ───────────────────────────────────────────
+  frontend:
+    build:
+      context: ..
+      dockerfile: streaming-config/Dockerfile.frontend
+    container_name: ignite-frontend
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+    networks:
+      - stream-net
+    restart: unless-stopped
+
+  # ── PostgreSQL Database ──────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ignite-postgres
+    environment:
+      POSTGRES_DB: ignite_movies
+      POSTGRES_USER: ignite
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - stream-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ignite -d ignite_movies"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (rate limiting + token cache) ─────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ignite-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - stream-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── CoTURN WebRTC TURN/STUN Server ───────────────────────────
+  coturn:
+    image: coturn/coturn:latest
+    container_name: ignite-coturn
+    ports:
+      - "3478:3478/udp"    # STUN
+      - "3478:3478/tcp"
+      - "5349:5349/udp"    # TURN over TLS
+      - "5349:5349/tcp"
+      - "49152-65535:49152-65535/udp"  # Relay ports
+    volumes:
+      - ./coturn.conf:/etc/coturn/turnserver.conf:ro
+    networks:
+      - stream-net
+    restart: unless-stopped
+
+  # ── FFmpeg worker (encodes uploaded videos) ──────────────────
+  encoder:
+    image: jrottenberg/ffmpeg:6.1-ubuntu
+    container_name: ignite-encoder
+    volumes:
+      - uploads-data:/input:ro
+      - streams-data:/output
+      - ./ffmpeg-encode.sh:/encode.sh:ro
+    command: ["tail", "-f", "/dev/null"]  # Keep alive; trigger via API
+    networks:
+      - stream-net
+    restart: unless-stopped
