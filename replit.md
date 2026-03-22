@@ -1,4 +1,4 @@
-# Ignatius Movie Stream
+# Ignite Movies
 
 A Netflix-style movie streaming platform with real content powered by MovieBox.
 

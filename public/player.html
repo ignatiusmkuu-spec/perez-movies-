@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Ignite Movies Player</title>
+  <link href="https://vjs.zencdn.net/8.10.0/video-min.css" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:    #e50914;
+      --red2:   #b0060f;
+      --bg:     #0d0d0d;
+      --surf:   #161616;
+      --surf2:  #1e1e1e;
+      --border: rgba(255,255,255,0.09);
+      --text:   #f0f0f0;
+      --muted:  #888;
+      --radius: 8px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Layout ───────────────────────────────────────── */
+    .wrapper {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Top Bar ──────────────────────────────────────── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+      position: relative;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.13); }
+    .back-btn svg { flex-shrink: 0; }
+
+    .top-title { flex: 1; overflow: hidden; }
+    .top-title-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .top-title-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Player Container ─────────────────────────────── */
+    .player-container {
+      position: relative;
+      width: 100%;
+      background: #000;
+      flex-shrink: 0;
+    }
+
+    .player-aspect {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 */
+    }
+
+    .player-aspect > * {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* Anti-download overlay — intercepts right-click but allows clicks through */
+    .anti-dl {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      background: transparent;
+    }
+
+    /* ── Video.js Theme Override ──────────────────────── */
+    .video-js {
+      width: 100% !important;
+      height: 100% !important;
+      font-family: inherit;
+    }
+
+    /* Big play button */
+    .vjs-big-play-button {
+      width: 68px !important;
+      height: 68px !important;
+      border-radius: 50% !important;
+      border: 3px solid rgba(255,255,255,0.9) !important;
+      background: rgba(229,9,20,0.82) !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%,-50%) !important;
+      margin: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      backdrop-filter: blur(6px);
+      transition: background 0.2s, transform 0.15s !important;
+    }
+    .video-js:hover .vjs-big-play-button {
+      background: rgba(229,9,20,1) !important;
+      transform: translate(-50%,-50%) scale(1.07) !important;
+    }
+    .vjs-big-play-button .vjs-icon-placeholder::before {
+      font-size: 28px !important;
+      line-height: 62px !important;
+    }
+
+    /* Control bar */
+    .vjs-control-bar {
+      background: linear-gradient(transparent, rgba(0,0,0,0.88)) !important;
+      height: 52px !important;
+      align-items: center !important;
+      padding: 0 8px !important;
+    }
+
+    /* Progress bar */
+    .vjs-progress-control { height: 5px !important; }
+    .vjs-progress-holder {
+      height: 4px !important;
+      border-radius: 2px !important;
+      background: rgba(255,255,255,0.2) !important;
+      margin: 0 !important;
+    }
+    .vjs-play-progress {
+      background: var(--red) !important;
+      border-radius: 2px !important;
+    }
+    .vjs-play-progress::before {
+      width: 13px !important;
+      height: 13px !important;
+      top: -4.5px !important;
+      font-size: 13px !important;
+      color: var(--red) !important;
+    }
+    .vjs-load-progress { background: rgba(255,255,255,0.15) !important; }
+    .vjs-load-progress div { background: rgba(255,255,255,0.2) !important; }
+
+    /* Volume */
+    .vjs-volume-bar { background: rgba(255,255,255,0.2) !important; border-radius: 2px; }
+    .vjs-volume-level { background: var(--red) !important; }
+    .vjs-volume-level::before { color: var(--red) !important; }
+
+    /* Buttons */
+    .vjs-button > .vjs-icon-placeholder::before { font-size: 1.4em !important; }
+    .vjs-control:focus { outline: none !important; text-shadow: none !important; box-shadow: none !important; }
+
+    /* Time display */
+    .vjs-time-control { font-size: 0.78rem !important; line-height: 52px !important; color: rgba(255,255,255,0.85) !important; }
+
+    /* Playback rate menu */
+    .vjs-playback-rate .vjs-playback-rate-value { font-size: 0.8rem !important; line-height: 52px !important; }
+    .vjs-menu li.vjs-menu-item { font-size: 0.82rem !important; padding: 8px 20px !important; }
+    .vjs-menu li.vjs-menu-item:focus, .vjs-menu li.vjs-menu-item:hover { background: var(--red) !important; }
+    .vjs-menu li.vjs-selected { color: var(--red) !important; }
+    .vjs-menu-content { background: rgba(15,15,15,0.96) !important; border-radius: 6px !important; border: 1px solid var(--border) !important; }
+
+    /* Subtitles / captions */
+    .vjs-text-track-display { font-size: 1rem !important; }
+    .vjs-text-track-cue { background: rgba(0,0,0,0.78) !important; padding: 2px 6px !important; border-radius: 3px !important; }
+
+    /* ── Buffering spinner ────────────────────────────── */
+    .vjs-loading-spinner {
+      border: 4px solid rgba(255,255,255,0.15) !important;
+      border-top-color: var(--red) !important;
+      width: 48px !important;
+      height: 48px !important;
+      margin: -24px !important;
+    }
+
+    /* ── Error ────────────────────────────────────────── */
+    .vjs-error .vjs-error-display {
+      background: rgba(0,0,0,0.9) !important;
+    }
+    .vjs-error-display::before { display: none !important; }
+    .vjs-error-display .vjs-modal-dialog-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem !important;
+      color: var(--muted) !important;
+    }
+
+    /* ── Quality + custom menu overlay ───────────────── */
+    .custom-menu-wrap {
+      position: absolute;
+      bottom: 58px;
+      right: 10px;
+      z-index: 20;
+      display: none;
+    }
+    .custom-menu-wrap.open { display: block; }
+
+    .custom-menu {
+      background: rgba(14,14,14,0.97);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-width: 160px;
+      padding: 6px 0;
+      backdrop-filter: blur(10px);
+    }
+    .custom-menu-title {
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 14px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .custom-menu-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 14px;
+      font-size: 0.83rem;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .custom-menu-item:hover { background: rgba(255,255,255,0.07); }
+    .custom-menu-item.active { color: var(--red); }
+    .custom-menu-item.active::after {
+      content: '✓';
+      font-size: 0.75rem;
+    }
+
+    /* Quality button in control bar */
+    .vjs-quality-btn {
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      padding: 0 8px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      letter-spacing: 0.03em;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .vjs-quality-btn:hover { color: #fff; }
+
+    /* ── Server & bottom bar ──────────────────────────── */
+    .bottom-area {
+      background: var(--surf);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .server-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px 6px;
+      gap: 8px;
+    }
+    .server-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .server-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex: 1;
+    }
+    .server-tabs::-webkit-scrollbar { display: none; }
+
+    .srv-tab {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--surf2);
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .srv-tab:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+    .srv-tab.active {
+      background: var(--red);
+      border-color: var(--red);
+      color: #fff;
+    }
+    .srv-tab.error { border-color: #c0392b; color: #c0392b; }
+    .srv-tab .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.6;
+    }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.74rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .action-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    /* ── Status notification ──────────────────────────── */
+    .status-toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-60px);
+      background: rgba(20,20,20,0.95);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 0.8rem;
+      color: var(--text);
+      z-index: 9999;
+      transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .status-toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Loading / Fallback screen ────────────────────── */
+    .player-init-screen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      gap: 16px;
+      z-index: 30;
+    }
+    .player-init-screen.hidden { display: none; }
+    .init-spinner {
+      width: 44px; height: 44px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .init-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* Fallback message */
+    .fallback-box {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      gap: 14px;
+      z-index: 31;
+    }
+    .fallback-box.show { display: flex; }
+    .fallback-icon { font-size: 40px; }
+    .fallback-title { font-size: 1rem; font-weight: 700; }
+    .fallback-sub { font-size: 0.82rem; color: var(--muted); }
+    .fallback-retry {
+      margin-top: 4px;
+      padding: 8px 22px;
+      border-radius: 6px;
+      background: var(--red);
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+    }
+    .fallback-retry:hover { background: var(--red2); }
+
+    /* ── Gesture overlay (mobile double-tap seek) ─────── */
+    .seek-flash {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 35%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 6;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .seek-flash.show { opacity: 1; }
+    .seek-flash.left { left: 0; }
+    .seek-flash.right { right: 0; }
+    .seek-flash-inner {
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      width: 70px; height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ── Keyboard shortcut hint ───────────────────────── */
+    .kbd-hint {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.7);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 8;
+      white-space: nowrap;
+    }
+    .kbd-hint.show { opacity: 1; }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 640px) {
+      .top-bar { padding: 8px 12px; }
+      .top-title-name { font-size: 0.85rem; }
+      .action-row { flex-wrap: wrap; }
+      .vjs-big-play-button { width: 56px !important; height: 56px !important; }
+      .vjs-big-play-button .vjs-icon-placeholder::before { line-height: 50px !important; font-size: 22px !important; }
+    }
+
+    @media (min-width: 1024px) {
+      .player-aspect { padding-top: min(56.25%, calc(100vh - 180px)); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper" id="wrapper">
+
+  <!-- ── Top bar ── -->
+  <div class="top-bar">
+    <a class="back-btn" id="backBtn" href="/">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      Ignite Movies
+    </a>
+    <div class="top-title">
+      <div class="top-title-name" id="titleEl">Loading…</div>
+      <div class="top-title-meta" id="metaEl"></div>
+    </div>
+  </div>
+
+  <!-- ── Player ── -->
+  <div class="player-container">
+    <div class="player-aspect">
+
+      <!-- Video.js player -->
+      <video
+        id="vjsPlayer"
+        class="video-js vjs-default-skin"
+        playsinline
+        preload="auto"
+      ></video>
+
+      <!-- Init loading screen (shown while player inits) -->
+      <div class="player-init-screen" id="initScreen">
+        <div class="init-spinner"></div>
+        <div class="init-label">Loading player…</div>
+      </div>
+
+      <!-- Fallback error screen -->
+      <div class="fallback-box" id="fallbackBox">
+        <div class="fallback-icon">⚠️</div>
+        <div class="fallback-title">Stream unavailable</div>
+        <div class="fallback-sub" id="fallbackSub">Unable to load this source.</div>
+        <button class="fallback-retry" id="retryBtn">Try Next Server</button>
+      </div>
+
+      <!-- Anti-download transparent overlay -->
+      <div class="anti-dl" id="antiDl"></div>
+
+      <!-- Left/right seek flash (mobile gesture) -->
+      <div class="seek-flash left" id="seekLeft"><div class="seek-flash-inner">⏪ 10s</div></div>
+      <div class="seek-flash right" id="seekRight"><div class="seek-flash-inner">10s ⏩</div></div>
+
+      <!-- Keyboard hint -->
+      <div class="kbd-hint" id="kbdHint"></div>
+
+      <!-- Quality menu -->
+      <div class="custom-menu-wrap" id="qualityMenu">
+        <div class="custom-menu">
+          <div class="custom-menu-title">Quality</div>
+          <div id="qualityItems"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Bottom area: servers + actions ── -->
+  <div class="bottom-area">
+    <div class="server-row">
+      <div class="server-label">Server</div>
+      <div class="server-tabs" id="serverTabs">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="action-btn" id="openTabBtn" title="Open in new tab">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Open in Tab
+      </button>
+      <button class="action-btn" id="pipBtn" title="Picture-in-picture">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="11" width="9" height="6" rx="1"/></svg>
+        Mini Player
+      </button>
+      <button class="action-btn" id="kbdBtn" title="Keyboard shortcuts">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="10"/><line x1="10" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="14" y2="10"/><line x1="18" y1="10" x2="18" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/></svg>
+        Shortcuts
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Status toast ── -->
+<div class="status-toast" id="statusToast"></div>
+
+<!-- ── Video.js ── -->
+<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+<script>
+/* =========================================================
+   IGNITE MOVIES — STANDALONE HLS PLAYER
+   ========================================================= */
+
+/* ── 1. Parse URL parameters ── */
+(function() {
+  const params = new URLSearchParams(window.location.search);
+
+  const TITLE = params.get('t') || params.get('title') || 'Now Playing';
+  const YEAR  = params.get('y') || params.get('year')  || '';
+  const GENRE = params.get('g') || params.get('genre') || '';
+
+  // Build servers list from params: ?s0=url&n0=Name&s1=url2&n1=Name2...
+  // Also supports simple ?src=url shorthand for a single source
+  const SERVERS = [];
+
+  const singleSrc = params.get('src') || params.get('source') || params.get('s');
+  if (singleSrc) {
+    SERVERS.push({ url: singleSrc, label: params.get('n') || params.get('name') || 'Server 1' });
+  }
+
+  for (let i = 0; i <= 8; i++) {
+    const url = params.get('s' + i) || params.get('src' + i);
+    const lbl = params.get('n' + i) || params.get('name' + i) || ('Server ' + (i + 1));
+    if (url) SERVERS.push({ url, label: lbl });
+  }
+
+  // Subtitle tracks: ?sub0=url&sublabel0=English
+  const SUBTITLES = [];
+  for (let i = 0; i <= 4; i++) {
+    const src  = params.get('sub' + i)  || (i === 0 ? params.get('sub') : null);
+    const lang = params.get('sublang' + i) || 'en';
+    const lbl  = params.get('sublabel' + i) || ('Subtitles ' + (i + 1));
+    if (src) SUBTITLES.push({ src, lang, label: lbl });
+  }
+
+  // If no servers provided, show demo placeholder
+  if (SERVERS.length === 0) {
+    SERVERS.push({
+      url: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8',
+      label: 'Demo HLS',
+    });
+    SERVERS.push({
+      url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+      label: 'Server 2',
+    });
+  }
+
+  // ── 2. Populate UI metadata ──
+  document.getElementById('titleEl').textContent = TITLE;
+  document.getElementById('metaEl').textContent  = [YEAR, GENRE].filter(Boolean).join(' · ');
+  document.title = TITLE + ' — Ignite Movies';
+
+  /* ── 3. State ── */
+  let player        = null;
+  let currentServer = 0;
+  let errorCount    = 0;
+  let qualityItems  = [];
+  let qualityMenuOpen = false;
+  let toastTimer    = null;
+  let hintTimer     = null;
+
+  /* ── 4. Toast helper ── */
+  function toast(msg, duration = 2200) {
+    const el = document.getElementById('statusToast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+  }
+
+  /* ── 5. Keyboard hint helper ── */
+  function showHint(msg) {
+    const el = document.getElementById('kbdHint');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => el.classList.remove('show'), 1400);
+  }
+
+  /* ── 6. Seek flash (mobile) ── */
+  function flashSeek(side) {
+    const el = document.getElementById(side === 'left' ? 'seekLeft' : 'seekRight');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 500);
+  }
+
+  /* ── 7. Server tabs ── */
+  function buildServerTabs() {
+    const container = document.getElementById('serverTabs');
+    container.innerHTML = '';
+    SERVERS.forEach((srv, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'srv-tab' + (idx === currentServer ? ' active' : '');
+      btn.dataset.index = idx;
+      btn.innerHTML = `<span class="dot"></span>${srv.label}`;
+      btn.addEventListener('click', () => switchServer(idx));
+      container.appendChild(btn);
+    });
+  }
+
+  function setTabError(idx) {
+    const tabs = document.querySelectorAll('.srv-tab');
+    if (tabs[idx]) tabs[idx].classList.add('error');
+  }
+
+  function activateTab(idx) {
+    document.querySelectorAll('.srv-tab').forEach((t, i) => {
+      t.classList.toggle('active', i === idx);
+      t.classList.remove('error');
+    });
+  }
+
+  /* ── 8. Quality menu ── */
+  function buildQualityMenu() {
+    const container = document.getElementById('qualityItems');
+    container.innerHTML = '';
+
+    const autoItem = document.createElement('div');
+    autoItem.className = 'custom-menu-item active';
+    autoItem.dataset.qi = '-1';
+    autoItem.textContent = 'Auto';
+    autoItem.addEventListener('click', () => selectQuality(-1, autoItem));
+    container.appendChild(autoItem);
+
+    qualityItems.forEach((level, idx) => {
+      const item = document.createElement('div');
+      item.className = 'custom-menu-item';
+      item.dataset.qi = idx;
+
+      const height = level.height || '?';
+      const bitrate = level.bitrate
+        ? Math.round(level.bitrate / 1000) + ' kbps'
+        : '';
+      item.textContent = height + 'p' + (bitrate ? ' · ' + bitrate : '');
+
+      item.addEventListener('click', () => selectQuality(idx, item));
+      container.appendChild(item);
+    });
+  }
+
+  function selectQuality(idx, clickedEl) {
+    // Mark active item
+    document.querySelectorAll('#qualityItems .custom-menu-item').forEach(el => {
+      el.classList.toggle('active', el === clickedEl);
+    });
+
+    const levels = player.qualityLevels ? player.qualityLevels() : null;
+    if (levels) {
+      for (let i = 0; i < levels.length; i++) {
+        levels[i].enabled = (idx === -1 || i === idx);
+      }
+    }
+
+    const label = idx === -1 ? 'Auto' : (qualityItems[idx]?.height + 'p');
+    toast('Quality: ' + label);
+    closeQualityMenu();
+  }
+
+  function toggleQualityMenu() {
+    qualityMenuOpen = !qualityMenuOpen;
+    document.getElementById('qualityMenu').classList.toggle('open', qualityMenuOpen);
+  }
+  function closeQualityMenu() {
+    qualityMenuOpen = false;
+    document.getElementById('qualityMenu').classList.remove('open');
+  }
+
+  /* ── 9. Load / switch server ── */
+  function loadServer(idx) {
+    currentServer = idx;
+    activateTab(idx);
+    document.getElementById('initScreen').classList.remove('hidden');
+    document.getElementById('fallbackBox').classList.remove('show');
+    closeQualityMenu();
+
+    const srv = SERVERS[idx];
+    const isHls = srv.url.includes('.m3u8');
+
+    player.src({
+      src:  srv.url,
+      type: isHls ? 'application/x-mpegURL' : 'video/mp4',
+    });
+
+    // Add subtitle tracks
+    // Remove old tracks first
+    while (player.remoteTextTracks().length > 0) {
+      player.removeRemoteTextTrack(player.remoteTextTracks()[0]);
+    }
+    SUBTITLES.forEach(sub => {
+      player.addRemoteTextTrack({ kind: 'subtitles', src: sub.src, srclang: sub.lang, label: sub.label }, false);
+    });
+
+    player.play().catch(() => {});
+  }
+
+  function switchServer(idx) {
+    if (idx === currentServer && !player.error()) return;
+    toast('Switching to ' + SERVERS[idx].label + '…');
+    loadServer(idx);
+  }
+
+  function tryNextServer() {
+    const next = currentServer + 1;
+    if (next < SERVERS.length) {
+      toast('Trying ' + SERVERS[next].label + '…');
+      loadServer(next);
+    } else {
+      document.getElementById('fallbackSub').textContent = 'All servers failed. Please try again later.';
+      document.getElementById('retryBtn').style.display = 'none';
+    }
+  }
+
+  /* ── 10. Anti-download: block right-click ── */
+  document.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('.player-container')) {
+      e.preventDefault();
+    }
+  });
+
+  // Also intercept the anti-dl overlay for mouse events, but allow left-click-through
+  const antiDl = document.getElementById('antiDl');
+  antiDl.addEventListener('contextmenu', e => e.preventDefault());
+  antiDl.addEventListener('click', () => {
+    if (player) {
+      player.paused() ? player.play() : player.pause();
+    }
+  });
+  antiDl.addEventListener('dblclick', (e) => {
+    if (!player) return;
+    const rect = antiDl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width * 0.35) {
+      player.currentTime(Math.max(0, player.currentTime() - 10));
+      flashSeek('left');
+    } else if (x > rect.width * 0.65) {
+      player.currentTime(player.currentTime() + 10);
+      flashSeek('right');
+    } else {
+      player.isFullscreen() ? player.exitFullscreen() : player.requestFullscreen();
+    }
+  });
+
+  /* ── 11. Keyboard shortcuts ── */
+  document.addEventListener('keydown', (e) => {
+    if (!player || e.target.tagName === 'INPUT') return;
+    const focused = document.activeElement;
+    if (focused && focused !== document.body && focused.tagName !== 'BODY') return;
+
+    switch (e.code) {
+      case 'Space': case 'KeyK':
+        e.preventDefault();
+        if (player.paused()) { player.play(); showHint('▶ Play'); }
+        else { player.pause(); showHint('⏸ Pause'); }
+        break;
+      case 'ArrowLeft': case 'KeyJ':
+        e.preventDefault();
+        player.currentTime(Math.max(0, player.currentTime() - 10));
+        showHint('⏪ -10s');
+        flashSeek('left');
+        break;
+      case 'ArrowRight': case 'KeyL':
+        e.preventDefault();
+        player.currentTime(player.currentTime() + 10);
+        showHint('⏩ +10s');
+        flashSeek('right');
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        player.volume(Math.min(1, player.volume() + 0.1));
+        showHint('🔊 ' + Math.round(player.volume() * 100) + '%');
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        player.volume(Math.max(0, player.volume() - 0.1));
+        showHint('🔉 ' + Math.round(player.volume() * 100) + '%');
+        break;
+      case 'KeyM':
+        player.muted(!player.muted());
+        showHint(player.muted() ? '🔇 Muted' : '🔊 Unmuted');
+        break;
+      case 'KeyF':
+        player.isFullscreen() ? player.exitFullscreen() : player.requestFullscreen();
+        break;
+      case 'KeyQ':
+        toggleQualityMenu();
+        break;
+    }
+  });
+
+  /* ── 12. Close quality menu on outside click ── */
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#qualityMenu') && !e.target.closest('.vjs-quality-btn')) {
+      closeQualityMenu();
+    }
+  });
+
+  /* ── 13. Action buttons ── */
+  document.getElementById('openTabBtn').addEventListener('click', () => {
+    if (player) window.open(player.currentSrc(), '_blank', 'noreferrer');
+  });
+
+  document.getElementById('pipBtn').addEventListener('click', () => {
+    if (!player) return;
+    const vid = document.getElementById('vjsPlayer');
+    if (document.pictureInPictureEnabled && vid) {
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture();
+      } else {
+        vid.requestPictureInPicture().catch(() => toast('PiP not supported here'));
+      }
+    } else {
+      toast('Picture-in-picture not available');
+    }
+  });
+
+  document.getElementById('retryBtn').addEventListener('click', tryNextServer);
+
+  document.getElementById('kbdBtn').addEventListener('click', () => {
+    toast('Space=Play/Pause · ←/→=Seek10s · ↑/↓=Volume · M=Mute · F=Fullscreen · Q=Quality', 4000);
+  });
+
+  /* ── 14. Back button — go back if possible ── */
+  document.getElementById('backBtn').addEventListener('click', (e) => {
+    if (window.history.length > 1) { e.preventDefault(); history.back(); }
+  });
+
+  /* ── 15. Init Video.js player ── */
+  player = videojs('vjsPlayer', {
+    controls:       true,
+    autoplay:       true,
+    preload:        'auto',
+    fluid:          false,
+    responsive:     false,
+    playbackRates:  [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2],
+    html5: {
+      vhs: {
+        overrideNative: true,
+        enableLowInitialPlaylist: true,
+        limitRenditionByPlayerDimensions: false,
+        useDevicePixelRatio: true,
+      },
+      nativeAudioTracks: false,
+      nativeVideoTracks: false,
+    },
+    controlBar: {
+      children: [
+        'playToggle',
+        'volumePanel',
+        'currentTimeDisplay',
+        'timeDivider',
+        'durationDisplay',
+        'progressControl',
+        'playbackRateMenuButton',
+        'subsCapsButton',
+        'pictureInPictureToggle',
+        'fullscreenToggle',
+      ],
+    },
+    userActions: {
+      hotkeys: false, // we handle keyboard ourselves
+    },
+  });
+
+  /* ── 16. Inject quality button into control bar ── */
+  const controlBar = player.controlBar;
+  if (controlBar) {
+    const qualBtn = document.createElement('div');
+    qualBtn.className = 'vjs-quality-btn vjs-control';
+    qualBtn.id = 'qualityBtnEl';
+    qualBtn.textContent = 'HD';
+    qualBtn.title = 'Quality (Q)';
+    qualBtn.addEventListener('click', toggleQualityMenu);
+
+    // Insert before fullscreen button
+    const fsBtn = controlBar.fullscreenToggle?.el();
+    if (fsBtn) {
+      controlBar.el().insertBefore(qualBtn, fsBtn);
+    } else {
+      controlBar.el().appendChild(qualBtn);
+    }
+  }
+
+  /* ── 17. Quality levels ── */
+  if (player.qualityLevels) {
+    const levels = player.qualityLevels();
+
+    levels.on('addqualitylevel', (event) => {
+      const level = event.qualityLevel;
+      qualityItems.push(level);
+      // Sort by height descending
+      qualityItems.sort((a, b) => (b.height || 0) - (a.height || 0));
+      buildQualityMenu();
+
+      // Update button label with best quality
+      const best = qualityItems[0];
+      if (best && best.height) {
+        const btn = document.getElementById('qualityBtnEl');
+        if (btn) btn.textContent = best.height >= 1080 ? '4K/HD' : best.height + 'p';
+      }
+    });
+  }
+
+  /* ── 18. Player events ── */
+  player.ready(() => {
+    document.getElementById('initScreen').classList.add('hidden');
+    buildServerTabs();
+    loadServer(0);
+  });
+
+  player.on('waiting', () => {
+    // Video.js shows its own spinner; we just hide the init screen
+    document.getElementById('initScreen').classList.add('hidden');
+  });
+
+  player.on('playing', () => {
+    document.getElementById('initScreen').classList.add('hidden');
+    document.getElementById('fallbackBox').classList.remove('show');
+    errorCount = 0;
+  });
+
+  player.on('error', () => {
+    errorCount++;
+    setTabError(currentServer);
+
+    if (errorCount <= 1 && currentServer + 1 < SERVERS.length) {
+      // Auto-fallback to next server
+      setTimeout(tryNextServer, 800);
+    } else {
+      document.getElementById('fallbackBox').classList.add('show');
+      document.getElementById('initScreen').classList.add('hidden');
+      const nextExists = currentServer + 1 < SERVERS.length;
+      document.getElementById('retryBtn').style.display = nextExists ? '' : 'none';
+      document.getElementById('fallbackSub').textContent = nextExists
+        ? 'Tap below to try the next server.'
+        : 'All servers failed. Please check back later.';
+    }
+  });
+
+  player.on('loadstart', () => {
+    qualityItems = [];
+    buildQualityMenu();
+    const btn = document.getElementById('qualityBtnEl');
+    if (btn) btn.textContent = 'HD';
+  });
+
+  /* ── 19. Prevent keyboard from firing on control bar buttons ── */
+  document.querySelectorAll('.vjs-control-bar').forEach(el => {
+    el.addEventListener('keydown', e => e.stopPropagation());
+  });
+
+})();
+</script>
+</body>
+</html>
