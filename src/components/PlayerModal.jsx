@@ -66,8 +66,8 @@ const ALL_SERVERS = [
   },
   {
     label: 'MultiEmbed',
-    movie: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
-    tv:    (id, s, e) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
+    movie: (id) => `https://multiembed.mov/?video_id=${id}`,
+    tv:    (id, s, e) => `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`,
   },
   {
     label: 'AutoEmbed',
@@ -91,8 +91,8 @@ const ALL_SERVERS = [
   },
   {
     label: 'SuperEmbed',
-    movie: (id) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1`,
-    tv:    (id, s, e) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
+    movie: (id) => `https://multiembed.mov/directstream.php?video_id=${id}`,
+    tv:    (id, s, e) => `https://multiembed.mov/directstream.php?video_id=${id}&s=${s}&e=${e}`,
   },
   {
     label: '2Embed v3',
@@ -138,7 +138,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const [iframeLoading, setIframeLoading] = useState(true)
   const [imdbId, setImdbId]               = useState(null)
   const [lookingUp, setLookingUp]         = useState(false)
-  const [serverIdx, setServerIdx]         = useState(3)
+  const [serverIdx, setServerIdx]         = useState(0)
 
   const imdbRef = useRef(null)
 
@@ -171,7 +171,7 @@ export default function PlayerModal({ item, type, onClose }) {
     imdbRef.current = null
     setSeason(1)
     setEpisode(1)
-    setServerIdx(3)
+    setServerIdx(0)
     setShowDlPanel(false)
     setDlGroups(null)
     setDlError(null)
