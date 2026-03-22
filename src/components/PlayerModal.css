@@ -357,12 +357,11 @@
 
 .mb-bottom-bar {
   flex-shrink: 0;
-  padding: 12px 18px 14px;
+  padding: 10px 18px 12px;
   background: var(--mb-surface);
   border-top: 1px solid var(--mb-border);
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 /* Server Row */

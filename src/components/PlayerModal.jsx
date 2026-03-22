@@ -432,25 +432,6 @@ export default function PlayerModal({ item, type, onClose }) {
         </div>
 
         <div className="mb-bottom-bar">
-          <div className="mb-server-row">
-            <div className="mb-server-tabs">
-              {visibleServers.map((s, i) => (
-                <button
-                  key={i}
-                  className={`mb-server-tab ${safeIdx === i ? 'mb-tab-active' : ''}`}
-                  onClick={() => switchServer(i)}
-                >
-                  {i === 0 && (
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 3 }}>
-                      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-                    </svg>
-                  )}
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div className="mb-action-row">
             {embedUrl && (
               <a className="mb-action-link" href={embedUrl} target="_blank" rel="noreferrer">
