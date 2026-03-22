@@ -232,6 +232,22 @@
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+.mb-switching-banner {
+  border-color: rgba(59,167,118,0.5) !important;
+  background: rgba(10,30,20,0.92) !important;
+  color: #3ba776 !important;
+}
+
+.mb-mini-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(59,167,118,0.25);
+  border-top-color: #3ba776;
+  animation: mb-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
 /* === EPISODE PANEL (overlay on screen) === */
 
 .mb-ep-panel {
@@ -352,9 +368,25 @@
 /* Server Row */
 .mb-server-row {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mb-server-current {
+  display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--mb-border);
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.mb-server-current:hover {
+  background: rgba(229,9,20,0.08);
+  border-color: rgba(229,9,20,0.3);
 }
 
 .mb-server-label {
@@ -366,10 +398,27 @@
   flex-shrink: 0;
 }
 
+.mb-active-server-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  flex: 1;
+}
+
+.mb-server-toggle-arrow {
+  font-size: 0.55rem;
+  color: var(--mb-muted);
+  flex-shrink: 0;
+}
+
 .mb-server-tabs {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
+  padding: 4px 0 2px;
 }
 
 .mb-server-tab {

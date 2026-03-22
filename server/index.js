@@ -235,13 +235,56 @@ function formatSize(bytes) {
   return b + ' B'
 }
 
+async function searchApibay(query, cat) {
+  try {
+    const url = `https://apibay.org/q.php?q=${encodeURIComponent(query)}&cat=${cat}`
+    const r = await fetch(url, {
+      agent: httpsAgent,
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+    })
+    const data = await r.json()
+    if (!Array.isArray(data) || data[0]?.name === 'No results returned') return []
+    return data.filter(t => parseInt(t.seeders) > 0)
+  } catch { return [] }
+}
+
+async function searchYts(query, imdb) {
+  try {
+    const param = imdb ? `imdb_id=${encodeURIComponent(imdb)}` : `query_term=${encodeURIComponent(query)}`
+    const url = `https://yts.mx/api/v2/list_movies.json?${param}&limit=10`
+    const r = await fetch(url, {
+      agent: httpsAgent,
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+    })
+    const json = await r.json()
+    const movies = json?.data?.movies || []
+    const results = []
+    for (const movie of movies) {
+      for (const torrent of (movie.torrents || [])) {
+        const name = `${movie.title} (${movie.year}) [${torrent.quality}]`
+        results.push({
+          name,
+          quality: torrent.quality === '2160p' ? '4K' : torrent.quality,
+          size: torrent.size || '?',
+          seeders: torrent.seeds || 0,
+          magnet: makeMagnet(torrent.hash, name),
+        })
+      }
+    }
+    return results.filter(r => r.seeders > 0)
+  } catch { return [] }
+}
+
 app.get('/api/download', async (req, res) => {
   const { title, year, imdb, type, season, episode } = req.query
   if (!title) return res.status(400).json({ error: 'title required' })
 
   try {
+    const isMovie = type !== 'tv'
     let query = title
-    if (type === 'tv' && season) {
+    if (!isMovie && season) {
       const s = String(season).padStart(2, '0')
       const e = episode ? String(episode).padStart(2, '0') : null
       query = e ? `${title} S${s}E${e}` : `${title} S${s}`
@@ -249,47 +292,34 @@ app.get('/api/download', async (req, res) => {
       query = `${title} ${year}`
     }
 
-    const cat = type === 'tv' ? '205' : '207'
-    const url = `https://apibay.org/q.php?q=${encodeURIComponent(query)}&cat=${cat}`
-    const upstream = await fetch(url, {
-      agent: httpsAgent,
-      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
-    })
-    const data = await upstream.json()
+    const cat = isMovie ? '207' : '205'
 
-    if (!Array.isArray(data) || data.length === 0 || data[0]?.name === 'No results returned') {
-      // Fallback: broader search without category
-      const url2 = `https://apibay.org/q.php?q=${encodeURIComponent(title + (year ? ' ' + year : ''))}&cat=0`
-      const r2 = await fetch(url2, { agent: httpsAgent, headers: { 'User-Agent': 'Mozilla/5.0' } })
-      const d2 = await r2.json()
-      if (!Array.isArray(d2) || d2[0]?.name === 'No results returned') {
-        return res.json({ results: [] })
-      }
-      const results = d2
-        .filter(t => parseInt(t.seeders) > 0)
-        .sort((a, b) => parseInt(b.seeders) - parseInt(a.seeders))
-        .slice(0, 10)
-        .map(t => ({
-          name: t.name,
-          quality: guessQuality(t.name),
-          size: formatSize(t.size),
-          seeders: parseInt(t.seeders),
-          magnet: makeMagnet(t.info_hash, t.name),
-        }))
-      return res.json({ results })
-    }
+    // Run searches in parallel: apibay (targeted) + apibay (broad) + YTS for movies
+    const [apibayResults, ytsResults] = await Promise.all([
+      searchApibay(query, cat).then(r => r.length ? r : searchApibay(title + (year ? ' ' + year : ''), '0')),
+      isMovie ? searchYts(title + (year ? ' ' + year : ''), imdb) : Promise.resolve([]),
+    ])
 
-    const results = data
-      .filter(t => parseInt(t.seeders) > 0)
-      .sort((a, b) => parseInt(b.seeders) - parseInt(a.seeders))
-      .slice(0, 12)
-      .map(t => ({
+    // Merge and deduplicate by name
+    const seen = new Set()
+    const merged = []
+    for (const t of apibayResults) {
+      const item = {
         name: t.name,
         quality: guessQuality(t.name),
         size: formatSize(t.size),
         seeders: parseInt(t.seeders),
         magnet: makeMagnet(t.info_hash, t.name),
-      }))
+      }
+      if (!seen.has(item.name)) { seen.add(item.name); merged.push(item) }
+    }
+    for (const t of ytsResults) {
+      if (!seen.has(t.name)) { seen.add(t.name); merged.push(t) }
+    }
+
+    const results = merged
+      .sort((a, b) => b.seeders - a.seeders)
+      .slice(0, 15)
 
     res.json({ results })
   } catch (err) {

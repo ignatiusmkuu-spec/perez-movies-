@@ -78,7 +78,7 @@ const ANIME_LINKS = [
 
 const MAX_EPISODES = 30
 const MAX_SEASONS  = 15
-const LOAD_TIMEOUT = 14000
+const LOAD_TIMEOUT = 5000
 
 export default function PlayerModal({ item, type, onClose }) {
   const [domain, setDomain]             = useState('https://123movienow.cc')
@@ -92,11 +92,11 @@ export default function PlayerModal({ item, type, onClose }) {
   const [visible, setVisible]           = useState(false)
   const [showEpPanel, setShowEpPanel]   = useState(false)
   const [showDlPanel, setShowDlPanel]   = useState(false)
+  const [showServers, setShowServers]   = useState(false)
   const [dlLoading, setDlLoading]       = useState(false)
   const [dlGroups, setDlGroups]         = useState(null)
   const [dlError, setDlError]           = useState(null)
-
-  const [retryIn, setRetryIn]             = useState(null)
+  const [autoSwitching, setAutoSwitching] = useState(false)
 
   const loadTimer      = useRef(null)
   const autoRetryTimer = useRef(null)
@@ -135,30 +135,21 @@ export default function PlayerModal({ item, type, onClose }) {
     clearTimeout(autoRetryTimer.current)
     setTimedOut(false)
     setRetryIn(null)
+    setAutoSwitching(false)
     loadTimer.current = setTimeout(() => {
       setLoading(false)
       setTimedOut(true)
-      let count = 3
-      setRetryIn(count)
-      const tick = () => {
-        count--
-        if (count <= 0) {
-          setRetryIn(null)
-          setSrcIdx(prev => {
-            const next = prev + 1
-            if (next < srcListLenRef.current) {
-              setLoading(true)
-              setTimedOut(false)
-              return next
-            }
-            return prev
-          })
-        } else {
-          setRetryIn(count)
-          autoRetryTimer.current = setTimeout(tick, 1000)
+      setSrcIdx(prev => {
+        const next = prev + 1
+        if (next < srcListLenRef.current) {
+          setAutoSwitching(true)
+          setLoading(true)
+          setTimedOut(false)
+          autoRetryTimer.current = setTimeout(() => setAutoSwitching(false), 800)
+          return next
         }
-      }
-      autoRetryTimer.current = setTimeout(tick, 1000)
+        return prev
+      })
     }, LOAD_TIMEOUT)
   }, [])
 
@@ -227,8 +218,10 @@ export default function PlayerModal({ item, type, onClose }) {
   }
 
   const switchServer = (i) => {
+    clearTimeout(loadTimer.current)
     clearTimeout(autoRetryTimer.current)
     setRetryIn(null)
+    setAutoSwitching(false)
     setSrcIdx(i)
     setLoading(true)
     setTimedOut(false)
@@ -238,6 +231,8 @@ export default function PlayerModal({ item, type, onClose }) {
     setEpisode(ep)
     setLoading(true)
     setTimedOut(false)
+    setDlGroups(null)
+    setDlError(null)
   }
 
   const changeSeason = (s) => {
@@ -245,6 +240,8 @@ export default function PlayerModal({ item, type, onClose }) {
     setEpisode(1)
     setLoading(true)
     setTimedOut(false)
+    setDlGroups(null)
+    setDlError(null)
   }
 
   const openDownloads = async () => {
@@ -313,31 +310,22 @@ export default function PlayerModal({ item, type, onClose }) {
                 <p className="mb-loader-hint">Will auto-switch if unavailable · or pick below</p>
               </div>
             )}
-            {!lookingUp && timedOut && embedUrl && (
+            {!lookingUp && autoSwitching && (
+              <div className="mb-blocked-banner mb-switching-banner">
+                <div className="mb-mini-spinner" />
+                Auto-switching to {activeSrc?.label}…
+              </div>
+            )}
+            {!lookingUp && timedOut && !autoSwitching && (
               <div className="mb-blocked-banner">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                {retryIn !== null && srcIdx + 1 < srcListLenRef.current
-                  ? `${activeSrc?.label} unavailable — trying next in ${retryIn}s`
-                  : 'Server unavailable — pick another below'
-                }
-                {retryIn !== null && srcIdx + 1 < srcListLenRef.current && (
-                  <button
-                    className="mb-skip-btn"
-                    onClick={() => {
-                      clearTimeout(autoRetryTimer.current)
-                      setRetryIn(null)
-                      setSrcIdx(prev => {
-                        const next = prev + 1
-                        if (next < srcListLenRef.current) {
-                          setLoading(true); setTimedOut(false); return next
-                        }
-                        return prev
-                      })
-                    }}
-                  >
-                    Skip →
-                  </button>
-                )}
+                All servers tried — pick one below
+                <button
+                  className="mb-skip-btn"
+                  onClick={() => { setSrcIdx(0); setLoading(true); setTimedOut(false) }}
+                >
+                  Retry
+                </button>
               </div>
             )}
 
@@ -481,20 +469,30 @@ export default function PlayerModal({ item, type, onClose }) {
 
         <div className="mb-bottom-bar">
           <div className="mb-server-row">
-            <span className="mb-server-label">Source</span>
-            <div className="mb-server-tabs">
-              {(sourceList || []).map((s, i) => (
-                <button
-                  key={i}
-                  className={`mb-server-tab ${srcIdx === i ? 'mb-tab-active' : ''} ${s.hd ? 'mb-tab-hd' : ''} ${s.named ? 'mb-tab-named' : ''}`}
-                  onClick={() => switchServer(i)}
-                >
-                  {i === 0 && <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>}
-                  {s.label}
-                  {s.hd && <span className={`mb-hd-badge ${s.named ? 'mb-hd-badge-named' : ''}`}>{s.label.includes('4K') ? '4K' : 'HD'}</span>}
-                </button>
-              ))}
+            <div className="mb-server-current" onClick={() => setShowServers(p => !p)}>
+              <span className="mb-server-label">Source</span>
+              <span className="mb-active-server-name">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                {activeSrc?.label ?? 'Server 1'}
+                {activeSrc?.hd && <span className="mb-hd-badge" style={{marginLeft:4}}>{activeSrc?.label?.includes('4K') ? '4K' : 'HD'}</span>}
+              </span>
+              <span className="mb-server-toggle-arrow">{showServers ? '▲' : '▼'}</span>
             </div>
+            {showServers && (
+              <div className="mb-server-tabs">
+                {(sourceList || []).map((s, i) => (
+                  <button
+                    key={i}
+                    className={`mb-server-tab ${srcIdx === i ? 'mb-tab-active' : ''} ${s.hd ? 'mb-tab-hd' : ''} ${s.named ? 'mb-tab-named' : ''}`}
+                    onClick={() => { switchServer(i); setShowServers(false) }}
+                  >
+                    {i === 0 && <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>}
+                    {s.label}
+                    {s.hd && <span className={`mb-hd-badge ${s.named ? 'mb-hd-badge-named' : ''}`}>{s.label.includes('4K') ? '4K' : 'HD'}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mb-action-row">
