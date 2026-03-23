@@ -276,6 +276,13 @@ export default function LiveSports() {
   const ytPlayerRef = useRef(null)
   const ytSearchRef = useRef(null)
 
+  // Live Matches state (xcasper live feed)
+  const [liveMatches, setLiveMatches]         = useState([])
+  const [liveMatchLoading, setLiveMatchLoading] = useState(false)
+  const [liveMatchError, setLiveMatchError]   = useState(null)
+  const [activeMatch2, setActiveMatch2]       = useState(null)
+  const liveMatchPlayerRef                    = useRef(null)
+
   useEffect(() => {
     if (tab !== 'highlights') return
     setLoading(true)
@@ -343,6 +350,30 @@ export default function LiveSports() {
     setTvPlayerLoading(false)
   }
 
+  // Live Matches: fetch from xcasper live-feed
+  useEffect(() => {
+    if (tab !== 'livematches') return
+    setLiveMatchLoading(true)
+    setLiveMatchError(null)
+    fetch('/api/live-feed')
+      .then(r => r.json())
+      .then(data => {
+        const arr = Array.isArray(data) ? data : data.data || []
+        setLiveMatches(arr)
+        setLiveMatchLoading(false)
+      })
+      .catch(() => {
+        setLiveMatchError('Could not load live matches.')
+        setLiveMatchLoading(false)
+      })
+  }, [tab])
+
+  const handleLiveMatchClick = (match) => {
+    if (activeMatch2?.id === match.id) { setActiveMatch2(null); return }
+    setActiveMatch2(match)
+    setTimeout(() => liveMatchPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }
+
   // YouTube: fetch trending or search results
   useEffect(() => {
     if (tab !== 'youtube') return
@@ -404,6 +435,9 @@ export default function LiveSports() {
         </button>
         <button className={`sport-tab yt-tab-btn ${tab === 'youtube' ? 'active' : ''}`} onClick={() => setTab('youtube')}>
           ▶ Ignatius Watch
+        </button>
+        <button className={`sport-tab ${tab === 'livematches' ? 'active' : ''}`} onClick={() => { setTab('livematches'); setActiveMatch2(null) }}>
+          🏟️ Live Matches
         </button>
       </div>
 
@@ -928,6 +962,81 @@ export default function LiveSports() {
 
           <div className="yt-footer-note">
             📺 All videos play inside Ignatius Stream using the official YouTube embed player.
+          </div>
+        </div>
+      )}
+
+      {/* ==================== LIVE MATCHES TAB ==================== */}
+      {tab === 'livematches' && (
+        <div className="live-matches-tab">
+          <p className="lm-subtitle">Streaming live sports from xcasper — click a match to watch.</p>
+
+          {liveMatchLoading && (
+            <div className="lm-loading">
+              <div className="lm-spinner" />
+              <span>Loading live matches…</span>
+            </div>
+          )}
+
+          {liveMatchError && !liveMatchLoading && (
+            <div className="lm-error">{liveMatchError}</div>
+          )}
+
+          {!liveMatchLoading && !liveMatchError && liveMatches.length === 0 && (
+            <div className="lm-empty">
+              <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>🏟️</div>
+              <div>No live matches right now. Check back soon!</div>
+            </div>
+          )}
+
+          {activeMatch2 && (
+            <div className="lm-player-wrap" ref={liveMatchPlayerRef}>
+              <div className="lm-player-header">
+                <span className="lm-live-badge">🔴 LIVE</span>
+                <span className="lm-match-title-big">
+                  {activeMatch2.team1?.name || 'Team 1'} vs {activeMatch2.team2?.name || 'Team 2'}
+                </span>
+                <button className="lm-close-player" onClick={() => setActiveMatch2(null)}>✕</button>
+              </div>
+              <iframe
+                className="lm-iframe"
+                src={`/api/live-stream?url=${encodeURIComponent(activeMatch2.playPath || '')}`}
+                allowFullScreen
+                allow="autoplay; fullscreen"
+                title="Live Match Stream"
+              />
+              <div className="lm-player-note">Stream via Ignitus Live — may require a moment to buffer.</div>
+            </div>
+          )}
+
+          <div className="lm-grid">
+            {liveMatches.map((match, i) => (
+              <div
+                key={match.id || i}
+                className={`lm-card ${activeMatch2?.id === match.id ? 'lm-card-active' : ''}`}
+                onClick={() => handleLiveMatchClick(match)}
+              >
+                <div className="lm-card-teams">
+                  <div className="lm-team">
+                    {match.team1?.avatar && <img src={match.team1.avatar} alt="" className="lm-avatar" />}
+                    <span className="lm-team-name">{match.team1?.name || 'Team 1'}</span>
+                  </div>
+                  <div className="lm-score-box">
+                    {match.team1?.score != null && match.team2?.score != null
+                      ? <span className="lm-score">{match.team1.score} – {match.team2.score}</span>
+                      : <span className="lm-vs">VS</span>
+                    }
+                    <span className="lm-live-tag">🔴 LIVE</span>
+                  </div>
+                  <div className="lm-team lm-team-right">
+                    {match.team2?.avatar && <img src={match.team2.avatar} alt="" className="lm-avatar" />}
+                    <span className="lm-team-name">{match.team2?.name || 'Team 2'}</span>
+                  </div>
+                </div>
+                {match.league && <div className="lm-league">{match.league}</div>}
+                <div className="lm-watch-btn">▶ Watch Live</div>
+              </div>
+            ))}
           </div>
         </div>
       )}

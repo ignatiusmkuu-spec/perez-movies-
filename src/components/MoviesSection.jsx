@@ -67,7 +67,11 @@ export default function MoviesSection({ searchQuery, onPlay }) {
         setHasMore(results.length >= 10)
 
       } else if (g === 'new-releases') {
-        let yts = await fetchFlixerMovies('all', 'date_added')
+        const [ytsResult, ntResult] = await Promise.allSettled([
+          fetchFlixerMovies('all', 'date_added'),
+          fetch(`/api/newtoxic-latest?type=movie&page=${p}`).then(r => r.json()),
+        ])
+        let yts = ytsResult.status === 'fulfilled' ? (ytsResult.value || []) : []
         if (yts.length === 0) {
           try {
             const fallback = await omdbSearch('man', p)
@@ -76,8 +80,20 @@ export default function MoviesSection({ searchQuery, onPlay }) {
             }))
           } catch {}
         }
-        if (p === 1) setMovies(yts)
-        setHasMore(false)
+        const ntItems = (ntResult.status === 'fulfilled' ? (ntResult.value?.items || []) : [])
+          .map(i => ({
+            Title: i.title,
+            Year: '',
+            Genre: i.category,
+            Poster: i.thumbnail || null,
+            _source: 'newtoxic',
+            _newtoxicSlug: i.slug,
+            _newtoxicType: i.type || 'movie',
+          }))
+        const combined = p === 1 ? [...ntItems, ...yts] : yts
+        if (p === 1) setMovies(combined)
+        else setMovies(prev => [...prev, ...yts])
+        setHasMore(yts.length >= 18)
 
       } else if (g === 'nollywood') {
         const results = await omdbSearch('Nigeria film', p)
@@ -226,7 +242,7 @@ export default function MoviesSection({ searchQuery, onPlay }) {
               ? <div className="no-results">No movies found.</div>
               : movies.map((m, i) => (
                   <MediaCard
-                    key={m.imdbID || m._mbId || m._ytsId || m.subjectId || i}
+                    key={m.imdbID || m._mbId || m._ytsId || m.subjectId || m._newtoxicSlug || i}
                     item={m}
                     type={
                       m._source === 'yts' ? 'movie' :

@@ -102,3 +102,23 @@
   transition: background 0.2s;
 }
 .hero-info:hover { background: rgba(255,255,255,0.25); }
+
+.hero-dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.hero-dot-btn {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+.hero-dot-btn.active {
+  background: var(--accent, #e50914);
+  transform: scale(1.3);
+}
+.hero-dot-btn:hover { background: rgba(255,255,255,0.7); }

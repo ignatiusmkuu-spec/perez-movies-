@@ -393,6 +393,192 @@ app.get('/api/xcasper-browse', async (req, res) => {
   }
 })
 
+const NEWTOXIC_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+  'Referer': 'https://movieapi.xcasper.space/',
+}
+
+app.get('/api/live-feed', async (req, res) => {
+  try {
+    const r = await fetch('https://movieapi.xcasper.space/api/live', {
+      headers: NEWTOXIC_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    const matches = (json?.data?.matchList || []).map(m => ({
+      id: m.id,
+      league: m.league,
+      leagueId: m.leagueId,
+      status: m.status,
+      statusLive: m.statusLive,
+      startTime: m.startTime,
+      endTime: m.endTime,
+      timeDesc: m.timeDesc,
+      team1: { name: m.team1?.name, avatar: m.team1?.avatar, score: m.team1?.score },
+      team2: { name: m.team2?.name, avatar: m.team2?.avatar, score: m.team2?.score },
+      playPath: m.playPath,
+      playType: m.playType,
+      replay: m.replay,
+    }))
+    const highlights = json?.data?.highlights || []
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ matches, highlights })
+  } catch (err) {
+    res.status(502).json({ error: err.message, matches: [], highlights: [] })
+  }
+})
+
+app.get('/api/newtoxic-featured', async (req, res) => {
+  try {
+    const r = await fetch('https://movieapi.xcasper.space/api/newtoxic/featured', {
+      headers: NEWTOXIC_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    const items = (json?.data || []).map(i => ({
+      title: i.title,
+      slug: i.slug,
+      url: i.url,
+      type: i.type,
+      category: i.category,
+      thumbnail: i.thumbnail,
+    }))
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ items })
+  } catch (err) {
+    res.status(502).json({ error: err.message, items: [] })
+  }
+})
+
+app.get('/api/newtoxic-latest', async (req, res) => {
+  const { page = 1, type } = req.query
+  try {
+    const r = await fetch(`https://movieapi.xcasper.space/api/newtoxic/latest?page=${page}`, {
+      headers: NEWTOXIC_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    let items = json?.data || []
+    if (type) items = items.filter(i => i.type === type)
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ items, page: Number(page) })
+  } catch (err) {
+    res.status(502).json({ error: err.message, items: [] })
+  }
+})
+
+app.get('/api/newtoxic-detail', async (req, res) => {
+  const { path: itemPath } = req.query
+  if (!itemPath) return res.status(400).json({ error: 'path required' })
+  try {
+    const r = await fetch(`https://movieapi.xcasper.space/api/newtoxic/detail?path=${encodeURIComponent(itemPath)}`, {
+      headers: NEWTOXIC_HEADERS, signal: AbortSignal.timeout(10000),
+    })
+    const json = await r.json()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json(json?.data || {})
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+app.get('/api/newtoxic-files', async (req, res) => {
+  const { path: folderPath } = req.query
+  if (!folderPath) return res.status(400).json({ error: 'path required' })
+  try {
+    const r = await fetch(`https://movieapi.xcasper.space/api/newtoxic/files?path=${encodeURIComponent(folderPath)}`, {
+      headers: NEWTOXIC_HEADERS, signal: AbortSignal.timeout(10000),
+    })
+    const json = await r.json()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ files: json?.data || [] })
+  } catch (err) {
+    res.status(502).json({ error: err.message, files: [] })
+  }
+})
+
+app.get('/api/newtoxic-resolve', async (req, res) => {
+  const { fid } = req.query
+  if (!fid) return res.status(400).json({ error: 'fid required' })
+  try {
+    const r = await fetch(`https://movieapi.xcasper.space/api/newtoxic/resolve?fid=${fid}`, {
+      headers: NEWTOXIC_HEADERS, signal: AbortSignal.timeout(10000),
+    })
+    const json = await r.json()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ url: json?.data?.url || null, filename: json?.data?.filename || null })
+  } catch (err) {
+    res.status(502).json({ error: err.message, url: null })
+  }
+})
+
+app.get('/api/newtoxic-stream', async (req, res) => {
+  const { fid } = req.query
+  if (!fid) return res.status(400).send('fid required')
+  try {
+    const resolveRes = await fetch(`https://movieapi.xcasper.space/api/newtoxic/resolve?fid=${fid}`, {
+      headers: NEWTOXIC_HEADERS, signal: AbortSignal.timeout(10000),
+    })
+    const resolveJson = await resolveRes.json()
+    const cdnUrl = resolveJson?.data?.url
+    if (!cdnUrl) return res.status(404).send('stream not found')
+
+    const rangeHeader = req.headers.range
+    const fetchHeaders = {
+      'User-Agent': 'Mozilla/5.0',
+      'Referer': 'https://newtoxic.com/',
+      'Origin': 'https://newtoxic.com',
+    }
+    if (rangeHeader) fetchHeaders['Range'] = rangeHeader
+
+    const cdnRes = await fetch(cdnUrl, { headers: fetchHeaders })
+    res.status(cdnRes.status)
+    const passHeaders = ['content-type', 'content-length', 'content-range', 'accept-ranges']
+    passHeaders.forEach(h => { const v = cdnRes.headers.get(h); if (v) res.set(h, v) })
+    res.set('Access-Control-Allow-Origin', '*')
+    const reader = cdnRes.body.getReader()
+    const stream = new require('stream').Readable({
+      async read() {
+        const { done, value } = await reader.read()
+        if (done) this.push(null)
+        else this.push(Buffer.from(value))
+      }
+    })
+    stream.pipe(res)
+  } catch (err) {
+    if (!res.headersSent) res.status(502).send(err.message)
+  }
+})
+
+app.get('/api/live-stream', async (req, res) => {
+  const { path: streamPath } = req.query
+  if (!streamPath) return res.status(400).send('path required')
+  try {
+    const streamUrl = decodeURIComponent(streamPath)
+    const rangeHeader = req.headers.range
+    const fetchHeaders = {
+      'User-Agent': 'Mozilla/5.0',
+      'Referer': 'https://movieapi.xcasper.space/',
+      'Origin': 'https://movieapi.xcasper.space',
+    }
+    if (rangeHeader) fetchHeaders['Range'] = rangeHeader
+    const upstream = await fetch(streamUrl, { headers: fetchHeaders })
+    res.status(upstream.status)
+    const pass = ['content-type', 'content-length', 'content-range', 'accept-ranges']
+    pass.forEach(h => { const v = upstream.headers.get(h); if (v) res.set(h, v) })
+    res.set('Access-Control-Allow-Origin', '*')
+    const reader = upstream.body.getReader()
+    const stream = new require('stream').Readable({
+      async read() {
+        const { done, value } = await reader.read()
+        if (done) this.push(null)
+        else this.push(Buffer.from(value))
+      }
+    })
+    stream.pipe(res)
+  } catch (err) {
+    if (!res.headersSent) res.status(502).send(err.message)
+  }
+})
+
 const CASPER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

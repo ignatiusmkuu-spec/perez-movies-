@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { getImdbId } from '../api/moviebox'
 import { fetchDownloads, groupByQuality } from '../api/download'
 import CasperPlayer from './CasperPlayer'
+import NewtoxicPlayer from './NewtoxicPlayer'
 import './PlayerModal.css'
 
 const ALL_SERVERS = [
@@ -168,6 +169,11 @@ export default function PlayerModal({ item, type, onClose }) {
     if (failoverRef.current) {
       clearTimeout(failoverRef.current)
       failoverRef.current = null
+    }
+
+    if (item._newtoxicSlug) {
+      casperLookupDoneRef.current = true
+      return
     }
 
     const directId =
@@ -421,7 +427,14 @@ export default function PlayerModal({ item, type, onClose }) {
               </div>
             )}
 
-            {!isLookingUpAny && srv?.usesSubjectId && casperSubjectId && !nativePlayerFailed ? (
+            {!isLookingUpAny && srv?.usesSubjectId && item._newtoxicSlug && !nativePlayerFailed ? (
+              <NewtoxicPlayer
+                key={`ntx-${item._newtoxicSlug}-${season}-${episode}`}
+                slug={item._newtoxicSlug}
+                type={item._newtoxicType || (showEps ? 'tv' : 'movie')}
+                onError={() => setNativePlayerFailed(true)}
+              />
+            ) : !isLookingUpAny && srv?.usesSubjectId && casperSubjectId && !nativePlayerFailed ? (
               <CasperPlayer
                 key={`casper-${casperSubjectId}-${season}-${episode}`}
                 subjectId={casperSubjectId}

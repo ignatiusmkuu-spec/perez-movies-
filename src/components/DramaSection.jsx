@@ -78,6 +78,28 @@ export default function DramaSection({ searchQuery, onPlay }) {
           const mb = mbResults.status === 'fulfilled' ? mbResults.value.map(r => ({ ...r, _source: 'omdb', Poster: r.Poster || null })) : []
           const tv = tvResults.status === 'fulfilled' ? tvResults.value : []
           setShows(mb.length > 0 ? mb : tv.map(s => ({ ...s, _source: 'tv' })))
+        } else if (genre === 'Popular Series') {
+          const [ntResult, tvResult] = await Promise.allSettled([
+            fetch('/api/newtoxic-latest?type=tv').then(r => r.json()),
+            getPopularShows(),
+          ])
+          const ntItems = (ntResult.status === 'fulfilled' ? (ntResult.value?.items || []) : [])
+            .map(i => ({
+              Title: i.title,
+              Year: '',
+              Genre: i.category,
+              Poster: i.thumbnail || null,
+              _source: 'newtoxic',
+              _newtoxicSlug: i.slug,
+              _newtoxicType: 'tv',
+            }))
+          if (ntItems.length > 0) {
+            const tv = tvResult.status === 'fulfilled' ? (tvResult.value || []) : []
+            setShows([...ntItems, ...tv.map(s => ({ ...s, _source: 'tv' }))])
+          } else {
+            const tv = tvResult.status === 'fulfilled' ? (tvResult.value || []) : []
+            setShows(tv.map(s => ({ ...s, _source: 'tv' })))
+          }
         } else if (XCASPER_BROWSE[genre]) {
           const [browseResult, tvShows] = await Promise.allSettled([
             fetchXcasperBrowse(XCASPER_BROWSE[genre]),
@@ -146,11 +168,12 @@ export default function DramaSection({ searchQuery, onPlay }) {
               ? <div className="no-results">No shows found. Try another category.</div>
               : shows.map((s, i) => (
                   <MediaCard
-                    key={s.imdbID || s._mbId || s.subjectId || s.id || i}
+                    key={s.imdbID || s._mbId || s.subjectId || s._newtoxicSlug || s.id || i}
                     item={s}
                     type={
                       s._source === 'xcasper-browse' ? 'moviebox-tv' :
                       s._source === 'moviebox' ? 'moviebox-tv' :
+                      s._source === 'newtoxic' ? 'movie' :
                       s._source === 'tv' ? 'tv' : 'movie'
                     }
                     onPlay={onPlay}

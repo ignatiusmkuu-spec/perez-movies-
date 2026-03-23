@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { fetchHomeData, getBannerItem, getImdbId } from '../api/moviebox'
 import './HeroBanner.css'
 
@@ -14,10 +14,33 @@ const FALLBACK = {
 }
 
 export default function HeroBanner({ onPlay }) {
-  const [featured, setFeatured] = useState(FALLBACK)
-  const [imdbId, setImdbId] = useState(FALLBACK.imdbID)
+  const [items, setItems] = useState([FALLBACK])
+  const [idx, setIdx] = useState(0)
+  const [imdbIds, setImdbIds] = useState({ 0: FALLBACK.imdbID })
+  const timerRef = useRef(null)
+
+  const featured = items[idx] || FALLBACK
+  const imdbId = imdbIds[idx] || null
 
   useEffect(() => {
+    // Load newtoxic featured first (faster)
+    fetch('/api/newtoxic-featured')
+      .then(r => r.json())
+      .then(data => {
+        const ntItems = (data.items || []).map(i => ({
+          title: i.title,
+          year: '',
+          desc: `${i.category} — Available on IgnatiuStream`,
+          bg: i.thumbnail || FALLBACK_BG,
+          genre: i.category,
+          _newtoxicSlug: i.slug,
+          _newtoxicType: i.type,
+        }))
+        if (ntItems.length > 0) setItems(ntItems)
+      })
+      .catch(() => {})
+
+    // Also load moviebox banner
     fetchHomeData().then(sections => {
       const item = getBannerItem(sections)
       if (item) {
@@ -30,23 +53,43 @@ export default function HeroBanner({ onPlay }) {
         const bg = rawBg ? `/api/imgproxy?src=${encodeURIComponent(rawBg)}` : FALLBACK.bg
         const desc = toStr(src.description) || FALLBACK.desc
         const isTV = (src.subjectType || item.subjectType) === 2
-        setFeatured({ title, year, genre, bg, desc })
+        const mbItem = { title, year, genre, bg, desc }
+        setItems(prev => [...prev, mbItem])
         getImdbId(title, year, isTV).then(id => {
-          if (id) setImdbId(id)
+          if (id) setImdbIds(prev => ({ ...prev, [prev.__len || 0]: id }))
         })
       }
     }).catch(() => {})
   }, [])
 
+  // Auto-rotate every 6 seconds
+  useEffect(() => {
+    if (items.length <= 1) return
+    timerRef.current = setInterval(() => {
+      setIdx(i => (i + 1) % items.length)
+    }, 6000)
+    return () => clearInterval(timerRef.current)
+  }, [items.length])
+
   const handlePlay = () => {
-    onPlay({
-      Title: featured.title,
-      Year: featured.year,
-      imdbID: imdbId,
-      Genre: featured.genre,
-      Poster: featured.bg,
-      _source: 'moviebox',
-    }, 'movie')
+    if (featured._newtoxicSlug) {
+      onPlay({
+        Title: featured.title,
+        _newtoxicSlug: featured._newtoxicSlug,
+        _newtoxicType: featured._newtoxicType || 'movie',
+        Poster: featured.bg,
+        _source: 'newtoxic',
+      }, featured._newtoxicType === 'tv' ? 'tv' : 'movie')
+    } else {
+      onPlay({
+        Title: featured.title,
+        Year: featured.year,
+        imdbID: imdbId,
+        Genre: featured.genre,
+        Poster: featured.bg,
+        _source: 'moviebox',
+      }, 'movie')
+    }
   }
 
   return (
@@ -62,10 +105,10 @@ export default function HeroBanner({ onPlay }) {
         <div className="hero-badge">🔥 Featured</div>
         <h1 className="hero-title">{featured.title}</h1>
         <div className="hero-meta">
-          <span>{featured.year}</span>
+          {featured.year && <span>{featured.year}</span>}
           {featured.genre && (
             <>
-              <span className="hero-dot">·</span>
+              {featured.year && <span className="hero-dot">·</span>}
               <span>{featured.genre}</span>
             </>
           )}
@@ -75,7 +118,7 @@ export default function HeroBanner({ onPlay }) {
           <button className="hero-play" onClick={handlePlay}>
             ▶ Play Now
           </button>
-          {imdbId && (
+          {imdbId && !featured._newtoxicSlug && (
             <a
               className="hero-info"
               href={`https://www.imdb.com/title/${imdbId}/`}
@@ -86,6 +129,17 @@ export default function HeroBanner({ onPlay }) {
             </a>
           )}
         </div>
+        {items.length > 1 && (
+          <div className="hero-dots">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                className={`hero-dot-btn ${i === idx ? 'active' : ''}`}
+                onClick={() => { setIdx(i); clearInterval(timerRef.current) }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
