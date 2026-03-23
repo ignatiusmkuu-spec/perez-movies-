@@ -13,7 +13,7 @@ const JWT_SECRET = process.env.AUTH_SECRET || 'ignite-auth-secret-change-in-prod
 const MPESA_STK_URL = 'https://mpesapi.giftedtech.co.ke/api/payNexusTech.php'
 const MPESA_VERIFY_URL = 'https://mpesapi.giftedtech.co.ke/api/verify-transaction.php'
 
-const NOTIFY_PHONE = '25470535581'
+const NOTIFY_PHONE = '254781346242'
 const CALLMEBOT_API_KEY = process.env.CALLMEBOT_API_KEY || ''
 
 async function sendWhatsApp(message) {
