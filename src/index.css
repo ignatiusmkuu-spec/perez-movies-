@@ -1,31 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  :root {
-    --background: 220 20% 10%;
-    --foreground: 220 10% 98%;
-
-    --primary: 36 100% 50%;
-    --primary-foreground: 220 20% 10%;
-
-    --accent: 190 90% 50%;
-    --accent-foreground: 220 20% 10%;
-
-    --card: 220 20% 15%;
-    --card-foreground: 220 10% 98%;
-
-    --border: 220 20% 25%;
-    
-    --font-sans: 'Outfit', sans-serif;
-    --font-mono: 'Inter', monospace;
-  }
-}
-
 :root {
+  --background: 220 20% 10%;
+  --foreground: 220 10% 98%;
+
+  --primary: 36 100% 50%;
+  --primary-foreground: 220 20% 10%;
+
+  --accent: 190 90% 50%;
+  --accent-foreground: 220 20% 10%;
+
+  --card: 220 20% 15%;
+  --card-foreground: 220 10% 98%;
+
+  --border: 220 20% 25%;
+
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'Inter', monospace;
+
   --bg:       #0a0a0f;
   --bg2:      #141420;
   --bg3:      #1c1c2e;
@@ -38,6 +30,10 @@
   --gold:     #f5c518;
   --header-h: 60px;
   --nav-h:    65px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
