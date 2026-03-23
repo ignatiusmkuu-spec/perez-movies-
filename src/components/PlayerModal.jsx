@@ -195,6 +195,14 @@ export default function PlayerModal({ item, type, onClose }) {
     } else if (item.subjectId) {
       setCasperSubjectId(item.subjectId)
       casperLookupDoneRef.current = true
+    } else if (item._showboxId) {
+      setCasperLookingUp(true)
+      const mbType = (isTV || isAnime) ? 'tv' : 'movie'
+      fetch(`/api/showbox-resolve?id=${item._showboxId}&type=${mbType}`)
+        .then(r => r.json())
+        .then(data => { if (data?.subjectId) setCasperSubjectId(data.subjectId) })
+        .catch(() => {})
+        .finally(() => { casperLookupDoneRef.current = true; setCasperLookingUp(false) })
     } else if (title) {
       const mbType = (isTV || isAnime) ? 'tv' : 'movie'
       setCasperLookingUp(true)
@@ -210,11 +218,22 @@ export default function PlayerModal({ item, type, onClose }) {
         .then(r => r.json())
         .then(data => { const id = data?.mbId; if (!id) throw new Error('no result'); return id })
 
+      const showboxFallback = fetch(`/api/showbox-search?q=${encodeURIComponent(cleanTitle)}&type=${mbType}`)
+        .then(r => r.json())
+        .then(data => {
+          const item = data?.items?.[0]
+          if (!item?.id) throw new Error('no result')
+          return fetch(`/api/showbox-resolve?id=${item.id}&type=${mbType}`)
+        })
+        .then(r => r.json())
+        .then(data => { if (!data?.subjectId) throw new Error('no subjectId'); return data.subjectId })
+
       const searches = [
         mbSearch,
         casperQ(title),
         ...(cleanTitle !== title ? [casperQ(cleanTitle)] : []),
         ...(shortTitle !== title && shortTitle !== cleanTitle ? [casperQ(shortTitle)] : []),
+        showboxFallback,
       ]
 
       Promise.any(searches)

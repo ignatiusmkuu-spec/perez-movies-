@@ -300,6 +300,99 @@ app.get('/api/casper-search', async (req, res) => {
   }
 })
 
+const XCASPER_JSON_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+  'Referer': 'https://movieapi.xcasper.space/',
+}
+
+app.get('/api/showbox-search', async (req, res) => {
+  const { q, type } = req.query
+  if (!q) return res.status(400).json({ error: 'q required' })
+  try {
+    const boxType = type === 'tv' ? 'tv' : 'movie'
+    const r = await fetch(
+      `https://movieapi.xcasper.space/api/showbox/search?keyword=${encodeURIComponent(q)}&type=${boxType}&pagelimit=10`,
+      { headers: XCASPER_JSON_HEADERS, signal: AbortSignal.timeout(8000) }
+    )
+    const json = await r.json()
+    const items = (json?.data || []).map(i => ({
+      id: i.id,
+      title: i.title,
+      year: i.year,
+      poster: i.poster_org || i.poster_min || i.poster || null,
+      rating: i.imdb_rating || null,
+      genre: Array.isArray(i.cats) ? i.cats.map(c => c.name).join(',') : (i.cats || ''),
+      boxType: i.box_type === 2 ? 'tv' : 'movie',
+    }))
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ items })
+  } catch (err) {
+    res.status(502).json({ error: err.message, items: [] })
+  }
+})
+
+app.get('/api/showbox-resolve', async (req, res) => {
+  const { id, type, se, ep } = req.query
+  if (!id) return res.status(400).json({ error: 'id required' })
+  try {
+    const boxType = type === 'tv' ? 'tv' : 'movie'
+    const epSuffix = boxType === 'tv' && se && ep ? `&season=${se}&episode=${ep}` : ''
+    const r = await fetch(
+      `https://movieapi.xcasper.space/api/stream?id=${id}&type=${boxType}${epSuffix}`,
+      { headers: XCASPER_JSON_HEADERS, signal: AbortSignal.timeout(10000) }
+    )
+    const json = await r.json()
+    if (!json?.success || !json?.data?.streams?.length) {
+      return res.json({ hasResource: false, subjectId: null, streams: [] })
+    }
+    const rawStreams = json.data.streams
+    let subjectId = null
+    try {
+      const firstProxyUrl = rawStreams[0]?.proxyUrl || ''
+      const urlObj = new URL(firstProxyUrl)
+      subjectId = urlObj.searchParams.get('subjectId')
+    } catch {}
+    const streams = rawStreams.map(s => {
+      const resMatch = (s.quality || '').match(/(\d+)/)
+      const resolution = resMatch ? resMatch[1] : null
+      return { quality: s.quality, format: s.format, resolution }
+    }).filter(s => s.resolution)
+    const best = streams[0] || null
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ hasResource: !!subjectId, subjectId, streams, best, title: json.data.title })
+  } catch (err) {
+    res.status(502).json({ error: err.message, hasResource: false, subjectId: null, streams: [] })
+  }
+})
+
+app.get('/api/xcasper-browse', async (req, res) => {
+  const { subjectType, genre, countryName, page = 1, perPage = 24 } = req.query
+  try {
+    let url = `https://movieapi.xcasper.space/api/browse?page=${page}&perPage=${perPage}`
+    if (subjectType) url += `&subjectType=${subjectType}`
+    if (genre) url += `&genre=${encodeURIComponent(genre)}`
+    if (countryName) url += `&countryName=${encodeURIComponent(countryName)}`
+    const r = await fetch(url, { headers: XCASPER_JSON_HEADERS, signal: AbortSignal.timeout(10000) })
+    const json = await r.json()
+    const items = (json?.data?.items || []).map(i => ({
+      subjectId: i.subjectId,
+      subjectType: i.subjectType,
+      title: i.title,
+      description: i.description,
+      releaseDate: i.releaseDate,
+      genre: i.genre,
+      cover: i.cover,
+      imdbId: i.imdbId || null,
+    }))
+    const hasMore = json?.data?.pager?.hasMore || false
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ items, hasMore, page: json?.data?.pager?.page })
+  } catch (err) {
+    res.status(502).json({ error: err.message, items: [], hasMore: false })
+  }
+})
+
 const CASPER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

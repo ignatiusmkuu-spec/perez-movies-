@@ -96,7 +96,16 @@ export default function MoviesSection({ searchQuery, onPlay }) {
       } else if (YTS_GENRES.has(g)) {
         const genre_param = g === 'popular' ? 'all' : g
         const sort_param  = g === 'popular' ? 'download_count' : 'rating'
-        let yts = await fetchFlixerMovies(genre_param, sort_param)
+        const xcasperGenre = g === 'sci-fi' ? 'Science Fiction' : g.charAt(0).toUpperCase() + g.slice(1)
+
+        const [ytsResult, xcasperResult] = await Promise.allSettled([
+          fetchFlixerMovies(genre_param, sort_param),
+          g !== 'nollywood'
+            ? fetch(`/api/xcasper-browse?subjectType=1&genre=${encodeURIComponent(xcasperGenre)}&perPage=24`).then(r => r.json())
+            : Promise.resolve({ items: [] }),
+        ])
+
+        let yts = ytsResult.status === 'fulfilled' ? (ytsResult.value || []) : []
         if (yts.length === 0) {
           try {
             const omdbFallback = await omdbSearch(g.replace('-', ' '), p)
@@ -105,7 +114,20 @@ export default function MoviesSection({ searchQuery, onPlay }) {
             }))
           } catch {}
         }
-        if (p === 1) setMovies(yts)
+
+        const xcasperItems = (xcasperResult.status === 'fulfilled' ? (xcasperResult.value?.items || []) : [])
+          .map(i => ({
+            ...i,
+            _source: 'xcasper-browse',
+            Title: i.title,
+            Year: i.releaseDate?.slice(0, 4) || '',
+            Genre: i.genre,
+            Poster: i.cover?.url || null,
+          }))
+          .filter(i => !yts.find(m => m.Title?.toLowerCase() === i.title?.toLowerCase()))
+
+        const combined = p === 1 ? [...yts, ...xcasperItems] : yts
+        if (p === 1) setMovies(combined)
         setHasMore(false)
 
       } else {
@@ -204,9 +226,13 @@ export default function MoviesSection({ searchQuery, onPlay }) {
               ? <div className="no-results">No movies found.</div>
               : movies.map((m, i) => (
                   <MediaCard
-                    key={m.imdbID || m._mbId || m._ytsId || i}
+                    key={m.imdbID || m._mbId || m._ytsId || m.subjectId || i}
                     item={m}
-                    type={m._source === 'yts' ? 'movie' : m._source === 'moviebox' ? 'moviebox' : 'movie'}
+                    type={
+                      m._source === 'yts' ? 'movie' :
+                      m._source === 'xcasper-browse' ? 'moviebox' :
+                      m._source === 'moviebox' ? 'moviebox' : 'movie'
+                    }
                     onPlay={onPlay}
                   />
                 ))
