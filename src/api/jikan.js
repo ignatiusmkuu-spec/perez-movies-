@@ -1,4 +1,4 @@
-const BASE = '/proxy/jikan'
+const BASE = 'https://api.jikan.moe/v4'
 
 async function safeFetch(url) {
   try {

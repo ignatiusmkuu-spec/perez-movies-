@@ -1,5 +1,5 @@
 const MB = '/api/moviebox'
-const OMDB = '/proxy/omdb'
+const OMDB = 'https://www.omdbapi.com'
 
 let _homeCache = null
 let _homeCacheAt = 0
@@ -99,7 +99,7 @@ export async function omdbSearch(keyword, page = 1) {
     const data = JSON.parse(text)
     return (data.Search || []).map(m => ({
       ...m,
-      Poster: m.Poster && m.Poster !== 'N/A' ? proxyImg(m.Poster) : null,
+      Poster: m.Poster && m.Poster !== 'N/A' ? m.Poster : null,
     }))
   } catch {
     return []

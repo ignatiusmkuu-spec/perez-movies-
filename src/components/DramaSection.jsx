@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchHomeData, getSectionSubjects, normalizeMbItem, omdbSearch } from '../api/moviebox'
+import { getPopularShows, getShowsByGenre, searchShows } from '../api/tvmaze'
 import SectionHeader from './SectionHeader'
 import MediaCard from './MediaCard'
 import './MediaGrid.css'
@@ -14,6 +15,17 @@ const GENRES = [
   { label: 'Romance', value: 'Teen Romance' },
   { label: 'Turkish', value: 'Turkish' },
 ]
+
+const TVMAZE_QUERY = {
+  'Popular Series': null,
+  'K-Drama': 'korean drama',
+  'C-Drama': 'chinese drama',
+  'Thai-Drama': 'thai drama',
+  'SA Drama': 'south african drama',
+  'Black Shows': 'black show',
+  'Teen Romance': 'romance',
+  'Turkish': 'turkish drama',
+}
 
 function Skeleton() {
   return (
@@ -39,26 +51,45 @@ export default function DramaSection({ searchQuery, onPlay }) {
     const load = async () => {
       try {
         if (searchQuery) {
-          const results = await omdbSearch(searchQuery, 1)
-          setShows(results.map(r => ({
-            ...r,
-            _source: 'omdb',
-            Poster: r.Poster !== 'N/A' ? r.Poster : null,
-          })))
+          const [mbResults, tvResults] = await Promise.allSettled([
+            omdbSearch(searchQuery, 1),
+            searchShows(searchQuery),
+          ])
+          const mb = mbResults.status === 'fulfilled' ? mbResults.value.map(r => ({ ...r, _source: 'omdb', Poster: r.Poster || null })) : []
+          const tv = tvResults.status === 'fulfilled' ? tvResults.value : []
+          setShows(mb.length > 0 ? mb : tv.map(s => ({ ...s, _source: 'tv' })))
         } else {
-          const sections = await fetchHomeData()
-          let items = getSectionSubjects(sections, genre)
-          if (items.length === 0) {
-            const fallback = sections
-              .filter(s => s.type === 'SUBJECTS_MOVIE' && s.subjects?.length > 0)
-              .flatMap(s => s.subjects || [])
-              .filter(m => m.subjectType === 2)
-            items = fallback
+          const [mbSections, tvShows] = await Promise.allSettled([
+            fetchHomeData(),
+            TVMAZE_QUERY[genre] === null ? getPopularShows() : getShowsByGenre(TVMAZE_QUERY[genre] || genre),
+          ])
+
+          let mbItems = []
+          if (mbSections.status === 'fulfilled') {
+            const sections = mbSections.value || []
+            const raw = getSectionSubjects(sections, genre)
+            if (raw.length === 0) {
+              const all = sections
+                .filter(s => s.type === 'SUBJECTS_MOVIE' && s.subjects?.length > 0)
+                .flatMap(s => s.subjects || [])
+                .filter(m => m.subjectType === 2)
+              mbItems = all
+            } else {
+              mbItems = raw
+            }
           }
-          const unique = items.filter((m, i, arr) =>
+
+          const unique = mbItems.filter((m, i, arr) =>
             arr.findIndex(x => x.subjectId === m.subjectId) === i
           )
-          setShows(unique.map(normalizeMbItem))
+          const normalized = unique.map(normalizeMbItem)
+
+          if (normalized.length > 0) {
+            setShows(normalized)
+          } else {
+            const tv = tvShows.status === 'fulfilled' ? (tvShows.value || []) : []
+            setShows(tv.map(s => ({ ...s, _source: 'tv' })))
+          }
         }
       } catch (e) { console.error('DramaSection:', e) }
       setLoading(false)
@@ -83,9 +114,9 @@ export default function DramaSection({ searchQuery, onPlay }) {
               ? <div className="no-results">No shows found. Try another category.</div>
               : shows.map((s, i) => (
                   <MediaCard
-                    key={s.imdbID || s._mbId || i}
+                    key={s.imdbID || s._mbId || s.id || i}
                     item={s}
-                    type={s._source === 'moviebox' ? 'moviebox-tv' : 'movie'}
+                    type={s._source === 'moviebox' ? 'moviebox-tv' : s._source === 'tv' ? 'tv' : 'movie'}
                     onPlay={onPlay}
                   />
                 ))

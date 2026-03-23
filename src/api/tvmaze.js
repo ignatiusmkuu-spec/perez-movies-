@@ -1,4 +1,4 @@
-const BASE = '/proxy/tvmaze'
+const BASE = 'https://api.tvmaze.com'
 
 async function safeFetch(url) {
   try {
