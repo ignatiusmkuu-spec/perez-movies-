@@ -476,21 +476,20 @@ export default function PlayerModal({ item, type, onClose }) {
                 <div className="mb-fallback-icon">
                   <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
-                <p className="mb-fallback-title-text">Stream not found for "<strong>{title}</strong>"</p>
-                <p className="mb-fallback-sub">Could not match this title to a streaming source automatically.</p>
+                <p className="mb-fallback-title-text">Could not auto-match "<strong>{title}</strong>"</p>
+                <p className="mb-fallback-sub">Enter the IMDB ID to play directly, or browse below.</p>
 
                 <div className="mb-manual-imdb">
-                  <p className="mb-manual-label">Know the IMDB ID? Enter it to play directly:</p>
                   <div className="mb-manual-row">
                     <input
                       className="mb-manual-input"
-                      placeholder="e.g. tt1234567"
+                      placeholder="IMDB ID — e.g. tt10857164"
                       value={manualInput}
                       onChange={e => setManualInput(e.target.value.trim())}
                       onKeyDown={e => {
                         if (e.key === 'Enter') {
                           const id = manualInput.match(/tt\d{7,8}/)?.[0] || (manualInput.startsWith('tt') ? manualInput : null)
-                          if (id) { setImdbId(id); imdbRef.current = id; setIframeLoading(true) }
+                          if (id) { setImdbId(id); imdbRef.current = id; setServerIdx(visibleServers.findIndex(s => s.label === 'VidSrc.to') || 1); setIframeLoading(true) }
                         }
                       }}
                     />
@@ -498,19 +497,18 @@ export default function PlayerModal({ item, type, onClose }) {
                       className="mb-manual-btn"
                       onClick={() => {
                         const id = manualInput.match(/tt\d{7,8}/)?.[0] || (manualInput.startsWith('tt') ? manualInput : null)
-                        if (id) { setImdbId(id); imdbRef.current = id; setIframeLoading(true) }
+                        if (id) { setImdbId(id); imdbRef.current = id; setServerIdx(visibleServers.findIndex(s => s.label === 'VidSrc.to') || 1); setIframeLoading(true) }
                       }}
-                    >Play</button>
+                    >▶ Play</button>
                   </div>
                   <p className="mb-manual-hint">
-                    Find the IMDB ID at{' '}
+                    Find it at{' '}
                     <a href={`https://www.imdb.com/find/?q=${encodeURIComponent(title)}`} target="_blank" rel="noreferrer" className="mb-hint-link">imdb.com</a>
-                    {' '}— it looks like <em>tt0111161</em>
                   </p>
                 </div>
 
                 <div className="mb-fallback-search">
-                  <p className="mb-manual-label">Search this title online:</p>
+                  <p className="mb-manual-label">Quick links:</p>
                   <div className="mb-link-grid">
                     <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' full movie')}`} target="_blank" rel="noreferrer" className="mb-ext-btn">YouTube</a>
                     <a href={`https://www.google.com/search?q=${encodeURIComponent(title + ' watch online free')}`} target="_blank" rel="noreferrer" className="mb-ext-btn">Google</a>

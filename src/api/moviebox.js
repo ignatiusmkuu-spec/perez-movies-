@@ -60,37 +60,14 @@ async function _omdbFetch(params) {
 }
 
 export async function getImdbId(title, year, isTV = false) {
-  const movieType = isTV ? 'series' : 'movie'
+  const type = isTV ? 'tv' : 'movie'
   const y = year ? String(year) : ''
-  const cleanTitle = title.split(':')[0].split('(')[0].trim()
-
-  const tryExact = async (t) => {
-    const params = { t, type: movieType, ...(y && { y }) }
-    const d = await _omdbFetch(params)
-    if (d.Response === 'True' && d.imdbID) return d.imdbID
-    return null
-  }
-
-  const trySearch = async (t) => {
-    const params = { s: t, type: movieType }
-    const d = await _omdbFetch(params)
-    if (d.Search?.[0]?.imdbID) return d.Search[0].imdbID
-    return null
-  }
-
-  const id1 = await tryExact(title)
-  if (id1) return id1
-
-  const id2 = await trySearch(title)
-  if (id2) return id2
-
-  if (cleanTitle !== title) {
-    const id3 = await tryExact(cleanTitle)
-    if (id3) return id3
-    const id4 = await trySearch(cleanTitle)
-    if (id4) return id4
-  }
-
+  try {
+    const qs = new URLSearchParams({ t: title, type, ...(y && { y }) }).toString()
+    const r = await fetch(`/api/imdb-lookup?${qs}`)
+    const d = await r.json()
+    if (d.imdbID) return d.imdbID
+  } catch { /* fall through */ }
   return null
 }
 

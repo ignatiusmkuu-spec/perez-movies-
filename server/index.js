@@ -252,6 +252,45 @@ app.get('/api/moviebox-search', async (req, res) => {
   }
 })
 
+app.get('/api/imdb-lookup', async (req, res) => {
+  const { t, y, type } = req.query
+  if (!t) return res.status(400).json({ error: 't required' })
+  const omdbBase = 'https://www.omdbapi.com'
+  const key = 'trilogy'
+  const doFetch = async (params) => {
+    try {
+      const qs = new URLSearchParams({ apikey: key, ...params }).toString()
+      const r = await fetch(`${omdbBase}/?${qs}`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+      return await r.json()
+    } catch { return {} }
+  }
+  const tryExact = async (title, mediaType) => {
+    const p = { t: title, type: mediaType }
+    if (y) p.y = y
+    const d = await doFetch(p)
+    return d.Response === 'True' ? d.imdbID : null
+  }
+  const trySearch = async (title, mediaType) => {
+    const d = await doFetch({ s: title, type: mediaType })
+    return d.Search?.[0]?.imdbID || null
+  }
+  const mType = type === 'tv' ? 'series' : 'movie'
+  const cleanTitle = t.split(':')[0].split('(')[0].trim()
+  const attempts = [
+    () => tryExact(t, mType),
+    () => trySearch(t, mType),
+    () => tryExact(cleanTitle, mType),
+    () => trySearch(cleanTitle, mType),
+    () => tryExact(t, mType === 'series' ? 'movie' : 'series'),
+    () => trySearch(t, mType === 'series' ? 'movie' : 'series'),
+  ]
+  for (const attempt of attempts) {
+    const id = await attempt()
+    if (id) return res.json({ imdbID: id })
+  }
+  res.json({ imdbID: null })
+})
+
 app.get('/api/casper-search', async (req, res) => {
   const { q, type } = req.query
   if (!q) return res.status(400).json({ error: 'q required' })
