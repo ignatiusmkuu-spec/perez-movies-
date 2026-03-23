@@ -275,15 +275,37 @@ app.get('/api/imdb-lookup', async (req, res) => {
     return d.Search?.[0]?.imdbID || null
   }
   const mType = type === 'tv' ? 'series' : 'movie'
-  const cleanTitle = t.split(':')[0].split('(')[0].trim()
-  const attempts = [
-    () => tryExact(t, mType),
-    () => trySearch(t, mType),
-    () => tryExact(cleanTitle, mType),
-    () => trySearch(cleanTitle, mType),
-    () => tryExact(t, mType === 'series' ? 'movie' : 'series'),
-    () => trySearch(t, mType === 'series' ? 'movie' : 'series'),
-  ]
+  const altType = mType === 'series' ? 'movie' : 'series'
+
+  // Build title variants in priority order
+  const variants = new Set()
+  variants.add(t)
+  // part before first colon: "Marvel One-Shot: ..." → "Marvel One-Shot"
+  const beforeColon = t.split(':')[0].trim()
+  if (beforeColon !== t) variants.add(beforeColon)
+  // part after first colon: "Marvel One-Shot: A Funny Thing..." → "A Funny Thing..."
+  const afterColon = t.includes(':') ? t.split(':').slice(1).join(':').trim() : null
+  if (afterColon) variants.add(afterColon)
+  // strip parenthetical: "Title (year)" → "Title"
+  const noParens = t.split('(')[0].trim()
+  if (noParens !== t) variants.add(noParens)
+  // first 4 words (handles very long titles)
+  const words = t.split(/\s+/)
+  if (words.length > 4) variants.add(words.slice(0, 4).join(' '))
+  // first 3 words
+  if (words.length > 3) variants.add(words.slice(0, 3).join(' '))
+
+  const attempts = []
+  for (const v of variants) {
+    attempts.push(() => tryExact(v, mType))
+    attempts.push(() => trySearch(v, mType))
+  }
+  // also try flipped type for each variant
+  for (const v of variants) {
+    attempts.push(() => tryExact(v, altType))
+    attempts.push(() => trySearch(v, altType))
+  }
+
   for (const attempt of attempts) {
     const id = await attempt()
     if (id) return res.json({ imdbID: id })
