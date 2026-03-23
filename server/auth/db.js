@@ -72,6 +72,19 @@ export function setSubscription(userId, plan) {
   })
 }
 
+export function setSubscriptionCustomDays(userId, days) {
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString()
+  return updateUser(userId, {
+    subscription: { plan: 'custom', startedAt: now.toISOString(), expiresAt, days }
+  })
+}
+
+export function getAllUsers() {
+  const db = read()
+  return db.users
+}
+
 export function isSubscriptionActive(user) {
   if (!user?.subscription?.expiresAt) return false
   return new Date(user.subscription.expiresAt) > new Date()

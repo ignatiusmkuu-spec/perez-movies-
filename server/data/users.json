@@ -39,16 +39,6 @@
       "resetToken": null,
       "resetTokenExpiry": null,
       "createdAt": "2026-03-23T14:04:05.883Z"
-    },
-    {
-      "id": "40c0d2a4-9395-488d-acf7-e0036fc192eb",
-      "name": "Test Notify",
-      "email": "testnotify999@test.com",
-      "passwordHash": "$2b$10$INWWsysnMbaBZSFso06mBOPM5M8szyQ4sduiE8S60nEhbL59/x8Tm",
-      "subscription": null,
-      "resetToken": null,
-      "resetTokenExpiry": null,
-      "createdAt": "2026-03-23T14:19:07.449Z"
     }
   ]
 }

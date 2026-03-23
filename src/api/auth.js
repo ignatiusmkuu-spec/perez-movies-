@@ -41,4 +41,12 @@ export const authApi = {
 
   verifyPayment: (checkoutRequestId, plan) =>
     req('/pay/verify', { method: 'POST', body: JSON.stringify({ checkoutRequestId, plan }) }),
+
+  adminListUsers: () => req('/admin/users'),
+
+  adminCreateUser: (name, email, password, days) =>
+    req('/admin/create-user', { method: 'POST', body: JSON.stringify({ name, email, password, days }) }),
+
+  adminSetDays: (userId, days) =>
+    req('/admin/set-days', { method: 'POST', body: JSON.stringify({ userId, days }) }),
 }

@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken'
 import fetch from 'node-fetch'
 import {
   findUserByEmail, findUserById, createUser, updateUser,
-  setSubscription, isSubscriptionActive, getDaysRemaining,
+  setSubscription, setSubscriptionCustomDays, getAllUsers,
+  isSubscriptionActive, getDaysRemaining,
   setResetToken, findUserByResetToken
 } from './db.js'
 
@@ -270,6 +271,74 @@ router.post('/pay/verify', authMiddleware, async (req, res) => {
   } catch {
     res.status(502).json({ success: false, error: 'Could not verify payment.' })
   }
+})
+
+/* ── Developer-only middleware ── */
+function devMiddleware(req, res, next) {
+  const header = req.headers.authorization
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ success: false, error: 'Unauthorized' })
+  try {
+    const payload = jwt.verify(header.slice(7), JWT_SECRET)
+    if (payload.role !== 'developer') return res.status(403).json({ success: false, error: 'Developer access only.' })
+    next()
+  } catch {
+    return res.status(401).json({ success: false, error: 'Invalid token' })
+  }
+}
+
+/* ── Admin: list all users ── */
+router.get('/admin/users', devMiddleware, (req, res) => {
+  const users = getAllUsers().map(u => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    createdAt: u.createdAt,
+    subscription: u.subscription,
+    active: isSubscriptionActive(u),
+    daysRemaining: getDaysRemaining(u),
+  }))
+  res.json({ success: true, users })
+})
+
+/* ── Admin: create user with custom days ── */
+router.post('/admin/create-user', devMiddleware, async (req, res) => {
+  const { name, email, password, days } = req.body || {}
+  if (!name?.trim() || !email?.trim() || !password || !days) {
+    return res.status(400).json({ success: false, error: 'Name, email, password and days are required.' })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ success: false, error: 'Invalid email address.' })
+  }
+  if (password.length < 4) {
+    return res.status(400).json({ success: false, error: 'Password must be at least 4 characters.' })
+  }
+  const numDays = parseInt(days)
+  if (!numDays || numDays < 1) {
+    return res.status(400).json({ success: false, error: 'Days must be a positive number.' })
+  }
+  if (findUserByEmail(email)) {
+    return res.status(409).json({ success: false, error: 'An account with this email already exists.' })
+  }
+  const passwordHash = await bcrypt.hash(password, 10)
+  let user = createUser({ name: name.trim(), email, passwordHash })
+  user = setSubscriptionCustomDays(user.id, numDays)
+  const daysLeft = getDaysRemaining(user)
+  res.json({
+    success: true,
+    user: { id: user.id, name: user.name, email: user.email, subscription: user.subscription, daysRemaining: daysLeft },
+  })
+})
+
+/* ── Admin: update subscription days for existing user ── */
+router.post('/admin/set-days', devMiddleware, (req, res) => {
+  const { userId, days } = req.body || {}
+  if (!userId || !days) return res.status(400).json({ success: false, error: 'userId and days are required.' })
+  const numDays = parseInt(days)
+  if (!numDays || numDays < 1) return res.status(400).json({ success: false, error: 'Days must be a positive number.' })
+  const user = findUserById(userId)
+  if (!user) return res.status(404).json({ success: false, error: 'User not found.' })
+  const updated = setSubscriptionCustomDays(userId, numDays)
+  res.json({ success: true, user: { id: updated.id, name: updated.name, daysRemaining: getDaysRemaining(updated) } })
 })
 
 export default router
