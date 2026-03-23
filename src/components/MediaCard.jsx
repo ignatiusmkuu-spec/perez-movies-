@@ -1,7 +1,7 @@
 import './MediaCard.css'
 
 export default function MediaCard({ item, type, onPlay }) {
-  let poster, title, rating, year, genre, imdbId, quality
+  let poster, title, rating, year, genre, quality
 
   if (type === 'flixer') {
     poster = item.Poster || null
@@ -10,28 +10,24 @@ export default function MediaCard({ item, type, onPlay }) {
     year = item.Year
     genre = null
     quality = item.quality || 'HD'
-    imdbId = item.imdbID || null
   } else if (type === 'movie') {
     poster = item.Poster !== 'N/A' ? item.Poster : null
     title = item.Title
     rating = item.imdbRating && item.imdbRating !== 'N/A' ? item.imdbRating : null
     year = item.Year
     genre = item.Genre?.split(',')?.[0]
-    imdbId = item.imdbID
   } else if (type === 'moviebox' || type === 'moviebox-tv') {
     poster = item.Poster || item.cover?.url || null
     title = item.Title || item.title
     rating = item.imdbRating || item.imdbRatingValue || null
     year = item.Year || item.releaseDate?.slice(0, 4)
     genre = (item.Genre || item.genre)?.split(',')?.[0]
-    imdbId = item.imdbID || null
   } else if (type === 'tv') {
     poster = item.image?.medium || item.image?.original
     title = item.name
     rating = item.rating?.average
     year = item.premiered?.slice(0, 4)
     genre = item.genres?.[0]
-    imdbId = item.externals?.imdb
   } else if (type === 'anime') {
     poster = item.images?.jpg?.image_url
     title = item.title_english || item.title
@@ -41,7 +37,7 @@ export default function MediaCard({ item, type, onPlay }) {
   }
 
   return (
-    <div className="media-card">
+    <div className="media-card" onClick={() => onPlay(item, type)}>
       <div className="card-poster">
         {poster ? (
           <img
@@ -64,18 +60,7 @@ export default function MediaCard({ item, type, onPlay }) {
           <div className="card-quality">{quality}</div>
         )}
         <div className="card-overlay">
-          <button className="overlay-play" onClick={() => onPlay(item, type)}>▶ Play</button>
-          {imdbId && (
-            <a
-              className="overlay-dl"
-              href={`https://www.imdb.com/title/${imdbId}/`}
-              target="_blank"
-              rel="noreferrer"
-              onClick={e => e.stopPropagation()}
-            >
-              ℹ IMDB
-            </a>
-          )}
+          <div className="overlay-play">▶</div>
         </div>
       </div>
       <div className="card-info">

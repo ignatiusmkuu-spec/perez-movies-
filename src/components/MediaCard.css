@@ -71,44 +71,31 @@
 .card-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.6);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   opacity: 0;
   transition: opacity 0.2s;
 }
 .media-card:hover .card-overlay { opacity: 1; }
 
 .overlay-play {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   background: var(--accent);
-  border: none;
   border-radius: 50%;
   color: #fff;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s;
+  box-shadow: 0 4px 20px rgba(229,9,20,0.5);
+  transition: transform 0.15s;
+  pointer-events: none;
+  padding-left: 3px;
 }
-.overlay-play:hover { transform: scale(1.15); }
-
-.overlay-dl {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: #fff;
-  border-radius: 20px;
-  padding: 4px 14px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background 0.2s;
-}
-.overlay-dl:hover { background: #1db954; border-color: #1db954; }
+.media-card:hover .overlay-play { transform: scale(1.12); }
 
 .card-info {
   padding: 10px;
