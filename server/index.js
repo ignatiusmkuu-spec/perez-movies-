@@ -5,10 +5,14 @@ import https from 'https'
 import ytsr from 'ytsr'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import { fileURLToPath } from 'url'
+import path from 'path'
 import streamingRoutes from './streaming/routes.js'
 import proxyRoutes from './streaming/proxy.js'
 import { startHealthChecks } from './streaming/servers.js'
 import authRoutes from './auth/routes.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -23,12 +27,19 @@ app.use(helmet({
 }))
 
 /* ── CORS — allow configured origins ── */
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean)
+const ALWAYS_ALLOWED = ['https://ez-movies.vercel.app']
+const EXTRA_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+const ALLOWED_ORIGINS = [...ALWAYS_ALLOWED, ...EXTRA_ORIGINS]
 app.use(cors({
-  origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : true,
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true)
+    if (process.env.NODE_ENV !== 'production') return cb(null, true)
+    cb(null, false)
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Range'],
   exposedHeaders: ['Content-Range', 'Accept-Ranges'],
+  credentials: true,
 }))
 
 app.use(express.json({ limit: '2mb' }))
@@ -1174,6 +1185,13 @@ app.get('/api/youtube/channel', async (req, res) => {
     res.status(502).json({ videos: [], error: e.message })
   }
 })
+
+/* ── Serve built Vite frontend in production ── */
+if (process.env.NODE_ENV === 'production') {
+  const distDir = path.join(__dirname, '..', 'dist')
+  app.use(express.static(distDir, { maxAge: '1d', etag: true }))
+  app.get('*', (_req, res) => res.sendFile(path.join(distDir, 'index.html')))
+}
 
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {

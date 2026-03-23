@@ -1,4 +1,5 @@
-const BASE = '/api/auth'
+const BACKEND = import.meta.env.VITE_API_BASE_URL || ''
+const BASE = `${BACKEND}/api/auth`
 
 async function req(path, options = {}) {
   const token = localStorage.getItem('ignite_token')
