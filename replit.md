@@ -59,9 +59,11 @@ All component CSS variables are defined in the `:root` block in `src/index.css`:
 - `--nav-h` — bottom nav height (`65px`)
 
 ## Data Flow: Movies Tab
-1. **"All" genre**: `fetchHomeData()` → MovieBox (33 sections, 15 movie sections, 272+ movies)
-   - Parallel: `fetchFlixerMovies()` → YTS.mx API (works on Vercel, blocked in Replit dev sandbox)
-   - Fallback if both fail: OMDB search for 'marvel' + 'the dark' + 'avatar'
+1. **"All" genre**: Parallel fetch of MovieBox + YTS + OMDB seeds
+   - OMDB seeds (marvel, batman, fast furious) always included as primary results (reliable in all environments)
+   - MovieBox `fetchHomeData()` filtered to `subjectType === 1` (actual movies only, not TV shows)
+   - YTS `fetchFlixerMovies()` appended if accessible (works on Vercel, DNS-blocked in Replit dev sandbox)
+   - If total < 10, additional OMDB seeds fetched
 2. **Genre tabs (action/horror/romance/sci-fi/thriller/animation/crime)**: YTS.mx genre filter
    - OMDB fallback if YTS fails (dev environment)
 3. **New Releases**: YTS sorted by `date_added`; OMDB 'man' search fallback in dev

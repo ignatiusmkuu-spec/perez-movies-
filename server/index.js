@@ -316,7 +316,8 @@ app.get('/api/flixer/movies', async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*')
     res.json({ movies })
   } catch (err) {
-    res.status(502).json({ movies: [], error: err.message })
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ movies: [], error: err.message })
   }
 })
 
