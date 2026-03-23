@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import Logo from './Logo'
 import './LiveSports.css'
 
 // Featured inline streams — play directly inside the site
@@ -792,10 +793,7 @@ export default function LiveSports() {
           <div className="yt-header">
             <div className="yt-header-left">
               <div className="yt-logo-wrap">
-                <div className="ign-watch-logo">
-                  <span className="ign-watch-icon">▶</span>
-                  <span className="ign-watch-text">IGNATIUS</span>
-                </div>
+                <Logo className="yt-inline-logo" />
               </div>
               <span className="yt-header-sub">Watch inside Ignatius Stream — no redirects</span>
             </div>

@@ -5,44 +5,14 @@ import './PlayerModal.css'
 
 const ALL_SERVERS = [
   {
-    label: '123Movies',
-    movie: (id) => `https://123movienow.cc/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://123movienow.cc/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    label: 'Cineby',
-    movie: (id) => `https://embed.su/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    label: 'Flixer',
-    movie: (id) => `https://flixer.su/embed/${id}`,
-    tv:    (id, s, e) => `https://flixer.su/embed/${id}?s=${s}&e=${e}`,
-  },
-  {
-    label: 'VidSrc.rip',
-    movie: (id) => `https://vidsrc.rip/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://vidsrc.rip/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    label: 'PStream',
-    movie: (id) => `https://pstream.mov/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://pstream.mov/embed/tv/${id}/${s}/${e}`,
-  },
-  {
     label: 'VidSrc.to',
     movie: (id) => `https://vidsrc.to/embed/movie/${id}`,
     tv:    (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
   },
   {
-    label: 'MoviesAPI',
-    movie: (id) => `https://moviesapi.to/movie/${id}`,
-    tv:    (id, s, e) => `https://moviesapi.to/tv/${id}-${s}-${e}`,
-  },
-  {
-    label: '2Embed',
-    movie: (id) => `https://www.2embed.cc/embed/${id}`,
-    tv:    (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
+    label: 'AutoEmbed',
+    movie: (id) => `https://autoembed.cc/movie/imdb/${id}`,
+    tv:    (id, s, e) => `https://autoembed.cc/tv/imdb/${id}-${s}-${e}`,
   },
   {
     label: 'VidSrc',
@@ -50,19 +20,9 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}`,
   },
   {
-    label: 'VidSrc.pm',
-    movie: (id) => `https://vidsrc.pm/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    label: 'EmbedSU',
-    movie: (id) => `https://embed.su/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    label: 'VidSrc.me',
-    movie: (id) => `https://vidsrc.me/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://vidsrc.me/embed/tv/${id}/${s}/${e}`,
+    label: '2Embed',
+    movie: (id) => `https://www.2embed.cc/embed/${id}`,
+    tv:    (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
   },
   {
     label: 'MultiEmbed',
@@ -70,9 +30,34 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`,
   },
   {
-    label: 'AutoEmbed',
-    movie: (id) => `https://autoembed.cc/movie/imdb/${id}`,
-    tv:    (id, s, e) => `https://autoembed.cc/tv/imdb/${id}-${s}-${e}`,
+    label: 'VidSrc.me',
+    movie: (id) => `https://vidsrc.me/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://vidsrc.me/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'EmbedSU',
+    movie: (id) => `https://embed.su/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'VidSrc.pm',
+    movie: (id) => `https://vidsrc.pm/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'VidSrc.rip',
+    movie: (id) => `https://vidsrc.rip/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://vidsrc.rip/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'Flixer',
+    movie: (id) => `https://flixer.su/embed/${id}`,
+    tv:    (id, s, e) => `https://flixer.su/embed/${id}?s=${s}&e=${e}`,
+  },
+  {
+    label: '2Embed v3',
+    movie: (id) => `https://www.2embed.skin/embed/${id}`,
+    tv:    (id, s, e) => `https://www.2embed.skin/embedtv/${id}&s=${s}&e=${e}`,
   },
   {
     label: 'Smashy',
@@ -85,19 +70,29 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}`,
   },
   {
-    label: 'FilmPrime',
-    movie: (id) => `https://filmprime.link/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://filmprime.link/embed/tv/${id}/${s}/${e}`,
-  },
-  {
     label: 'SuperEmbed',
     movie: (id) => `https://multiembed.mov/directstream.php?video_id=${id}`,
     tv:    (id, s, e) => `https://multiembed.mov/directstream.php?video_id=${id}&s=${s}&e=${e}`,
   },
   {
-    label: '2Embed v3',
-    movie: (id) => `https://www.2embed.skin/embed/${id}`,
-    tv:    (id, s, e) => `https://www.2embed.skin/embedtv/${id}&s=${s}&e=${e}`,
+    label: 'PStream',
+    movie: (id) => `https://pstream.mov/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://pstream.mov/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: '123Movies',
+    movie: (id) => `https://123movienow.cc/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://123movienow.cc/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'MoviesAPI',
+    movie: (id) => `https://moviesapi.to/movie/${id}`,
+    tv:    (id, s, e) => `https://moviesapi.to/tv/${id}-${s}-${e}`,
+  },
+  {
+    label: 'FilmPrime',
+    movie: (id) => `https://filmprime.link/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://filmprime.link/embed/tv/${id}/${s}/${e}`,
   },
   {
     label: 'NontonGo',
@@ -138,7 +133,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const [iframeLoading, setIframeLoading] = useState(true)
   const [imdbId, setImdbId]               = useState(null)
   const [lookingUp, setLookingUp]         = useState(false)
-  const [serverIdx, setServerIdx]         = useState(19)
+  const [serverIdx, setServerIdx]         = useState(0)
   const [showServers, setShowServers]     = useState(false)
   const [failoverMsg, setFailoverMsg]     = useState(null)
   const [manualSwitch, setManualSwitch]   = useState(false)
@@ -175,7 +170,7 @@ export default function PlayerModal({ item, type, onClose }) {
     imdbRef.current = null
     setSeason(1)
     setEpisode(1)
-    setServerIdx(19)
+    setServerIdx(0)
     setShowServers(false)
     setShowDlPanel(false)
     setDlGroups(null)
@@ -239,11 +234,11 @@ export default function PlayerModal({ item, type, onClose }) {
 
     if (!embedUrl || !iframeLoading || lookingUp || manualSwitch) return
 
-    const failoverIdx = visibleServers.findIndex(s => s.label === '2Embed v3')
+    const failoverIdx = visibleServers.findIndex(s => s.label === 'AutoEmbed')
     if (failoverIdx === -1 || failoverIdx === safeIdx) return
 
     failoverRef.current = setTimeout(() => {
-      setFailoverMsg('Stream timed out — switching to 2Embed v3…')
+      setFailoverMsg('Stream timed out — switching to AutoEmbed…')
       setServerIdx(failoverIdx)
       setIframeLoading(true)
       failoverRef.current = null
@@ -354,7 +349,7 @@ export default function PlayerModal({ item, type, onClose }) {
                   {failoverMsg || `Loading ${srv?.label}…`}
                 </p>
                 {!failoverMsg && (
-                  <p className="mb-loader-sub">Auto-switching to 2Embed v3 if stream is slow…</p>
+                  <p className="mb-loader-sub">Auto-switching to AutoEmbed if stream is slow…</p>
                 )}
               </div>
             )}
@@ -369,9 +364,9 @@ export default function PlayerModal({ item, type, onClose }) {
                 referrerPolicy="no-referrer-when-downgrade"
                 onLoad={() => { setIframeLoading(false); setFailoverMsg(null) }}
                 onError={() => {
-                  const failIdx = visibleServers.findIndex(s => s.label === '2Embed v3')
+                  const failIdx = visibleServers.findIndex(s => s.label === 'AutoEmbed')
                   if (failIdx !== -1 && failIdx !== safeIdx) {
-                    setFailoverMsg('Stream error — switching to 2Embed v3…')
+                    setFailoverMsg('Stream error — switching to AutoEmbed…')
                     setServerIdx(failIdx)
                     setIframeLoading(true)
                   }
