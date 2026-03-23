@@ -13,6 +13,24 @@ const JWT_SECRET = process.env.AUTH_SECRET || 'ignite-auth-secret-change-in-prod
 const MPESA_STK_URL = 'https://mpesapi.giftedtech.co.ke/api/payNexusTech.php'
 const MPESA_VERIFY_URL = 'https://mpesapi.giftedtech.co.ke/api/verify-transaction.php'
 
+const NOTIFY_PHONE = '25470535581'
+const CALLMEBOT_API_KEY = process.env.CALLMEBOT_API_KEY || ''
+
+async function sendWhatsApp(message) {
+  if (!CALLMEBOT_API_KEY) {
+    console.log('[WhatsApp] CALLMEBOT_API_KEY not set — notification skipped:', message)
+    return
+  }
+  try {
+    const encoded = encodeURIComponent(message)
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${NOTIFY_PHONE}&text=${encoded}&apikey=${CALLMEBOT_API_KEY}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    console.log('[WhatsApp] Notification sent, status:', res.status)
+  } catch (err) {
+    console.error('[WhatsApp] Failed to send notification:', err.message)
+  }
+}
+
 const DEV_USERNAME = 'ignatiusmkuu'
 const DEV_PASSWORD = 'Perez@254'
 const DEV_USER = {
@@ -68,6 +86,11 @@ router.post('/register', async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10)
   const user = createUser({ name: name.trim(), email, passwordHash })
   const token = signToken(user)
+
+  sendWhatsApp(
+    `🆕 *New Ignite User Registered*\n👤 Name: ${user.name}\n📧 Email: ${user.email}\n🕒 ${new Date().toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}`
+  )
+
   res.json({
     success: true,
     token,
@@ -222,10 +245,17 @@ router.post('/pay/verify', authMiddleware, async (req, res) => {
     if (data.success && data.status === 'completed') {
       const user = setSubscription(req.userId, plan)
       const daysLeft = getDaysRemaining(user)
+      const receipt = data.data?.MpesaReceiptNumber || 'N/A'
+      const planInfo = PLANS[plan] || { label: plan, amount: '?' }
+
+      sendWhatsApp(
+        `💰 *Payment Confirmed – Ignite Streaming*\n👤 Name: ${user.name}\n📧 Email: ${user.email}\n📦 Plan: ${planInfo.label}\n💵 Amount: KES ${planInfo.amount}\n🧾 M-Pesa Receipt: ${receipt}\n📅 Days: ${daysLeft} days\n🕒 ${new Date().toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}`
+      )
+
       return res.json({
         success: true,
         status: 'completed',
-        receipt: data.data?.MpesaReceiptNumber,
+        receipt,
         daysRemaining: daysLeft,
         subscription: user.subscription,
       })
