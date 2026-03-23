@@ -381,14 +381,24 @@ export default function LiveSports() {
       setYtLoading(true); setYtError(null)
       fetch(`/api/youtube/search?q=${encodeURIComponent(ytSearchQuery)}`)
         .then(r => r.json())
-        .then(d => { setYtVideos(d.videos || []); setYtLoading(false) })
+        .then(d => {
+          const videos = d.videos || []
+          setYtVideos(videos)
+          if (videos.length === 0) setYtError('No results found. Try a different search.')
+          setYtLoading(false)
+        })
         .catch(() => { setYtError('Search failed. Please try again.'); setYtLoading(false) })
     } else {
       setYtLoading(true); setYtError(null)
       fetch(`/api/youtube/trending?category=${ytCat}`)
         .then(r => r.json())
-        .then(d => { setYtVideos(d.videos || []); setYtLoading(false) })
-        .catch(() => { setYtError('Could not load YouTube content.'); setYtLoading(false) })
+        .then(d => {
+          const videos = d.videos || []
+          setYtVideos(videos)
+          if (videos.length === 0) setYtError('Could not load videos. Please retry.')
+          setYtLoading(false)
+        })
+        .catch(() => { setYtError('Could not load YouTube content. Please retry.'); setYtLoading(false) })
     }
   }, [tab, ytCat, ytSearchQuery])
 

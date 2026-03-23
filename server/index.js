@@ -3,6 +3,7 @@ import cors from 'cors'
 import fetch from 'node-fetch'
 import https from 'https'
 import ytsr from 'ytsr'
+import yts from 'yt-search'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { fileURLToPath } from 'url'
@@ -1446,23 +1447,24 @@ app.use('/proxy/koora-stream', async (req, res) => {
 })
 
 // ──────────────────────────────────────────────────────────────────────────────
-// YouTube — Invidious (trending) + ytsr (search/channel)
+// YouTube — Invidious (parallel race) + ytsr + yt-search + hardcoded fallback
 // ──────────────────────────────────────────────────────────────────────────────
 
 const INVIDIOUS_INSTANCES = [
   'https://iv.melmac.space',
+  'https://inv.nadeko.net',
+  'https://invidious.nerdvpn.de',
+  'https://invidious.privacyredirect.com',
+  'https://yt.artemislena.eu',
+  'https://invidious.fdn.fr',
+  'https://inv.tux.pizza',
+  'https://invidious.reallyaweso.me',
+  'https://invidious.slipfox.xyz',
+  'https://vid.puffyan.us',
+  'https://invidious.lunar.icu',
+  'https://invidious.projectsegfau.lt',
 ]
 
-const YT_CAT_MAP = {
-  trending: 'Default',
-  music:    'Music',
-  gaming:   'Gaming',
-  movies:   'Movies',
-  news:     'News',
-  sports:   'Sports',
-}
-
-// Category → search query fallback (used when Invidious is down)
 const YT_CAT_QUERY = {
   trending: 'trending videos 2025',
   music:    'top music hits 2025',
@@ -1472,8 +1474,69 @@ const YT_CAT_QUERY = {
   sports:   'sports highlights 2025',
 }
 
+// Curated fallback videos shown when ALL sources fail (always non-empty)
+const YT_FALLBACK = {
+  trending: [
+    { vid: 'dQw4w9WgXcQ', title: 'Rick Astley - Never Gonna Give You Up', channel: 'Rick Astley', thumb: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
+    { vid: 'kJQP7kiw5Fk', title: 'Luis Fonsi - Despacito ft. Daddy Yankee', channel: 'LuisFonsiVEVO', thumb: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg' },
+    { vid: 'JGwWNGJdvx8', title: 'Ed Sheeran - Shape of You', channel: 'Ed Sheeran', thumb: 'https://i.ytimg.com/vi/JGwWNGJdvx8/mqdefault.jpg' },
+    { vid: 'OPf0YbXqDm0', title: 'Mark Ronson - Uptown Funk ft. Bruno Mars', channel: 'MarkRonsonVEVO', thumb: 'https://i.ytimg.com/vi/OPf0YbXqDm0/mqdefault.jpg' },
+    { vid: 'YQHsXMglC9A', title: 'Adele - Hello', channel: 'Adele', thumb: 'https://i.ytimg.com/vi/YQHsXMglC9A/mqdefault.jpg' },
+    { vid: '09R8_2nJtjg', title: 'PSY - GANGNAM STYLE', channel: 'officialpsy', thumb: 'https://i.ytimg.com/vi/09R8_2nJtjg/mqdefault.jpg' },
+    { vid: 'RgKAFK5djSk', title: 'Wiz Khalifa - See You Again ft. Charlie Puth', channel: 'WizKhalifaVEVO', thumb: 'https://i.ytimg.com/vi/RgKAFK5djSk/mqdefault.jpg' },
+    { vid: 'lp-EO5I60KA', title: 'Baby Shark Dance', channel: 'Pinkfong', thumb: 'https://i.ytimg.com/vi/lp-EO5I60KA/mqdefault.jpg' },
+  ],
+  music: [
+    { vid: 'JGwWNGJdvx8', title: 'Ed Sheeran - Shape of You', channel: 'Ed Sheeran', thumb: 'https://i.ytimg.com/vi/JGwWNGJdvx8/mqdefault.jpg' },
+    { vid: 'kJQP7kiw5Fk', title: 'Luis Fonsi - Despacito', channel: 'LuisFonsiVEVO', thumb: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg' },
+    { vid: 'OPf0YbXqDm0', title: 'Uptown Funk - Bruno Mars', channel: 'MarkRonsonVEVO', thumb: 'https://i.ytimg.com/vi/OPf0YbXqDm0/mqdefault.jpg' },
+    { vid: 'YQHsXMglC9A', title: 'Adele - Hello', channel: 'Adele', thumb: 'https://i.ytimg.com/vi/YQHsXMglC9A/mqdefault.jpg' },
+    { vid: 'hT_nvWreIhg', title: 'OneRepublic - Counting Stars', channel: 'OneRepublic', thumb: 'https://i.ytimg.com/vi/hT_nvWreIhg/mqdefault.jpg' },
+    { vid: 'CevxZvSJLk8', title: 'Katy Perry - Roar', channel: 'KatyPerryVEVO', thumb: 'https://i.ytimg.com/vi/CevxZvSJLk8/mqdefault.jpg' },
+  ],
+  gaming: [
+    { vid: 'ue80QwXMRHg', title: 'The Game Awards 2024 - Full Show', channel: 'The Game Awards', thumb: 'https://i.ytimg.com/vi/ue80QwXMRHg/mqdefault.jpg' },
+    { vid: '2SKFsEaLWTs', title: 'GTA VI Official Trailer', channel: 'Rockstar Games', thumb: 'https://i.ytimg.com/vi/2SKFsEaLWTs/mqdefault.jpg' },
+    { vid: 'EkZGBdY0vlg', title: 'PlayStation Showcase 2023', channel: 'PlayStation', thumb: 'https://i.ytimg.com/vi/EkZGBdY0vlg/mqdefault.jpg' },
+    { vid: '_FuNopy48O0', title: 'Xbox Games Showcase 2024', channel: 'Xbox', thumb: 'https://i.ytimg.com/vi/_FuNopy48O0/mqdefault.jpg' },
+  ],
+  movies: [
+    { vid: 'ByXuk9QqQkk', title: 'Avengers: Endgame - Official Trailer', channel: 'Marvel Entertainment', thumb: 'https://i.ytimg.com/vi/ByXuk9QqQkk/mqdefault.jpg' },
+    { vid: 'TcMBFSGVi1c', title: 'Spider-Man: No Way Home - Official Trailer', channel: 'Sony Pictures', thumb: 'https://i.ytimg.com/vi/TcMBFSGVi1c/mqdefault.jpg' },
+    { vid: 'd9MyW72ELq0', title: 'Black Panther: Wakanda Forever - Official Trailer', channel: 'Marvel Entertainment', thumb: 'https://i.ytimg.com/vi/d9MyW72ELq0/mqdefault.jpg' },
+    { vid: 'Tm_Q5A9FPkk', title: 'Aquaman and the Lost Kingdom - Official Trailer', channel: 'Warner Bros. Pictures', thumb: 'https://i.ytimg.com/vi/Tm_Q5A9FPkk/mqdefault.jpg' },
+    { vid: 'odM92ap8_c0', title: 'Oppenheimer - Official Trailer', channel: 'Universal Pictures', thumb: 'https://i.ytimg.com/vi/odM92ap8_c0/mqdefault.jpg' },
+  ],
+  news: [
+    { vid: 'F4dPpMpFSNk', title: 'World News Today - CNN', channel: 'CNN', thumb: 'https://i.ytimg.com/vi/F4dPpMpFSNk/mqdefault.jpg' },
+    { vid: 'n-RsEPgVbgk', title: 'BBC World News - Latest Headlines', channel: 'BBC News', thumb: 'https://i.ytimg.com/vi/n-RsEPgVbgk/mqdefault.jpg' },
+    { vid: 'jXZHxgf0aV8', title: 'Al Jazeera English - Live News', channel: 'Al Jazeera English', thumb: 'https://i.ytimg.com/vi/jXZHxgf0aV8/mqdefault.jpg' },
+  ],
+  sports: [
+    { vid: 'as6BaFrCruU', title: 'UEFA Champions League - Best Goals', channel: 'UEFA', thumb: 'https://i.ytimg.com/vi/as6BaFrCruU/mqdefault.jpg' },
+    { vid: 'JrEjNoCJ-9g', title: 'NBA Top 10 Plays Of The Year', channel: 'NBA', thumb: 'https://i.ytimg.com/vi/JrEjNoCJ-9g/mqdefault.jpg' },
+    { vid: 'xmqjFZQzTwU', title: 'World Cup 2022 - Best Moments', channel: 'FIFA', thumb: 'https://i.ytimg.com/vi/xmqjFZQzTwU/mqdefault.jpg' },
+    { vid: 'iC80HqGzTH4', title: 'Super Bowl LVII - Highlights', channel: 'NFL', thumb: 'https://i.ytimg.com/vi/iC80HqGzTH4/mqdefault.jpg' },
+  ],
+}
+
 const _ytCache = {}
 const YT_TTL = 5 * 60 * 1000
+
+function makeFallbackVid(v, cat) {
+  return {
+    vid: v.vid,
+    title: v.title,
+    channel: v.channel || '',
+    channelId: '',
+    views: '',
+    duration: '',
+    published: '',
+    thumb: v.thumb || `https://i.ytimg.com/vi/${v.vid}/mqdefault.jpg`,
+    isLive: false,
+    _isFallback: true,
+  }
+}
 
 function mapInvVideo(v) {
   if (!v || !v.videoId) return null
@@ -1511,19 +1574,42 @@ function mapYtsrVideo(v) {
   }
 }
 
-async function invidiousFetch(path) {
-  for (const base of INVIDIOUS_INSTANCES) {
-    try {
-      const r = await fetch(`${base}${path}`, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'IgnatiusStream/1.0' },
-        signal: AbortSignal.timeout(8000),
-      })
-      if (!r.ok) continue
-      const data = await r.json()
-      if (data && (Array.isArray(data) ? data.length > 0 : true)) return data
-    } catch { /* try next */ }
+function mapYtsVideo(v) {
+  if (!v || !v.videoId) return null
+  const thumb = v.thumbnail?.url || `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`
+  const secs = v.seconds || 0
+  const duration = secs ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : (v.duration?.timestamp || '')
+  const views = v.views ? Number(v.views).toLocaleString() + ' views' : ''
+  return {
+    vid: v.videoId,
+    title: v.title || '',
+    channel: v.author?.name || '',
+    channelId: v.author?.channelId || '',
+    views,
+    duration,
+    published: v.ago || '',
+    thumb,
+    isLive: false,
   }
-  return null
+}
+
+// Race all Invidious instances in parallel — take the first that works
+async function invidiousFetch(apiPath) {
+  const race = INVIDIOUS_INSTANCES.map(async (base) => {
+    const r = await fetch(`${base}${apiPath}`, {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'IgnatiusStream/1.0' },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!r.ok) throw new Error(`${r.status}`)
+    const data = await r.json()
+    if (!data || (Array.isArray(data) && data.length === 0)) throw new Error('empty')
+    return data
+  })
+  try {
+    return await Promise.any(race)
+  } catch {
+    return null
+  }
 }
 
 async function ytsrSearch(query, limit = 50) {
@@ -1545,6 +1631,28 @@ async function ytsrSearch(query, limit = 50) {
   }
 }
 
+async function ytsSearch(query, limit = 50) {
+  try {
+    const result = await yts({ query, pageStart: 1, pageEnd: 2 })
+    return (result.videos || []).slice(0, limit).map(mapYtsVideo).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+// Main search: try ytsr first, fall back to yt-search
+async function ytSearch(query, limit = 50) {
+  try {
+    const r1 = await ytsrSearch(query, limit)
+    if (r1.length > 0) return r1
+  } catch { /* ignore */ }
+  try {
+    const r2 = await ytsSearch(query, limit)
+    if (r2.length > 0) return r2
+  } catch { /* ignore */ }
+  return []
+}
+
 app.get('/api/youtube/trending', async (req, res) => {
   const cat = req.query.category || 'trending'
   const cacheKey = `trend_${cat}`
@@ -1553,23 +1661,31 @@ app.get('/api/youtube/trending', async (req, res) => {
   }
   try {
     let videos = []
-    if (cat === 'trending') {
-      // Use Invidious for general trending, fallback to ytsr
-      const invData = await invidiousFetch(`/api/v1/trending?region=US&type=Default`)
-      if (invData && Array.isArray(invData) && invData.length > 0) {
-        videos = invData.map(mapInvVideo).filter(Boolean).slice(0, 60)
-      } else {
-        videos = (await ytsrSearch('trending videos 2025', 50)).slice(0, 60)
-      }
-    } else {
-      // Use ytsr for category-specific results (more accurate)
-      videos = (await ytsrSearch(YT_CAT_QUERY[cat] || 'trending videos 2025', 50)).slice(0, 60)
+
+    // 1. Try Invidious (parallel race across all instances)
+    const invType = { trending: 'Default', music: 'Music', gaming: 'Gaming', movies: 'Movies', news: 'News', sports: 'Sports' }[cat] || 'Default'
+    const invData = await invidiousFetch(`/api/v1/trending?region=US&type=${invType}`)
+    if (invData && Array.isArray(invData) && invData.length > 0) {
+      videos = invData.map(mapInvVideo).filter(Boolean).slice(0, 60)
     }
+
+    // 2. Fall back to ytsr + yt-search
+    if (videos.length === 0) {
+      videos = (await ytSearch(YT_CAT_QUERY[cat] || 'trending videos 2025', 50)).slice(0, 60)
+    }
+
+    // 3. Last resort: hardcoded curated videos — tab is never blank
+    if (videos.length === 0) {
+      const fb = YT_FALLBACK[cat] || YT_FALLBACK.trending
+      videos = fb.map(v => makeFallbackVid(v, cat))
+    }
+
     const result = { videos, category: cat }
     _ytCache[cacheKey] = { at: Date.now(), data: result }
     res.json(result)
   } catch (e) {
-    res.status(502).json({ videos: [], error: e.message })
+    const fb = YT_FALLBACK[cat] || YT_FALLBACK.trending
+    res.json({ videos: fb.map(v => makeFallbackVid(v, cat)), category: cat })
   }
 })
 
@@ -1581,12 +1697,20 @@ app.get('/api/youtube/search', async (req, res) => {
     return res.json(_ytCache[cacheKey].data)
   }
   try {
-    const videos = (await ytsrSearch(q, 50)).slice(0, 60)
+    // Search: try Invidious search first, then ytsr, then yt-search
+    let videos = []
+    const invData = await invidiousFetch(`/api/v1/search?q=${encodeURIComponent(q)}&type=video`)
+    if (invData && Array.isArray(invData) && invData.length > 0) {
+      videos = invData.map(mapInvVideo).filter(Boolean).slice(0, 60)
+    }
+    if (videos.length === 0) {
+      videos = (await ytSearch(q, 50)).slice(0, 60)
+    }
     const result = { videos, query: q }
     _ytCache[cacheKey] = { at: Date.now(), data: result }
     res.json(result)
   } catch (e) {
-    res.status(502).json({ videos: [], error: e.message })
+    res.json({ videos: [], query: q, error: e.message })
   }
 })
 
@@ -1598,12 +1722,14 @@ app.get('/api/youtube/channel', async (req, res) => {
     return res.json(_ytCache[cacheKey].data)
   }
   try {
-    // Try Invidious first
     const invData = await invidiousFetch(`/api/v1/channels/${id}/videos`)
     let videos = []
     if (invData) {
       const list = Array.isArray(invData) ? invData : (invData.videos || [])
       videos = list.map(mapInvVideo).filter(Boolean).slice(0, 60)
+    }
+    if (videos.length === 0) {
+      videos = (await ytSearch(`channel videos ${id}`, 30)).slice(0, 30)
     }
     const result = { videos, channelId: id }
     _ytCache[cacheKey] = { at: Date.now(), data: result }
