@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getImdbId } from '../api/moviebox'
 import { fetchDownloads, groupByQuality } from '../api/download'
+import CasperPlayer from './CasperPlayer'
 import './PlayerModal.css'
 
 const ALL_SERVERS = [
@@ -146,6 +147,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const [manualSwitch, setManualSwitch]         = useState(false)
   const [casperSubjectId, setCasperSubjectId]   = useState(null)
   const [casperLookingUp, setCasperLookingUp]   = useState(false)
+  const [nativePlayerFailed, setNativePlayerFailed] = useState(false)
 
   const imdbRef               = useRef(null)
   const failoverRef           = useRef(null)
@@ -181,6 +183,7 @@ export default function PlayerModal({ item, type, onClose }) {
     setCasperSubjectId(null)
     setCasperLookingUp(false)
     casperLookupDoneRef.current = false
+    setNativePlayerFailed(false)
     setSeason(1)
     setEpisode(1)
     setServerIdx(0)
@@ -309,6 +312,7 @@ export default function PlayerModal({ item, type, onClose }) {
     setServerIdx(idx)
     setIframeLoading(true)
     setFailoverMsg(null)
+    setNativePlayerFailed(false)
     if (failoverRef.current) {
       clearTimeout(failoverRef.current)
       failoverRef.current = null
@@ -392,7 +396,7 @@ export default function PlayerModal({ item, type, onClose }) {
               </div>
             )}
 
-            {!isLookingUpAny && iframeLoading && embedUrl && (
+            {!isLookingUpAny && iframeLoading && embedUrl && !(srv?.usesSubjectId && casperSubjectId && !nativePlayerFailed) && (
               <div className="mb-loader">
                 <div className="mb-spinner" />
                 <p className="mb-loader-text">
@@ -404,7 +408,13 @@ export default function PlayerModal({ item, type, onClose }) {
               </div>
             )}
 
-            {!isLookingUpAny && embedUrl ? (
+            {!isLookingUpAny && srv?.usesSubjectId && casperSubjectId && !nativePlayerFailed ? (
+              <CasperPlayer
+                key={`casper-${casperSubjectId}-${season}-${episode}`}
+                subjectId={casperSubjectId}
+                onNativeError={() => setNativePlayerFailed(true)}
+              />
+            ) : !isLookingUpAny && embedUrl ? (
               <iframe
                 key={`${safeIdx}-${casperSubjectId || imdbId}-${season}-${episode}`}
                 className={`mb-iframe ${iframeLoading ? 'mb-iframe-hidden' : ''}`}

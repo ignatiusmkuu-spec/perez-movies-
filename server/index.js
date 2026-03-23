@@ -235,6 +235,60 @@ app.get('/api/moviebox-search', async (req, res) => {
   }
 })
 
+const CASPER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Referer': 'https://movieapi.xcasper.space/',
+  'Origin': 'https://movieapi.xcasper.space',
+}
+
+app.get('/api/casper-captions', async (req, res) => {
+  const { subjectId } = req.query
+  if (!subjectId) return res.status(400).json({ error: 'subjectId required' })
+  try {
+    const playRes = await fetch(
+      `https://movieapi.xcasper.space/api/play?subjectId=${subjectId}`,
+      { headers: CASPER_HEADERS, signal: AbortSignal.timeout(10000) }
+    )
+    const html = await playRes.text()
+    const streamIdMatch = html.match(/"id"\s*:\s*"(\d{15,20})"/)
+    if (!streamIdMatch) return res.json({ streamId: null, captions: [] })
+    const streamId = streamIdMatch[1]
+    const capRes = await fetch(
+      `https://movieapi.xcasper.space/api/captions?subjectId=${subjectId}&streamId=${streamId}`,
+      { headers: { ...CASPER_HEADERS, Accept: 'application/json' }, signal: AbortSignal.timeout(10000) }
+    )
+    const capJson = await capRes.json()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ streamId, captions: capJson?.data?.captions || [] })
+  } catch (err) {
+    res.status(502).json({ error: err.message, streamId: null, captions: [] })
+  }
+})
+
+app.get('/api/casper-vtt', async (req, res) => {
+  const { url } = req.query
+  if (!url) return res.status(400).json({ error: 'url required' })
+  try {
+    const srtRes = await fetch(url, {
+      headers: { 'User-Agent': CASPER_HEADERS['User-Agent'] },
+      signal: AbortSignal.timeout(10000),
+    })
+    const srt = await srtRes.text()
+    const vtt = 'WEBVTT\n\n' + srt
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+    res.set('Content-Type', 'text/vtt; charset=utf-8')
+    res.set('Access-Control-Allow-Origin', '*')
+    res.set('Cache-Control', 'public, max-age=3600')
+    res.send(vtt)
+  } catch (err) {
+    res.status(502).send('WEBVTT\n\n')
+  }
+})
+
 app.use('/api/moviebox', async (req, res) => {
   const path = req.path
   const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
