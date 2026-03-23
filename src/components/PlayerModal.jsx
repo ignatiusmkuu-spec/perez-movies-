@@ -5,6 +5,12 @@ import './PlayerModal.css'
 
 const ALL_SERVERS = [
   {
+    label: 'CasperStream',
+    usesSubjectId: true,
+    movie: (id) => `https://movieapi.xcasper.space/api/play?subjectId=${id}`,
+    tv:    (id, s, e) => `https://movieapi.xcasper.space/api/play?subjectId=${id}&season=${s}&episode=${e}`,
+  },
+  {
     label: 'NontonGo',
     movie: (id) => `https://www.nontongo.win/embed/movie/${id}`,
     tv:    (id, s, e) => `https://www.nontongo.win/embed/tv/${id}/${s}/${e}`,
@@ -134,10 +140,12 @@ export default function PlayerModal({ item, type, onClose }) {
   const [imdbId, setImdbId]               = useState(null)
   const [lookingUp, setLookingUp]         = useState(false)
   const [manualInput, setManualInput]     = useState('')
-  const [serverIdx, setServerIdx]         = useState(0)
-  const [showServers, setShowServers]     = useState(false)
-  const [failoverMsg, setFailoverMsg]     = useState(null)
-  const [manualSwitch, setManualSwitch]   = useState(false)
+  const [serverIdx, setServerIdx]               = useState(0)
+  const [showServers, setShowServers]           = useState(false)
+  const [failoverMsg, setFailoverMsg]           = useState(null)
+  const [manualSwitch, setManualSwitch]         = useState(false)
+  const [casperSubjectId, setCasperSubjectId]   = useState(null)
+  const [casperLookingUp, setCasperLookingUp]   = useState(false)
 
   const imdbRef        = useRef(null)
   const failoverRef    = useRef(null)
@@ -161,14 +169,16 @@ export default function PlayerModal({ item, type, onClose }) {
   const visibleServers = showEps ? ALL_SERVERS.filter(s => !s.movieOnly) : ALL_SERVERS
   const safeIdx      = Math.min(serverIdx, visibleServers.length - 1)
   const srv          = visibleServers[safeIdx]
-  const embedUrl = imdbId && srv
-    ? (showEps ? srv.tv(imdbId, season, episode) : srv.movie(imdbId))
-    : null
+  const embedUrl = srv?.usesSubjectId
+    ? (casperSubjectId ? (showEps ? srv.tv(casperSubjectId, season, episode) : srv.movie(casperSubjectId)) : null)
+    : (imdbId && srv ? (showEps ? srv.tv(imdbId, season, episode) : srv.movie(imdbId)) : null)
 
   useEffect(() => {
     setLookingUp(false)
     setImdbId(null)
     imdbRef.current = null
+    setCasperSubjectId(null)
+    setCasperLookingUp(false)
     setSeason(1)
     setEpisode(1)
     setServerIdx(0)
@@ -193,10 +203,7 @@ export default function PlayerModal({ item, type, onClose }) {
     if (directId) {
       setImdbId(directId)
       imdbRef.current = directId
-      return
-    }
-
-    if (title) {
+    } else if (title) {
       setLookingUp(true)
       getImdbId(title, year, isTV || isAnime).then(found => {
         if (found) {
@@ -205,6 +212,23 @@ export default function PlayerModal({ item, type, onClose }) {
         }
         setLookingUp(false)
       })
+    }
+
+    if (item._mbId) {
+      setCasperSubjectId(item._mbId)
+    } else if (item.subjectId) {
+      setCasperSubjectId(item.subjectId)
+    } else if (title) {
+      const mbType = (isTV || isAnime) ? 'tv' : 'movie'
+      setCasperLookingUp(true)
+      fetch(`/api/moviebox-search?q=${encodeURIComponent(title)}&type=${mbType}`)
+        .then(r => r.json())
+        .then(data => {
+          const found = data?.mbId || null
+          if (found) setCasperSubjectId(found)
+        })
+        .catch(() => {})
+        .finally(() => setCasperLookingUp(false))
     }
   }, [item])
 
@@ -234,7 +258,7 @@ export default function PlayerModal({ item, type, onClose }) {
       failoverRef.current = null
     }
 
-    if (!embedUrl || !iframeLoading || lookingUp || manualSwitch) return
+    if (!embedUrl || !iframeLoading || lookingUp || manualSwitch || srv?.usesSubjectId) return
 
     const failoverIdx = visibleServers.findIndex(s => s.label === '2Embed v3')
     if (failoverIdx === -1 || failoverIdx === safeIdx) return
@@ -306,7 +330,8 @@ export default function PlayerModal({ item, type, onClose }) {
     }
   }
 
-  const noStream = !lookingUp && !imdbId
+  const isLookingUpAny = lookingUp || (srv?.usesSubjectId && casperLookingUp)
+  const noStream = !isLookingUpAny && (srv?.usesSubjectId ? !casperSubjectId : !imdbId)
 
   return (
     <div className={`mb-overlay ${visible ? 'mb-visible' : ''}`}>
@@ -337,28 +362,30 @@ export default function PlayerModal({ item, type, onClose }) {
         <div className="mb-main">
           <div className="mb-screen">
 
-            {lookingUp && (
+            {isLookingUpAny && (
               <div className="mb-loader">
                 <div className="mb-spinner" />
-                <p className="mb-loader-text">Finding stream…</p>
+                <p className="mb-loader-text">
+                  {srv?.usesSubjectId && casperLookingUp ? 'Finding CasperStream source…' : 'Finding stream…'}
+                </p>
               </div>
             )}
 
-            {!lookingUp && iframeLoading && embedUrl && (
+            {!isLookingUpAny && iframeLoading && embedUrl && (
               <div className="mb-loader">
                 <div className="mb-spinner" />
                 <p className="mb-loader-text">
                   {failoverMsg || `Loading ${srv?.label}…`}
                 </p>
-                {!failoverMsg && (
+                {!failoverMsg && !srv?.usesSubjectId && (
                   <p className="mb-loader-sub">Auto-switching to 2Embed v3 if stream is slow…</p>
                 )}
               </div>
             )}
 
-            {!lookingUp && embedUrl ? (
+            {!isLookingUpAny && embedUrl ? (
               <iframe
-                key={`${safeIdx}-${imdbId}-${season}-${episode}`}
+                key={`${safeIdx}-${casperSubjectId || imdbId}-${season}-${episode}`}
                 className={`mb-iframe ${iframeLoading ? 'mb-iframe-hidden' : ''}`}
                 src={embedUrl}
                 allowFullScreen
@@ -374,7 +401,7 @@ export default function PlayerModal({ item, type, onClose }) {
                   }
                 }}
               />
-            ) : !lookingUp && isAnime && noStream ? (
+            ) : !isLookingUpAny && isAnime && noStream ? (
               <div className="mb-fallback">
                 <div className="mb-fallback-title">Watch "{title}" on:</div>
                 <div className="mb-link-grid">
@@ -385,7 +412,7 @@ export default function PlayerModal({ item, type, onClose }) {
                   ))}
                 </div>
               </div>
-            ) : !lookingUp && noStream ? (
+            ) : !isLookingUpAny && noStream ? (
               <div className="mb-fallback">
                 <div className="mb-fallback-icon">
                   <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
