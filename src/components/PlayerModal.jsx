@@ -307,6 +307,15 @@ export default function PlayerModal({ item, type, onClose }) {
     setIframeLoading(true)
   }, [casperLookingUp, casperSubjectId])
 
+  useEffect(() => {
+    if (!nativePlayerFailed) return
+    if (manualSwitch) return
+    const nextIdx = visibleServers.findIndex(s => !s.usesSubjectId)
+    if (nextIdx === -1) return
+    setServerIdx(nextIdx)
+    setIframeLoading(true)
+  }, [nativePlayerFailed])
+
   const handleClose = () => {
     setVisible(false)
     setTimeout(onClose, 250)

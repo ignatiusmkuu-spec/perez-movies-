@@ -236,7 +236,9 @@ app.get('/api/moviebox-search', async (req, res) => {
       },
       signal: AbortSignal.timeout(8000),
     })
-    const json = await upstream.json()
+    const text = await upstream.text()
+    let json
+    try { json = JSON.parse(text) } catch { json = {} }
     const items = json?.data?.items || json?.data?.subjects || json?.data?.list || []
     const targetType = type === 'tv' ? 2 : 1
     const match = items.find(i => i.subjectType === targetType) || items[0]
@@ -274,7 +276,7 @@ app.get('/api/casper-search', async (req, res) => {
     const exact = pool.find(i => (i.title || '').toLowerCase() === needle)
     const starts = pool.find(i => (i.title || '').toLowerCase().startsWith(needle))
     const contains = pool.find(i => (i.title || '').toLowerCase().includes(needle))
-    const match = exact || starts || contains || pool[0]
+    const match = exact || starts || contains || null
     res.set('Access-Control-Allow-Origin', '*')
     res.json({ subjectId: match?.subjectId || null, title: match?.title || null })
   } catch (err) {

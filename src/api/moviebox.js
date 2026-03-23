@@ -62,31 +62,33 @@ async function _omdbFetch(params) {
 export async function getImdbId(title, year, isTV = false) {
   const movieType = isTV ? 'series' : 'movie'
   const y = year ? String(year) : ''
+  const cleanTitle = title.split(':')[0].split('(')[0].trim()
 
-  const attempt = async (params) => {
+  const tryExact = async (t) => {
+    const params = { t, type: movieType, ...(y && { y }) }
     const d = await _omdbFetch(params)
     if (d.Response === 'True' && d.imdbID) return d.imdbID
+    return null
+  }
+
+  const trySearch = async (t) => {
+    const params = { s: t, type: movieType }
+    const d = await _omdbFetch(params)
     if (d.Search?.[0]?.imdbID) return d.Search[0].imdbID
     return null
   }
 
-  const cleanTitle = title.split(':')[0].split('(')[0].trim()
+  const id1 = await tryExact(title)
+  if (id1) return id1
 
-  const strategies = [
-    { t: title,      ...(y && { y }), type: movieType },
-    { t: title,      ...(y && { y })                  },
-    { t: title,                        type: movieType },
-    { s: title,                        type: movieType },
-    { s: title                                         },
-    ...(cleanTitle !== title ? [
-      { t: cleanTitle, ...(y && { y }), type: movieType },
-      { s: cleanTitle,                  type: movieType },
-    ] : []),
-  ]
+  const id2 = await trySearch(title)
+  if (id2) return id2
 
-  for (const params of strategies) {
-    const id = await attempt(params)
-    if (id) return id
+  if (cleanTitle !== title) {
+    const id3 = await tryExact(cleanTitle)
+    if (id3) return id3
+    const id4 = await trySearch(cleanTitle)
+    if (id4) return id4
   }
 
   return null
