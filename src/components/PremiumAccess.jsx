@@ -28,7 +28,7 @@ const SECTIONS = [
     links: [
       { url: 'https://gostreameast.link/', label: 'StreamEast', desc: 'All Mirrors · Live Sports' },
       { url: 'https://sportyhunter.com/', label: 'SportyHunter', desc: 'Live Sports' },
-      { url: 'https://watchsports.to/', label: 'WatchSports', desc: '10+ Sports Channels' },
+      { url: 'https://watchsports.to/', label: 'WatchSports', desc: '10 Sports Channels' },
       { url: 'https://streamed.su/', label: 'Streamed', desc: 'Live Sports' },
       { url: 'https://tvpass.org/', label: 'TVPass', desc: 'USA Live TV' },
       { url: 'https://rivestream.org/livesports', label: 'RiveLive', desc: 'Live Sports' },
@@ -42,15 +42,15 @@ const SECTIONS = [
     label: 'Games',
     links: [
       { url: 'https://fitgirl-repacks.site/', label: 'Fitgirl Repacks', desc: 'Popular Game Repacks' },
-      { url: 'https://gog-games.to/', label: 'GOGgames', desc: 'Free DRM-Free Games' },
+      { url: 'https://gog-games.to/', label: 'GOGgames', desc: 'Free GOG Games' },
       { url: 'https://dodi-repacks.download/', label: 'Dodi Repacks', desc: 'Game Repacks' },
-      { url: 'https://ankergames.net/', label: 'AnkerGames', desc: 'Wide Selection' },
+      { url: 'https://ankergames.net/', label: 'AnkerGames', desc: 'Wide Selection of Games' },
       { url: 'https://steamgg.net/', label: 'SteamGG', desc: 'Preinstalled Steam Games' },
       { url: 'https://steamrip.com/', label: 'SteamRip', desc: 'Preinstalled Steam Games' },
       { url: 'https://m4ckd0ge-repacks.site/', label: 'M4ckdoge Repacks', desc: 'Game Repacks' },
       { url: 'https://elamigos.site/', label: 'Elamigos', desc: 'Spanish Games' },
       { url: 'https://online-fix.me/', label: 'Online-Fix', desc: 'Online for Cracked Games' },
-      { url: 'https://retrogametalk.com/repository/', label: 'CDRomance', desc: 'Retro Games' },
+      { url: 'https://retrogametalk.com/repository/', label: 'CDRomance', desc: 'Registration Required' },
       { url: 'https://www.emuparadise.me/', label: 'Emuparadise', desc: 'Emulator & ROMs' },
       { url: 'https://www.wemod.com/', label: 'WeMod', desc: 'Game Trainers App' },
       { url: 'https://fearlessrevolution.com/', label: 'FearlessRevolution', desc: 'Cheat Tables & Trainers' },
@@ -325,7 +325,7 @@ export default function PremiumAccess() {
         <div className="pa-header-inner">
           <span className="pa-header-icon">💎</span>
           <div>
-            <div className="pa-header-title">Premium Access</div>
+            <div className="pa-header-title">Perez Premiums</div>
             <div className="pa-header-sub">Curated collection of the best sites on the web</div>
           </div>
         </div>
@@ -373,7 +373,7 @@ export default function PremiumAccess() {
       </div>
 
       <div className="pa-footer">
-        <span>💎 Premium Access</span>
+        <span>💎 Perez Premiums</span>
         <span>·</span>
         <span>Powered by Perez Stream</span>
       </div>
