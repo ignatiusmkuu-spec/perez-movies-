@@ -18,10 +18,14 @@ export default function MediaCard({ item, type, onPlay }) {
     genre = item.Genre?.split(',')?.[0]
   } else if (type === 'moviebox' || type === 'moviebox-tv') {
     poster = item.Poster || item.cover?.url || null
-    title = item.Title || item.title
-    rating = item.imdbRating || item.imdbRatingValue || null
-    year = item.Year || item.releaseDate?.slice(0, 4)
-    genre = (item.Genre || item.genre)?.split(',')?.[0]
+    const rawTitle = item.Title || item.title
+    title = typeof rawTitle === 'string' ? rawTitle : ''
+    const rawRating = item.imdbRating || item.imdbRatingValue || null
+    rating = rawRating != null ? String(rawRating) : null
+    const rawYear = item.Year || (typeof item.releaseDate === 'string' ? item.releaseDate.slice(0, 4) : '')
+    year = typeof rawYear === 'string' ? rawYear : ''
+    const rawGenre = item.Genre || item.genre
+    genre = typeof rawGenre === 'string' ? rawGenre.split(',')?.[0] : ''
   } else if (type === 'tv') {
     poster = item.image?.medium || item.image?.original
     title = item.name

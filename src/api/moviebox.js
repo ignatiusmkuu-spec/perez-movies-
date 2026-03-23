@@ -92,16 +92,22 @@ function proxyImg(url) {
   return `/api/imgproxy?src=${encodeURIComponent(url)}`
 }
 
+function toStr(v) {
+  if (typeof v === 'string') return v
+  if (Array.isArray(v)) return v.find(x => typeof x === 'string') || ''
+  return ''
+}
+
 export function normalizeMbItem(item) {
   const rawPoster = item.cover?.url || item.image?.url || null
   return {
     _mbId: item.subjectId,
     _mbType: item.subjectType,
-    Title: item.title,
-    Year: item.releaseDate?.slice(0, 4) || '',
-    Genre: item.genre || '',
+    Title: toStr(item.title) || 'Unknown',
+    Year: (item.releaseDate || '').slice(0, 4) || '',
+    Genre: toStr(item.genre),
     Poster: proxyImg(rawPoster),
-    imdbRating: item.imdbRatingValue || null,
+    imdbRating: item.imdbRatingValue != null ? String(item.imdbRatingValue) : null,
     imdbID: null,
     _detailPath: item.detailPath,
     _source: 'moviebox',
