@@ -95,11 +95,6 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://filmprime.link/embed/tv/${id}/${s}/${e}`,
   },
   {
-    label: 'NontonGo',
-    movie: (id) => `https://www.nontongo.win/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://www.nontongo.win/embed/tv/${id}/${s}/${e}`,
-  },
-  {
     label: 'FlixerZ',
     movieOnly: true,
     movie: (id) => `https://flixerz.to/embed/movie/${id}`,
