@@ -39,17 +39,46 @@ export function getBannerItem(sections) {
   return firstMovie?.subjects?.[0] || null
 }
 
-export async function getImdbId(title, year, isTV = false) {
+async function _omdbFetch(params) {
   try {
-    const type = isTV ? '&type=series' : '&type=movie'
-    const y = year ? `&y=${year}` : ''
-    const res = await fetch(`${OMDB}/?apikey=trilogy&t=${encodeURIComponent(title)}${y}${type}`)
-    const data = await res.json()
-    if (data.Response === 'True') return data.imdbID
-    const res2 = await fetch(`${OMDB}/?apikey=trilogy&s=${encodeURIComponent(title)}${type}`)
-    const data2 = await res2.json()
-    return data2.Search?.[0]?.imdbID || null
-  } catch { return null }
+    const qs = new URLSearchParams({ apikey: 'trilogy', ...params }).toString()
+    const r = await fetch(`${OMDB}/?${qs}`)
+    const d = await r.json()
+    return d
+  } catch { return {} }
+}
+
+export async function getImdbId(title, year, isTV = false) {
+  const movieType = isTV ? 'series' : 'movie'
+  const y = year ? String(year) : ''
+
+  const attempt = async (params) => {
+    const d = await _omdbFetch(params)
+    if (d.Response === 'True' && d.imdbID) return d.imdbID
+    if (d.Search?.[0]?.imdbID) return d.Search[0].imdbID
+    return null
+  }
+
+  const cleanTitle = title.split(':')[0].split('(')[0].trim()
+
+  const strategies = [
+    { t: title,      ...(y && { y }), type: movieType },
+    { t: title,      ...(y && { y })                  },
+    { t: title,                        type: movieType },
+    { s: title,                        type: movieType },
+    { s: title                                         },
+    ...(cleanTitle !== title ? [
+      { t: cleanTitle, ...(y && { y }), type: movieType },
+      { s: cleanTitle,                  type: movieType },
+    ] : []),
+  ]
+
+  for (const params of strategies) {
+    const id = await attempt(params)
+    if (id) return id
+  }
+
+  return null
 }
 
 export async function omdbSearch(keyword, page = 1) {

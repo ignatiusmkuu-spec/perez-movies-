@@ -532,13 +532,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  justify-content: flex-start;
+  gap: 14px;
   background: #000;
   color: var(--mb-text);
   font-size: 0.95rem;
   text-align: center;
-  padding: 24px;
+  padding: 28px 24px 24px;
+  overflow-y: auto;
 }
 
 .mb-fallback-icon { margin-bottom: 4px; }
@@ -573,6 +574,77 @@
   transition: opacity 0.2s, transform 0.15s;
 }
 .mb-ext-btn:hover { opacity: 0.85; transform: scale(1.03); }
+
+.mb-fallback-title-text { font-size: 0.97rem; color: #fff; font-weight: 600; }
+
+.mb-manual-imdb {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mb-manual-label {
+  font-size: 0.78rem;
+  color: var(--mb-muted);
+  margin: 0;
+  font-weight: 500;
+  text-align: left;
+}
+
+.mb-manual-row {
+  display: flex;
+  gap: 8px;
+}
+
+.mb-manual-input {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 6px;
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  outline: none;
+  font-family: monospace;
+}
+.mb-manual-input::placeholder { color: rgba(255,255,255,0.3); }
+.mb-manual-input:focus { border-color: var(--mb-red); }
+
+.mb-manual-btn {
+  background: var(--mb-red);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.mb-manual-btn:hover { opacity: 0.85; }
+
+.mb-manual-hint {
+  font-size: 0.72rem;
+  color: var(--mb-muted);
+  margin: 0;
+  text-align: left;
+}
+.mb-hint-link { color: #3ba776; text-decoration: underline; }
+.mb-hint-link:hover { color: #5dd4a4; }
+
+.mb-fallback-search {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 /* === DOWNLOAD PANEL === */
 

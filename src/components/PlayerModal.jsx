@@ -133,6 +133,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const [iframeLoading, setIframeLoading] = useState(true)
   const [imdbId, setImdbId]               = useState(null)
   const [lookingUp, setLookingUp]         = useState(false)
+  const [manualInput, setManualInput]     = useState('')
   const [serverIdx, setServerIdx]         = useState(0)
   const [showServers, setShowServers]     = useState(false)
   const [failoverMsg, setFailoverMsg]     = useState(null)
@@ -178,6 +179,7 @@ export default function PlayerModal({ item, type, onClose }) {
     setIframeLoading(true)
     setFailoverMsg(null)
     setManualSwitch(false)
+    setManualInput('')
     if (failoverRef.current) {
       clearTimeout(failoverRef.current)
       failoverRef.current = null
@@ -386,10 +388,50 @@ export default function PlayerModal({ item, type, onClose }) {
             ) : !lookingUp && noStream ? (
               <div className="mb-fallback">
                 <div className="mb-fallback-icon">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3ba776" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
-                <p>Stream not found for "<strong>{title}</strong>"</p>
-                <p className="mb-fallback-sub">Open in tab to try a different source</p>
+                <p className="mb-fallback-title-text">Stream not found for "<strong>{title}</strong>"</p>
+                <p className="mb-fallback-sub">Could not match this title to a streaming source automatically.</p>
+
+                <div className="mb-manual-imdb">
+                  <p className="mb-manual-label">Know the IMDB ID? Enter it to play directly:</p>
+                  <div className="mb-manual-row">
+                    <input
+                      className="mb-manual-input"
+                      placeholder="e.g. tt1234567"
+                      value={manualInput}
+                      onChange={e => setManualInput(e.target.value.trim())}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          const id = manualInput.match(/tt\d{7,8}/)?.[0] || (manualInput.startsWith('tt') ? manualInput : null)
+                          if (id) { setImdbId(id); imdbRef.current = id; setIframeLoading(true) }
+                        }
+                      }}
+                    />
+                    <button
+                      className="mb-manual-btn"
+                      onClick={() => {
+                        const id = manualInput.match(/tt\d{7,8}/)?.[0] || (manualInput.startsWith('tt') ? manualInput : null)
+                        if (id) { setImdbId(id); imdbRef.current = id; setIframeLoading(true) }
+                      }}
+                    >Play</button>
+                  </div>
+                  <p className="mb-manual-hint">
+                    Find the IMDB ID at{' '}
+                    <a href={`https://www.imdb.com/find/?q=${encodeURIComponent(title)}`} target="_blank" rel="noreferrer" className="mb-hint-link">imdb.com</a>
+                    {' '}— it looks like <em>tt0111161</em>
+                  </p>
+                </div>
+
+                <div className="mb-fallback-search">
+                  <p className="mb-manual-label">Search this title online:</p>
+                  <div className="mb-link-grid">
+                    <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' full movie')}`} target="_blank" rel="noreferrer" className="mb-ext-btn">YouTube</a>
+                    <a href={`https://www.google.com/search?q=${encodeURIComponent(title + ' watch online free')}`} target="_blank" rel="noreferrer" className="mb-ext-btn">Google</a>
+                    <a href={`https://www.imdb.com/find/?q=${encodeURIComponent(title)}`} target="_blank" rel="noreferrer" className="mb-ext-btn">IMDB</a>
+                    <a href={`https://vidsrc.to/search?keyword=${encodeURIComponent(title)}`} target="_blank" rel="noreferrer" className="mb-ext-btn">VidSrc.to</a>
+                  </div>
+                </div>
               </div>
             ) : null}
 
