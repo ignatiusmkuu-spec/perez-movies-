@@ -235,6 +235,38 @@ app.get('/api/moviebox-search', async (req, res) => {
   }
 })
 
+app.get('/api/casper-search', async (req, res) => {
+  const { q, type } = req.query
+  if (!q) return res.status(400).json({ error: 'q required' })
+  try {
+    const subjectType = type === 'tv' ? 2 : 1
+    const r = await fetch(
+      `https://movieapi.xcasper.space/api/search?keyword=${encodeURIComponent(q)}`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+          'Referer': 'https://movieapi.xcasper.space/',
+        },
+        signal: AbortSignal.timeout(8000),
+      }
+    )
+    const json = await r.json()
+    const items = json?.data?.items || []
+    const typed = items.filter(i => i.subjectType === subjectType)
+    const pool = typed.length ? typed : items
+    const needle = q.toLowerCase().trim()
+    const exact = pool.find(i => (i.title || '').toLowerCase() === needle)
+    const starts = pool.find(i => (i.title || '').toLowerCase().startsWith(needle))
+    const contains = pool.find(i => (i.title || '').toLowerCase().includes(needle))
+    const match = exact || starts || contains || pool[0]
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ subjectId: match?.subjectId || null, title: match?.title || null })
+  } catch (err) {
+    res.status(502).json({ error: err.message, subjectId: null })
+  }
+})
+
 const CASPER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -244,11 +276,12 @@ const CASPER_HEADERS = {
 }
 
 app.get('/api/casper-captions', async (req, res) => {
-  const { subjectId } = req.query
+  const { subjectId, se, ep } = req.query
   if (!subjectId) return res.status(400).json({ error: 'subjectId required' })
   try {
+    const tvParams = se && ep ? `&se=${se}&ep=${ep}` : ''
     const playRes = await fetch(
-      `https://movieapi.xcasper.space/api/play?subjectId=${subjectId}`,
+      `https://movieapi.xcasper.space/api/play?subjectId=${subjectId}${tvParams}`,
       { headers: CASPER_HEADERS, signal: AbortSignal.timeout(10000) }
     )
     const html = await playRes.text()

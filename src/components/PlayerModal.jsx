@@ -228,12 +228,17 @@ export default function PlayerModal({ item, type, onClose }) {
     } else if (title) {
       const mbType = (isTV || isAnime) ? 'tv' : 'movie'
       setCasperLookingUp(true)
-      fetch(`/api/moviebox-search?q=${encodeURIComponent(title)}&type=${mbType}`)
+
+      const mbSearch = fetch(`/api/moviebox-search?q=${encodeURIComponent(title)}&type=${mbType}`)
         .then(r => r.json())
-        .then(data => {
-          const found = data?.mbId || null
-          if (found) setCasperSubjectId(found)
-        })
+        .then(data => { const id = data?.mbId; if (!id) throw new Error('no result'); return id })
+
+      const casperSearch = fetch(`/api/casper-search?q=${encodeURIComponent(title)}&type=${mbType}`)
+        .then(r => r.json())
+        .then(data => { const id = data?.subjectId; if (!id) throw new Error('no result'); return id })
+
+      Promise.any([mbSearch, casperSearch])
+        .then(found => { if (found) setCasperSubjectId(found) })
         .catch(() => {})
         .finally(() => {
           casperLookupDoneRef.current = true
@@ -412,6 +417,8 @@ export default function PlayerModal({ item, type, onClose }) {
               <CasperPlayer
                 key={`casper-${casperSubjectId}-${season}-${episode}`}
                 subjectId={casperSubjectId}
+                season={showEps ? season : undefined}
+                episode={showEps ? episode : undefined}
                 onNativeError={() => setNativePlayerFailed(true)}
               />
             ) : !isLookingUpAny && embedUrl ? (

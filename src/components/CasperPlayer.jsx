@@ -3,7 +3,7 @@ import './CasperPlayer.css'
 
 const QUALITIES = [1080, 720, 480, 360]
 
-export default function CasperPlayer({ subjectId, onNativeError }) {
+export default function CasperPlayer({ subjectId, season, episode, onNativeError }) {
   const videoRef = useRef(null)
   const [captions, setCaptions] = useState([])
   const [captionsLoading, setCaptionsLoading] = useState(true)
@@ -13,13 +13,15 @@ export default function CasperPlayer({ subjectId, onNativeError }) {
   const [showQuality, setShowQuality] = useState(false)
   const [videoError, setVideoError] = useState(false)
 
-  const streamUrl = `https://movieapi.xcasper.space/api/bff/stream?subjectId=${subjectId}&resolution=${quality}`
+  const episodeParams = season && episode ? `&se=${season}&ep=${episode}` : ''
+  const streamUrl = `https://movieapi.xcasper.space/api/bff/stream?subjectId=${subjectId}&resolution=${quality}${episodeParams}`
 
   useEffect(() => {
     if (!subjectId) return
     setCaptionsLoading(true)
     setCaptions([])
-    fetch(`/api/casper-captions?subjectId=${subjectId}`)
+    const tvParams = season && episode ? `&se=${season}&ep=${episode}` : ''
+    fetch(`/api/casper-captions?subjectId=${subjectId}${tvParams}`)
       .then(r => r.json())
       .then(data => {
         const tracks = data.captions || []
