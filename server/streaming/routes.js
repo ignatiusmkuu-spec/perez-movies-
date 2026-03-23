@@ -54,8 +54,12 @@ import {
 const __dir = dirname(fileURLToPath(import.meta.url))
 
 /* ── File upload config ── */
-const UPLOAD_DIR = join(__dir, '..', '..', 'public', 'uploads')
-if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true })
+const UPLOAD_DIR = process.env.VERCEL
+  ? '/tmp/uploads'
+  : join(__dir, '..', '..', 'public', 'uploads')
+try {
+  if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true })
+} catch { /* read-only filesystem (Vercel) — uploads disabled */ }
 
 const upload = multer({
   dest: UPLOAD_DIR,

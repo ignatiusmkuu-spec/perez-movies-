@@ -54,8 +54,10 @@ const DEFAULTS = {
 }
 
 function ensure() {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-  if (!existsSync(DATA_FILE)) writeFileSync(DATA_FILE, JSON.stringify(DEFAULTS, null, 2))
+  try {
+    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
+    if (!existsSync(DATA_FILE)) writeFileSync(DATA_FILE, JSON.stringify(DEFAULTS, null, 2))
+  } catch { /* read-only filesystem (e.g. Vercel) — in-memory store only */ }
 }
 
 function read() {

@@ -65,8 +65,8 @@ const segProxyLimiter = rateLimit({
 })
 app.use('/stream', segProxyLimiter, proxyRoutes)
 
-/* ── Start background health checks ── */
-startHealthChecks()
+/* ── Start background health checks (not on Vercel serverless) ── */
+if (!process.env.VERCEL) startHealthChecks()
 
 const STREAM_SOURCES = {
   movie: [
