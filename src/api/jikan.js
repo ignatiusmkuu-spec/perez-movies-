@@ -1,29 +1,32 @@
 const BASE = '/proxy/jikan'
 
 async function safeFetch(url) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const text = await res.text()
+    return JSON.parse(text)
+  } catch { return null }
 }
 
 export async function getTopAnime(page = 1) {
   const data = await safeFetch(`${BASE}/top/anime?page=${page}&limit=20&filter=airing`)
-  return data.data || []
+  return data?.data || []
 }
 
 export async function getSeasonalAnime() {
   const data = await safeFetch(`${BASE}/seasons/now?limit=20`)
-  return data.data || []
+  return data?.data || []
 }
 
 export async function searchAnime(query) {
   const data = await safeFetch(`${BASE}/anime?q=${encodeURIComponent(query)}&limit=20&sfw`)
-  return data.data || []
+  return data?.data || []
 }
 
 export async function getAnimeByGenre(genreId) {
   const data = await safeFetch(`${BASE}/anime?genres=${genreId}&limit=20&order_by=score&sort=desc`)
-  return data.data || []
+  return data?.data || []
 }
 
 export const ANIME_GENRES = [

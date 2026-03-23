@@ -24,7 +24,7 @@ export default function HeroBanner({ onPlay }) {
         const src = item.subject || item
         const toStr = (v) => (typeof v === 'string' ? v : (Array.isArray(v) ? v[0] || '' : ''))
         const title = toStr(src.title || item.title) || FALLBACK.title
-        const year = (src.releaseDate || '').slice(0, 4) || FALLBACK.year
+        const year = toStr(src.releaseDate).slice(0, 4) || FALLBACK.year
         const genre = toStr(src.genre) || FALLBACK.genre
         const rawBg = item.image?.url || src.cover?.url || null
         const bg = rawBg ? `/api/imgproxy?src=${encodeURIComponent(rawBg)}` : FALLBACK.bg

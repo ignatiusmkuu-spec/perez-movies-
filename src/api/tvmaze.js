@@ -1,9 +1,12 @@
 const BASE = '/proxy/tvmaze'
 
 async function safeFetch(url) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const text = await res.text()
+    return JSON.parse(text)
+  } catch { return null }
 }
 
 export async function getPopularShows() {

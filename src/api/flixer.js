@@ -11,7 +11,8 @@ export async function fetchFlixerMovies(genre = 'all', sort = 'download_count') 
     if (sort && sort !== 'download_count') params.set('sort', sort)
     const qs = params.toString()
     const res = await fetch(`/api/flixer/movies${qs ? '?' + qs : ''}`)
-    const json = await res.json()
+    const text = await res.text()
+    const json = JSON.parse(text)
     const movies = (json.movies || []).map(m => ({
       _source: 'yts',
       _ytsId: m.id,

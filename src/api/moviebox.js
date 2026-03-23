@@ -5,6 +5,17 @@ let _homeCache = null
 let _homeCacheAt = 0
 const TTL = 8 * 60 * 1000
 
+function proxyImg(url) {
+  if (!url) return null
+  return `/api/imgproxy?src=${encodeURIComponent(url)}`
+}
+
+function toStr(v) {
+  if (typeof v === 'string') return v
+  if (Array.isArray(v)) return v.find(x => typeof x === 'string') || ''
+  return ''
+}
+
 export async function fetchHomeData() {
   if (_homeCache && Date.now() - _homeCacheAt < TTL) return _homeCache
   const controller = new AbortController()
@@ -43,8 +54,8 @@ async function _omdbFetch(params) {
   try {
     const qs = new URLSearchParams({ apikey: 'trilogy', ...params }).toString()
     const r = await fetch(`${OMDB}/?${qs}`)
-    const d = await r.json()
-    return d
+    const text = await r.text()
+    return JSON.parse(text)
   } catch { return {} }
 }
 
@@ -82,20 +93,17 @@ export async function getImdbId(title, year, isTV = false) {
 }
 
 export async function omdbSearch(keyword, page = 1) {
-  const res = await fetch(`${OMDB}/?apikey=trilogy&s=${encodeURIComponent(keyword)}&page=${page}`)
-  const data = await res.json()
-  return data.Search || []
-}
-
-function proxyImg(url) {
-  if (!url) return null
-  return `/api/imgproxy?src=${encodeURIComponent(url)}`
-}
-
-function toStr(v) {
-  if (typeof v === 'string') return v
-  if (Array.isArray(v)) return v.find(x => typeof x === 'string') || ''
-  return ''
+  try {
+    const res = await fetch(`${OMDB}/?apikey=trilogy&s=${encodeURIComponent(keyword)}&page=${page}`)
+    const text = await res.text()
+    const data = JSON.parse(text)
+    return (data.Search || []).map(m => ({
+      ...m,
+      Poster: m.Poster && m.Poster !== 'N/A' ? proxyImg(m.Poster) : null,
+    }))
+  } catch {
+    return []
+  }
 }
 
 export function normalizeMbItem(item) {
@@ -104,7 +112,7 @@ export function normalizeMbItem(item) {
     _mbId: item.subjectId,
     _mbType: item.subjectType,
     Title: toStr(item.title) || 'Unknown',
-    Year: (item.releaseDate || '').slice(0, 4) || '',
+    Year: toStr(item.releaseDate).slice(0, 4) || '',
     Genre: toStr(item.genre),
     Poster: proxyImg(rawPoster),
     imdbRating: item.imdbRatingValue != null ? String(item.imdbRatingValue) : null,
