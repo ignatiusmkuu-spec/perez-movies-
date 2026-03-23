@@ -147,8 +147,9 @@ export default function PlayerModal({ item, type, onClose }) {
   const [casperSubjectId, setCasperSubjectId]   = useState(null)
   const [casperLookingUp, setCasperLookingUp]   = useState(false)
 
-  const imdbRef        = useRef(null)
-  const failoverRef    = useRef(null)
+  const imdbRef               = useRef(null)
+  const failoverRef           = useRef(null)
+  const casperLookupDoneRef   = useRef(false)
 
   const isAnime = type === 'anime'
   const isTV    = type === 'moviebox-tv' || type === 'tv'
@@ -179,6 +180,7 @@ export default function PlayerModal({ item, type, onClose }) {
     imdbRef.current = null
     setCasperSubjectId(null)
     setCasperLookingUp(false)
+    casperLookupDoneRef.current = false
     setSeason(1)
     setEpisode(1)
     setServerIdx(0)
@@ -216,8 +218,10 @@ export default function PlayerModal({ item, type, onClose }) {
 
     if (item._mbId) {
       setCasperSubjectId(item._mbId)
+      casperLookupDoneRef.current = true
     } else if (item.subjectId) {
       setCasperSubjectId(item.subjectId)
+      casperLookupDoneRef.current = true
     } else if (title) {
       const mbType = (isTV || isAnime) ? 'tv' : 'movie'
       setCasperLookingUp(true)
@@ -228,7 +232,12 @@ export default function PlayerModal({ item, type, onClose }) {
           if (found) setCasperSubjectId(found)
         })
         .catch(() => {})
-        .finally(() => setCasperLookingUp(false))
+        .finally(() => {
+          casperLookupDoneRef.current = true
+          setCasperLookingUp(false)
+        })
+    } else {
+      casperLookupDoneRef.current = true
     }
   }, [item])
 
@@ -277,6 +286,18 @@ export default function PlayerModal({ item, type, onClose }) {
       }
     }
   }, [embedUrl, iframeLoading, lookingUp, manualSwitch])
+
+  useEffect(() => {
+    if (!srv?.usesSubjectId) return
+    if (casperLookingUp) return
+    if (casperSubjectId) return
+    if (manualSwitch) return
+    if (!casperLookupDoneRef.current) return
+    const nextIdx = visibleServers.findIndex(s => !s.usesSubjectId)
+    if (nextIdx === -1) return
+    setServerIdx(nextIdx)
+    setIframeLoading(true)
+  }, [casperLookingUp, casperSubjectId])
 
   const handleClose = () => {
     setVisible(false)
