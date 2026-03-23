@@ -18,16 +18,21 @@ const CALLMEBOT_API_KEY = process.env.CALLMEBOT_API_KEY || ''
 
 async function sendWhatsApp(message) {
   if (!CALLMEBOT_API_KEY) {
-    console.log('[WhatsApp] CALLMEBOT_API_KEY not set — notification skipped:', message)
+    console.warn('[WhatsApp] ⚠️  CALLMEBOT_API_KEY is not set. Notification NOT sent. Set it in Secrets to enable WhatsApp alerts.')
     return
   }
   try {
     const encoded = encodeURIComponent(message)
     const url = `https://api.callmebot.com/whatsapp.php?phone=${NOTIFY_PHONE}&text=${encoded}&apikey=${CALLMEBOT_API_KEY}`
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
-    console.log('[WhatsApp] Notification sent, status:', res.status)
+    const body = await res.text()
+    if (res.ok) {
+      console.log('[WhatsApp] ✅ Notification sent successfully.')
+    } else {
+      console.error('[WhatsApp] ❌ Failed — HTTP', res.status, body)
+    }
   } catch (err) {
-    console.error('[WhatsApp] Failed to send notification:', err.message)
+    console.error('[WhatsApp] ❌ Network error:', err.message)
   }
 }
 
