@@ -257,26 +257,42 @@ app.get('/api/casper-search', async (req, res) => {
   if (!q) return res.status(400).json({ error: 'q required' })
   try {
     const subjectType = type === 'tv' ? 2 : 1
-    const r = await fetch(
-      `https://movieapi.xcasper.space/api/search?keyword=${encodeURIComponent(q)}`,
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json',
-          'Referer': 'https://movieapi.xcasper.space/',
-        },
-        signal: AbortSignal.timeout(8000),
+    const HEADERS = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json',
+      'Referer': 'https://movieapi.xcasper.space/',
+    }
+
+    const searchXcasper = async (keyword) => {
+      const r = await fetch(
+        `https://movieapi.xcasper.space/api/search?keyword=${encodeURIComponent(keyword)}`,
+        { headers: HEADERS, signal: AbortSignal.timeout(8000) }
+      )
+      const json = await r.json()
+      const items = json?.data?.items || []
+      const typed = items.filter(i => i.subjectType === subjectType)
+      const pool = typed.length ? typed : items
+      const needle = keyword.toLowerCase().trim()
+      const exact = pool.find(i => (i.title || '').toLowerCase() === needle)
+      const starts = pool.find(i => (i.title || '').toLowerCase().startsWith(needle))
+      const contains = pool.find(i => (i.title || '').toLowerCase().includes(needle))
+      return exact || starts || contains || null
+    }
+
+    let match = await searchXcasper(q)
+
+    if (!match) {
+      const cleanTitle = q.split(':')[0].split('(')[0].trim()
+      if (cleanTitle !== q) match = await searchXcasper(cleanTitle)
+    }
+
+    if (!match) {
+      const words = q.split(' ')
+      if (words.length > 2) {
+        match = await searchXcasper(words.slice(0, 3).join(' '))
       }
-    )
-    const json = await r.json()
-    const items = json?.data?.items || []
-    const typed = items.filter(i => i.subjectType === subjectType)
-    const pool = typed.length ? typed : items
-    const needle = q.toLowerCase().trim()
-    const exact = pool.find(i => (i.title || '').toLowerCase() === needle)
-    const starts = pool.find(i => (i.title || '').toLowerCase().startsWith(needle))
-    const contains = pool.find(i => (i.title || '').toLowerCase().includes(needle))
-    const match = exact || starts || contains || null
+    }
+
     res.set('Access-Control-Allow-Origin', '*')
     res.json({ subjectId: match?.subjectId || null, title: match?.title || null })
   } catch (err) {

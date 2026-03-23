@@ -6,7 +6,7 @@ import './PlayerModal.css'
 
 const ALL_SERVERS = [
   {
-    label: 'CasperStream',
+    label: 'IgnatiuStream',
     usesSubjectId: true,
     movie: (id) => `https://movieapi.xcasper.space/api/play?subjectId=${id}`,
     tv:    (id, s, e) => `https://movieapi.xcasper.space/api/play?subjectId=${id}&season=${s}&episode=${e}`,
@@ -199,15 +199,25 @@ export default function PlayerModal({ item, type, onClose }) {
       const mbType = (isTV || isAnime) ? 'tv' : 'movie'
       setCasperLookingUp(true)
 
+      const cleanTitle = title.split(':')[0].split('(')[0].trim()
+      const shortTitle = title.split(' ').slice(0, 3).join(' ')
+
+      const casperQ = (q) => fetch(`/api/casper-search?q=${encodeURIComponent(q)}&type=${mbType}`)
+        .then(r => r.json())
+        .then(data => { const id = data?.subjectId; if (!id) throw new Error('no result'); return id })
+
       const mbSearch = fetch(`/api/moviebox-search?q=${encodeURIComponent(title)}&type=${mbType}`)
         .then(r => r.json())
         .then(data => { const id = data?.mbId; if (!id) throw new Error('no result'); return id })
 
-      const casperSearch = fetch(`/api/casper-search?q=${encodeURIComponent(title)}&type=${mbType}`)
-        .then(r => r.json())
-        .then(data => { const id = data?.subjectId; if (!id) throw new Error('no result'); return id })
+      const searches = [
+        mbSearch,
+        casperQ(title),
+        ...(cleanTitle !== title ? [casperQ(cleanTitle)] : []),
+        ...(shortTitle !== title && shortTitle !== cleanTitle ? [casperQ(shortTitle)] : []),
+      ]
 
-      Promise.any([mbSearch, casperSearch])
+      Promise.any(searches)
         .then(found => { if (found) setCasperSubjectId(found) })
         .catch(() => {})
         .finally(() => {
@@ -375,7 +385,7 @@ export default function PlayerModal({ item, type, onClose }) {
               <div className="mb-loader">
                 <div className="mb-spinner" />
                 <p className="mb-loader-text">
-                  {srv?.usesSubjectId && casperLookingUp ? 'Finding CasperStream source…' : 'Finding stream…'}
+                  {srv?.usesSubjectId && casperLookingUp ? 'Finding IgnatiuStream source…' : 'Finding stream…'}
                 </p>
               </div>
             )}

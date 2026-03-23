@@ -88,23 +88,26 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
     setShowSubs(false)
   }
 
+  useEffect(() => {
+    if (!resolveError && !videoError) return
+    const t = setTimeout(() => onNativeError(), 800)
+    return () => clearTimeout(t)
+  }, [resolveError, videoError])
+
   if (resolving) {
     return (
       <div className="cp-loading">
         <div className="cp-spinner" />
-        <p>Loading CasperStream…</p>
+        <p>Loading IgnatiuStream…</p>
       </div>
     )
   }
 
   if (resolveError || videoError) {
     return (
-      <div className="cp-error">
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e50914" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <p>Native player could not load this stream.</p>
-        <button className="cp-fallback-btn" onClick={onNativeError}>
-          Switch to Embed Player
-        </button>
+      <div className="cp-loading">
+        <div className="cp-spinner" />
+        <p>Switching to next server…</p>
       </div>
     )
   }
@@ -191,7 +194,7 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
         </div>
 
         <div className="cp-toolbar-right">
-          <span className="cp-badge">CasperStream</span>
+          <span className="cp-badge">IgnatiuStream</span>
           {captions.length > 0 && (
             <span className="cp-subs-count">{captions.length} subtitle{captions.length !== 1 ? 's' : ''}</span>
           )}
