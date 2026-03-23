@@ -22,12 +22,13 @@ export default function HeroBanner({ onPlay }) {
       const item = getBannerItem(sections)
       if (item) {
         const src = item.subject || item
-        const title = src.title || item.title || FALLBACK.title
-        const year = src.releaseDate?.slice(0, 4) || FALLBACK.year
-        const genre = src.genre || FALLBACK.genre
+        const toStr = (v) => (typeof v === 'string' ? v : (Array.isArray(v) ? v[0] || '' : ''))
+        const title = toStr(src.title || item.title) || FALLBACK.title
+        const year = (src.releaseDate || '').slice(0, 4) || FALLBACK.year
+        const genre = toStr(src.genre) || FALLBACK.genre
         const rawBg = item.image?.url || src.cover?.url || null
         const bg = rawBg ? `/api/imgproxy?src=${encodeURIComponent(rawBg)}` : FALLBACK.bg
-        const desc = src.description || FALLBACK.desc
+        const desc = toStr(src.description) || FALLBACK.desc
         const isTV = (src.subjectType || item.subjectType) === 2
         setFeatured({ title, year, genre, bg, desc })
         getImdbId(title, year, isTV).then(id => {
