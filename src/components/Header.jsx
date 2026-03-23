@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Logo from './Logo'
-import { useAuth } from './auth/AuthGate'
+import { useAuth } from './auth/authContext'
 import './Header.css'
 
 export default function Header({ onSearch, activeTab }) {
@@ -13,7 +13,18 @@ export default function Header({ onSearch, activeTab }) {
   }
 
   const daysLeft = auth?.daysLeft ?? 0
+  const plan = auth?.user?.subscription?.plan
   const isExpiringSoon = daysLeft > 0 && daysLeft <= 7
+  const isExpired = daysLeft === 0
+
+  const planLabel = plan
+    ? plan === '1month' ? '1 Month'
+    : plan === '2months' ? '2 Months'
+    : plan === '5months' ? '5 Months'
+    : plan === '1year' ? '1 Year'
+    : plan === 'developer' ? 'Dev'
+    : plan
+    : null
 
   return (
     <header className="header">
@@ -36,9 +47,12 @@ export default function Header({ onSearch, activeTab }) {
       )}
       {auth && (
         <div className="header-user">
-          <span className={`sub-days-badge${isExpiringSoon ? ' expiring' : ''}`}>
-            {daysLeft > 0 ? `${daysLeft}d left` : 'Expired'}
-          </span>
+          <div className={`sub-days-badge${isExpiringSoon ? ' expiring' : ''}${isExpired ? ' expired' : ''}`}>
+            {planLabel && <span className="sub-plan-name">{planLabel}</span>}
+            <span className="sub-days-count">
+              {isExpired ? 'Expired' : daysLeft >= 99999 ? '∞ access' : `${daysLeft}d left`}
+            </span>
+          </div>
           <button className="header-logout-btn" onClick={auth.handleLogout} title="Sign out">
             Sign out
           </button>

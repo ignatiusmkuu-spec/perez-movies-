@@ -1,18 +1,30 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect } from 'react'
 import { authApi } from '../../api/auth'
+import { AuthContext } from './authContext'
 import LoginPage from './LoginPage'
 import RegisterPage from './RegisterPage'
 import PricingPage from './PricingPage'
 import './Auth.css'
 
-const AuthContext = createContext(null)
-export const useAuth = () => useContext(AuthContext)
+
+function calcDaysLeft(user) {
+  if (user?.role === 'developer') return 99999
+  const expiry = user?.subscription?.expiresAt
+  if (!expiry) return 0
+  const diff = new Date(expiry) - new Date()
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+}
+
+function isSubActive(user) {
+  if (user?.role === 'developer') return true
+  const expiry = user?.subscription?.expiresAt
+  if (!expiry) return false
+  return new Date(expiry) > new Date()
+}
 
 export default function AuthGate({ children }) {
-  const [authState, setAuthState] = useState('loading') // loading | login | register | pricing | app
+  const [authState, setAuthState] = useState('loading')
   const [user, setUser] = useState(null)
-  const [subActive, setSubActive] = useState(false)
-  const [daysLeft, setDaysLeft] = useState(0)
 
   useEffect(() => {
     const token = localStorage.getItem('ignite_token')
@@ -20,36 +32,31 @@ export default function AuthGate({ children }) {
     authApi.me().then(res => {
       if (!res.success) { localStorage.removeItem('ignite_token'); setAuthState('login'); return }
       setUser(res.user)
-      setSubActive(res.subscriptionActive)
-      setDaysLeft(res.daysRemaining || 0)
-      setAuthState(res.subscriptionActive ? 'app' : 'pricing')
+      setAuthState(isSubActive(res.user) ? 'app' : 'pricing')
     }).catch(() => { localStorage.removeItem('ignite_token'); setAuthState('login') })
   }, [])
 
   const handleLogin = (res) => {
     setUser(res.user)
-    setSubActive(res.subscriptionActive)
-    setDaysLeft(res.daysRemaining || 0)
-    setAuthState(res.subscriptionActive ? 'app' : 'pricing')
+    setAuthState(isSubActive(res.user) ? 'app' : 'pricing')
   }
 
   const handleRegister = (res) => {
     setUser(res.user)
-    setSubActive(false)
     setAuthState('pricing')
   }
 
   const handleSubscribed = (res) => {
-    setSubActive(true)
-    setDaysLeft(res.daysRemaining || 0)
-    if (res.subscription) setUser(prev => ({ ...prev, subscription: res.subscription }))
+    setUser(prev => ({
+      ...prev,
+      subscription: res.subscription || prev?.subscription,
+    }))
     setAuthState('app')
   }
 
   const handleLogout = () => {
     localStorage.removeItem('ignite_token')
     setUser(null)
-    setSubActive(false)
     setAuthState('login')
   }
 
@@ -97,7 +104,9 @@ export default function AuthGate({ children }) {
     )
   }
 
-  // Subscription active — render the app
+  const daysLeft = calcDaysLeft(user)
+  const subActive = isSubActive(user)
+
   return (
     <AuthContext.Provider value={{ user, subActive, daysLeft, handleLogout }}>
       {children}
