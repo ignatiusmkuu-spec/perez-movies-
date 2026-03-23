@@ -3,6 +3,35 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+
+  build: {
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        passes: 2,
+        pure_funcs: ['console.log', 'console.warn', 'console.info', 'console.debug'],
+      },
+      mangle: { toplevel: true },
+      format: { comments: false },
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          motion: ['framer-motion'],
+          icons: ['lucide-react'],
+        },
+        chunkFileNames: '[hash].js',
+        entryFileNames: '[hash].js',
+        assetFileNames: '[hash][extname]',
+      },
+    },
+    chunkSizeWarningLimit: 1200,
+    sourcemap: false,
+  },
+
   server: {
     host: '0.0.0.0',
     port: 5000,

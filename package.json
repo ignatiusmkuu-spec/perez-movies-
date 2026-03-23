@@ -7,8 +7,9 @@
     "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0 --port 5000\" --names \"server,vite\"",
     "dev:vite": "vite --host 0.0.0.0 --port 5000",
     "dev:server": "node server/index.js",
-    "build": "vite build",
-    "vercel-build": "vite build",
+    "build": "vite build && node scripts/obfuscate.js",
+    "build:fast": "vite build",
+    "vercel-build": "vite build && node scripts/obfuscate.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -32,6 +33,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
+    "javascript-obfuscator": "^5.4.1",
+    "rollup-plugin-obfuscator": "^1.1.0",
+    "terser": "^5.46.1",
     "vite": "^5.4.21"
   }
 }
