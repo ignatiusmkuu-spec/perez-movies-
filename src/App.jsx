@@ -9,6 +9,7 @@ import LiveSports from './components/LiveSports'
 import LiveFootball from './components/LiveFootball'
 import RadioSection from './components/RadioSection'
 import PremiumAccess from './components/PremiumAccess'
+import RankingsSection from './components/RankingsSection'
 import PlayerModal from './components/PlayerModal'
 
 export default function App() {
@@ -52,6 +53,7 @@ export default function App() {
         {tab === 'anime' && (
           <AnimeSection searchQuery={searchQuery} onPlay={handlePlay} />
         )}
+        {tab === 'rankings' && <RankingsSection onPlay={handlePlay} />}
         {tab === 'football' && <LiveFootball />}
         {tab === 'sports' && <LiveSports />}
         {tab === 'radio' && <RadioSection />}

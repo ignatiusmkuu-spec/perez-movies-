@@ -455,6 +455,61 @@ app.get('/api/xcasper-browse', async (req, res) => {
   }
 })
 
+const XCASPER_FRONTEND_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  'Accept': 'application/json',
+  'Referer': 'https://xcasper.space/',
+  'Origin': 'https://xcasper.space',
+}
+
+app.get('/api/xcasper-ranking', async (req, res) => {
+  try {
+    const r = await fetch('https://movieapi.xcasper.space/api/ranking', {
+      headers: XCASPER_FRONTEND_HEADERS, signal: AbortSignal.timeout(10000),
+    })
+    const json = await r.json()
+    const rankingList = (json?.data?.rankingList || []).map(c => ({
+      name: c.name,
+      id: c.id,
+      path: c.path,
+    }))
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ rankingList })
+  } catch (err) {
+    res.status(502).json({ error: err.message, rankingList: [] })
+  }
+})
+
+app.get('/api/xcasper-ranking-items', async (req, res) => {
+  const { path, page = 1, perPage = 24 } = req.query
+  if (!path) return res.status(400).json({ error: 'path required', items: [] })
+  try {
+    const r = await fetch(
+      `https://movieapi.xcasper.space/api/browse?path=${encodeURIComponent(path)}&page=${page}&perPage=${perPage}`,
+      { headers: XCASPER_FRONTEND_HEADERS, signal: AbortSignal.timeout(10000) }
+    )
+    const json = await r.json()
+    const items = (json?.data?.items || []).map((i, idx) => ({
+      rank: (Number(page) - 1) * Number(perPage) + idx + 1,
+      subjectId: i.subjectId,
+      subjectType: i.subjectType,
+      title: i.title,
+      description: i.description,
+      releaseDate: i.releaseDate,
+      genre: i.genre,
+      cover: i.cover,
+      imdbId: i.imdbId || null,
+      imdbRatingValue: i.imdbRatingValue || null,
+      detailPath: i.detailPath || null,
+    }))
+    const hasMore = json?.data?.pager?.hasMore || false
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ items, hasMore, page: json?.data?.pager?.page })
+  } catch (err) {
+    res.status(502).json({ error: err.message, items: [], hasMore: false })
+  }
+})
+
 const NEWTOXIC_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'application/json',
