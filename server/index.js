@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit'
 import streamingRoutes from './streaming/routes.js'
 import proxyRoutes from './streaming/proxy.js'
 import { startHealthChecks } from './streaming/servers.js'
+import authRoutes from './auth/routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -51,6 +52,9 @@ const streamLimiter = rateLimit({
   message: { success: false, error: 'Stream rate limit exceeded.' },
 })
 app.use('/api/stream', streamLimiter)
+
+/* ── Mount auth routes ── */
+app.use('/api/auth', authRoutes)
 
 /* ── Mount streaming routes ── */
 app.use('/api', streamingRoutes)

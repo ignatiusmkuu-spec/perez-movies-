@@ -12,6 +12,7 @@ import DeveloperPage from './components/DeveloperPage'
 import PremiumAccess from './components/PremiumAccess'
 import PlayerModal from './components/PlayerModal'
 import VideoTemplate from './VideoTemplate'
+import AuthGate from './components/auth/AuthGate'
 
 function useHash() {
   const [hash, setHash] = useState(window.location.hash)
@@ -24,6 +25,14 @@ function useHash() {
 }
 
 export default function App() {
+  return (
+    <AuthGate>
+      <AppInner />
+    </AuthGate>
+  )
+}
+
+function AppInner() {
   const hash = useHash()
 
   // ── Video route ──────────────────────────────────────────────
