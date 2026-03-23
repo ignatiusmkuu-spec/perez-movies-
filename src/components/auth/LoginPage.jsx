@@ -65,9 +65,9 @@ export default function LoginPage({ onLogin, onGoRegister }) {
           <p className="auth-subtitle">Sign in to continue watching</p>
           <form onSubmit={handleLogin} className="auth-form">
             <div className="auth-field">
-              <label>Email Address</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com" autoComplete="email" />
+              <label>Email or Username</label>
+              <input type="text" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com or username" autoComplete="username" />
             </div>
             <div className="auth-field">
               <label>Password</label>

@@ -13,6 +13,20 @@ const JWT_SECRET = process.env.AUTH_SECRET || 'ignite-auth-secret-change-in-prod
 const MPESA_STK_URL = 'https://mpesapi.giftedtech.co.ke/api/payNexusTech.php'
 const MPESA_VERIFY_URL = 'https://mpesapi.giftedtech.co.ke/api/verify-transaction.php'
 
+const DEV_USERNAME = 'ignatiusmkuu'
+const DEV_PASSWORD = 'Perez@254'
+const DEV_USER = {
+  id: 'developer',
+  name: 'Ignatius (Developer)',
+  email: 'dev@ignite.local',
+  role: 'developer',
+  subscription: { plan: 'developer', days: 99999 },
+}
+
+function signDevToken() {
+  return jwt.sign({ sub: 'developer', role: 'developer', email: DEV_USER.email }, JWT_SECRET, { expiresIn: '30d' })
+}
+
 const PLANS = {
   '1month':  { label: '1 Month',  days: 30,  amount: 500  },
   '2months': { label: '2 Months', days: 60,  amount: 900  },
@@ -65,8 +79,21 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, password } = req.body || {}
   if (!email || !password) {
-    return res.status(400).json({ success: false, error: 'Email and password are required.' })
+    return res.status(400).json({ success: false, error: 'Email or username and password are required.' })
   }
+
+  // Developer account bypass
+  if (email.trim() === DEV_USERNAME && password === DEV_PASSWORD) {
+    const token = signDevToken()
+    return res.json({
+      success: true,
+      token,
+      user: DEV_USER,
+      subscriptionActive: true,
+      daysRemaining: 99999,
+    })
+  }
+
   const user = findUserByEmail(email)
   if (!user) return res.status(401).json({ success: false, error: 'Invalid email or password.' })
   const ok = await bcrypt.compare(password, user.passwordHash)
@@ -85,6 +112,14 @@ router.post('/login', async (req, res) => {
 
 /* ── Me / Status ── */
 router.get('/me', authMiddleware, (req, res) => {
+  if (req.userId === 'developer') {
+    return res.json({
+      success: true,
+      user: DEV_USER,
+      subscriptionActive: true,
+      daysRemaining: 99999,
+    })
+  }
   const user = findUserById(req.userId)
   if (!user) return res.status(404).json({ success: false, error: 'User not found.' })
   const active = isSubscriptionActive(user)
