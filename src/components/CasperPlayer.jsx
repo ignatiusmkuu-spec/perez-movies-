@@ -8,13 +8,41 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
   const [captions, setCaptions] = useState([])
   const [captionsLoading, setCaptionsLoading] = useState(true)
   const [quality, setQuality] = useState(720)
+  const [availableQualities, setAvailableQualities] = useState([])
+  const [resolving, setResolving] = useState(true)
+  const [resolveError, setResolveError] = useState(false)
   const [activeLang, setActiveLang] = useState('en')
   const [showSubs, setShowSubs] = useState(false)
   const [showQuality, setShowQuality] = useState(false)
   const [videoError, setVideoError] = useState(false)
 
   const episodeParams = season && episode ? `&se=${season}&ep=${episode}` : ''
-  const streamUrl = `https://movieapi.xcasper.space/api/bff/stream?subjectId=${subjectId}&resolution=${quality}${episodeParams}`
+  const streamUrl = `/api/casper-stream?subjectId=${subjectId}&resolution=${quality}${episodeParams}`
+
+  useEffect(() => {
+    if (!subjectId) return
+    setResolving(true)
+    setResolveError(false)
+    setAvailableQualities([])
+    const epParams = season && episode ? `&se=${season}&ep=${episode}` : ''
+    fetch(`/api/casper-resolve?subjectId=${subjectId}&resolution=720${epParams}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.hasResource || !data.streams?.length) {
+          setResolveError(true)
+          return
+        }
+        const qs = data.streams
+          .map(s => parseInt(s.resolution))
+          .filter(q => !isNaN(q))
+          .sort((a, b) => b - a)
+        setAvailableQualities(qs)
+        const best = data.best?.resolution ? parseInt(data.best.resolution) : (qs[0] || 720)
+        setQuality(best)
+      })
+      .catch(() => setResolveError(true))
+      .finally(() => setResolving(false))
+  }, [subjectId, season, episode])
 
   useEffect(() => {
     if (!subjectId) return
@@ -60,7 +88,16 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
     setShowSubs(false)
   }
 
-  if (videoError) {
+  if (resolving) {
+    return (
+      <div className="cp-loading">
+        <div className="cp-spinner" />
+        <p>Loading CasperStream…</p>
+      </div>
+    )
+  }
+
+  if (resolveError || videoError) {
     return (
       <div className="cp-error">
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e50914" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -72,6 +109,8 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
     )
   }
 
+  const displayQualities = availableQualities.length > 0 ? availableQualities : QUALITIES
+
   return (
     <div className="cp-root">
       <video
@@ -79,9 +118,8 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
         className="cp-video"
         controls
         autoPlay
-        crossOrigin="anonymous"
         src={streamUrl}
-        key={`${subjectId}-${quality}`}
+        key={`${subjectId}-${quality}-${season}-${episode}`}
         onError={() => setVideoError(true)}
       >
         {captions.map(cap => (
@@ -108,7 +146,7 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
             </button>
             {showQuality && (
               <div className="cp-dropdown">
-                {QUALITIES.map(q => (
+                {displayQualities.map(q => (
                   <button
                     key={q}
                     className={`cp-dd-item ${q === quality ? 'cp-dd-active' : ''}`}

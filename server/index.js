@@ -297,12 +297,13 @@ app.get('/api/casper-captions', async (req, res) => {
     const tvParams = se && ep ? `&se=${se}&ep=${ep}` : ''
     const playRes = await fetch(
       `https://movieapi.xcasper.space/api/play?subjectId=${subjectId}${tvParams}`,
-      { headers: CASPER_HEADERS, signal: AbortSignal.timeout(10000) }
+      { headers: { ...CASPER_HEADERS, Accept: 'application/json' }, signal: AbortSignal.timeout(10000) }
     )
-    const html = await playRes.text()
-    const streamIdMatch = html.match(/"id"\s*:\s*"(\d{15,20})"/)
-    if (!streamIdMatch) return res.json({ streamId: null, captions: [] })
-    const streamId = streamIdMatch[1]
+    const playJson = await playRes.json()
+    const streams = playJson?.data?.streams || []
+    const firstStream = streams[0]
+    if (!firstStream) return res.json({ streamId: null, captions: [] })
+    const streamId = firstStream.id
     const capRes = await fetch(
       `https://movieapi.xcasper.space/api/captions?subjectId=${subjectId}&streamId=${streamId}`,
       { headers: { ...CASPER_HEADERS, Accept: 'application/json' }, signal: AbortSignal.timeout(10000) }
@@ -312,6 +313,39 @@ app.get('/api/casper-captions', async (req, res) => {
     res.json({ streamId, captions: capJson?.data?.captions || [] })
   } catch (err) {
     res.status(502).json({ error: err.message, streamId: null, captions: [] })
+  }
+})
+
+app.get('/api/casper-resolve', async (req, res) => {
+  const { subjectId, resolution, se, ep } = req.query
+  if (!subjectId) return res.status(400).json({ error: 'subjectId required' })
+  try {
+    const tvParams = se && ep ? `&se=${se}&ep=${ep}` : ''
+    const playRes = await fetch(
+      `https://movieapi.xcasper.space/api/play?subjectId=${subjectId}${tvParams}`,
+      { headers: { ...CASPER_HEADERS, Accept: 'application/json' }, signal: AbortSignal.timeout(10000) }
+    )
+    const playJson = await playRes.json()
+    const streams = playJson?.data?.streams || []
+    const wantedRes = parseInt(resolution) || 720
+    const sorted = [...streams].sort((a, b) => Math.abs(parseInt(a.resolutions) - wantedRes) - Math.abs(parseInt(b.resolutions) - wantedRes))
+    const best = sorted[0]
+    if (!best) return res.json({ streams: [], hasResource: false })
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({
+      streams: streams.map(s => ({
+        id: s.id,
+        resolution: s.resolutions,
+        size: s.size,
+        duration: s.duration,
+        proxyUrl: s.proxyUrl,
+      })),
+      best: { id: best.id, resolution: best.resolutions, proxyUrl: best.proxyUrl },
+      hasResource: playJson?.data?.hasResource ?? true,
+      limited: playJson?.data?.limited ?? false,
+    })
+  } catch (err) {
+    res.status(502).json({ error: err.message, streams: [], hasResource: false })
   }
 })
 
@@ -334,6 +368,41 @@ app.get('/api/casper-vtt', async (req, res) => {
     res.send(vtt)
   } catch (err) {
     res.status(502).send('WEBVTT\n\n')
+  }
+})
+
+app.get('/api/casper-stream', async (req, res) => {
+  const { subjectId, resolution, se, ep } = req.query
+  if (!subjectId) return res.status(400).json({ error: 'subjectId required' })
+  const res_q = resolution || '720'
+  const tvParams = se && ep ? `&se=${se}&ep=${ep}` : ''
+  const streamUrl = `https://movieapi.xcasper.space/api/bff/stream?subjectId=${subjectId}&resolution=${res_q}${tvParams}`
+  try {
+    const fetchHeaders = {
+      ...CASPER_HEADERS,
+      Accept: 'video/mp4,video/*;q=0.9,*/*;q=0.8',
+    }
+    if (req.headers.range) {
+      fetchHeaders['Range'] = req.headers.range
+    }
+    const upstream = await fetch(streamUrl, {
+      headers: fetchHeaders,
+      signal: AbortSignal.timeout(20000),
+    })
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: `upstream ${upstream.status}` })
+    }
+    res.set('Access-Control-Allow-Origin', '*')
+    res.set('Content-Type', upstream.headers.get('content-type') || 'video/mp4')
+    res.set('Accept-Ranges', 'bytes')
+    const contentLength = upstream.headers.get('content-length')
+    const contentRange = upstream.headers.get('content-range')
+    if (contentLength) res.set('Content-Length', contentLength)
+    if (contentRange) res.set('Content-Range', contentRange)
+    res.status(upstream.status)
+    upstream.body.pipe(res)
+  } catch (err) {
+    if (!res.headersSent) res.status(502).json({ error: err.message })
   }
 })
 

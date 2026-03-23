@@ -151,6 +151,32 @@
   color: rgba(255,255,255,0.3);
 }
 
+.cp-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #000;
+  color: rgba(255,255,255,0.6);
+  font-size: 0.88rem;
+}
+
+.cp-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255,255,255,0.15);
+  border-top-color: #e50914;
+  border-radius: 50%;
+  animation: cp-spin 0.8s linear infinite;
+}
+
+@keyframes cp-spin {
+  to { transform: rotate(360deg); }
+}
+
 .cp-error {
   position: absolute;
   inset: 0;
