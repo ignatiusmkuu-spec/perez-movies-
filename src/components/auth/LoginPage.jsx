@@ -18,11 +18,16 @@ export default function LoginPage({ onLogin, onGoRegister }) {
     setError(''); setInfo('')
     if (!email || !password) return setError('Please enter your email and password.')
     setLoading(true)
-    const res = await authApi.login(email, password)
-    setLoading(false)
-    if (!res.success) return setError(res.error)
-    localStorage.setItem('ignite_token', res.token)
-    onLogin(res)
+    try {
+      const res = await authApi.login(email, password)
+      if (!res.success) return setError(res.error || 'Login failed. Please try again.')
+      localStorage.setItem('ignite_token', res.token)
+      onLogin(res)
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleForgot = async (e) => {
@@ -30,12 +35,17 @@ export default function LoginPage({ onLogin, onGoRegister }) {
     setError(''); setInfo('')
     if (!email) return setError('Please enter your email address.')
     setLoading(true)
-    const res = await authApi.forgotPassword(email)
-    setLoading(false)
-    if (!res.success) return setError(res.error || 'Something went wrong.')
-    setInfo('A 6-digit reset code has been sent. Check your email.')
-    if (res._devCode) setInfo(`Reset code: ${res._devCode} (dev mode)`)
-    setMode('reset')
+    try {
+      const res = await authApi.forgotPassword(email)
+      if (!res.success) return setError(res.error || 'Something went wrong.')
+      setInfo('A 6-digit reset code has been sent. Check your email.')
+      if (res._devCode) setInfo(`Reset code: ${res._devCode} (dev mode)`)
+      setMode('reset')
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleReset = async (e) => {
@@ -44,12 +54,17 @@ export default function LoginPage({ onLogin, onGoRegister }) {
     if (!code || !newPassword || !confirmPassword) return setError('All fields are required.')
     if (newPassword !== confirmPassword) return setError('Passwords do not match.')
     setLoading(true)
-    const res = await authApi.resetPassword(email, code, newPassword)
-    setLoading(false)
-    if (!res.success) return setError(res.error)
-    setInfo(res.message)
-    setMode('login')
-    setCode(''); setNewPassword(''); setConfirmPassword('')
+    try {
+      const res = await authApi.resetPassword(email, code, newPassword)
+      if (!res.success) return setError(res.error || 'Reset failed. Please try again.')
+      setInfo(res.message)
+      setMode('login')
+      setCode(''); setNewPassword(''); setConfirmPassword('')
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

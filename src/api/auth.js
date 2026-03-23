@@ -2,16 +2,21 @@ const BASE = '/api/auth'
 
 async function req(path, options = {}) {
   const token = localStorage.getItem('ignite_token')
-  const res = await fetch(BASE + path, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-  })
-  return res.json()
+  try {
+    const res = await fetch(BASE + path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+    })
+    const data = await res.json()
+    return data
+  } catch (err) {
+    return { success: false, error: 'Network error. Please check your connection and try again.' }
+  }
 }
 
 export const authApi = {

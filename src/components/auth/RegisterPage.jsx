@@ -18,11 +18,16 @@ export default function RegisterPage({ onRegister, onGoLogin }) {
     if (password.length < 6) return setError('Password must be at least 6 characters.')
     if (password !== confirm) return setError('Passwords do not match.')
     setLoading(true)
-    const res = await authApi.register(name, email, password)
-    setLoading(false)
-    if (!res.success) return setError(res.error)
-    localStorage.setItem('ignite_token', res.token)
-    onRegister(res)
+    try {
+      const res = await authApi.register(name, email, password)
+      if (!res.success) return setError(res.error || 'Registration failed. Please try again.')
+      localStorage.setItem('ignite_token', res.token)
+      onRegister(res)
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

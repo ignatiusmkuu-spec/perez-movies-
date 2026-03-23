@@ -44,13 +44,18 @@ export default function PricingPage({ user, onSubscribed }) {
       return setError('Enter a valid Safaricom number (07xx or 01xx or 2547xx / 2541xx).')
     }
     setLoading(true)
-    const res = await authApi.initiatePayment(selectedPlan.key, formatted)
-    setLoading(false)
-    if (!res.success) return setError(res.error)
-    checkoutRef.current = res.checkoutRequestId
-    setStep('polling')
-    setPollMsg('STK push sent! Check your phone and enter your M-Pesa PIN…')
-    startPolling(res.checkoutRequestId)
+    try {
+      const res = await authApi.initiatePayment(selectedPlan.key, formatted)
+      if (!res.success) return setError(res.error || 'Payment initiation failed. Please try again.')
+      checkoutRef.current = res.checkoutRequestId
+      setStep('polling')
+      setPollMsg('STK push sent! Check your phone and enter your M-Pesa PIN…')
+      startPolling(res.checkoutRequestId)
+    } catch {
+      setError('Could not connect to payment gateway. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const startPolling = (checkoutId) => {
@@ -64,7 +69,12 @@ export default function PricingPage({ user, onSubscribed }) {
         setError('Payment timed out. Please try again.')
         return
       }
-      const res = await authApi.verifyPayment(checkoutId, selectedPlan.key)
+      let res
+      try {
+        res = await authApi.verifyPayment(checkoutId, selectedPlan.key)
+      } catch {
+        return
+      }
       if (res.success && res.status === 'completed') {
         clearInterval(pollRef.current)
         setReceipt(res.receipt || '')

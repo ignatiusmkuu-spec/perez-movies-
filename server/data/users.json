@@ -1,0 +1,34 @@
+{
+  "users": [
+    {
+      "id": "21e4ab63-4284-4f9d-971b-008c5a7e4ecf",
+      "name": "Test User",
+      "email": "test@test.com",
+      "passwordHash": "$2b$10$g2vsqM3jayq/NKsq0MNLY.ei.yj/iL7t/er6LL9Tozv0KTirKeh3S",
+      "subscription": null,
+      "resetToken": null,
+      "resetTokenExpiry": null,
+      "createdAt": "2026-03-23T14:01:10.865Z"
+    },
+    {
+      "id": "71d98615-0bf8-4b3e-b485-6d93a7d52619",
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "passwordHash": "$2b$10$UNF1S0zqPjqU6jKNjcK/kuX1M5oQN9jB2fwJ/epqAp1AkMQjCkvWK",
+      "subscription": null,
+      "resetToken": null,
+      "resetTokenExpiry": null,
+      "createdAt": "2026-03-23T14:02:44.930Z"
+    },
+    {
+      "id": "64027441-1496-4be7-920a-bea602d8aa17",
+      "name": "New User",
+      "email": "newuser@test.com",
+      "passwordHash": "$2b$10$k0bQ..EWrXeBvHO/nEPzl.lhRyYpEoh3EK1DXo.3bLamkR7DmXnLS",
+      "subscription": null,
+      "resetToken": null,
+      "resetTokenExpiry": null,
+      "createdAt": "2026-03-23T14:02:59.014Z"
+    }
+  ]
+}
