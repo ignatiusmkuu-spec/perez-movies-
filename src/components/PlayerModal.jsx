@@ -5,6 +5,11 @@ import './PlayerModal.css'
 
 const ALL_SERVERS = [
   {
+    label: 'NontonGo',
+    movie: (id) => `https://www.nontongo.win/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://www.nontongo.win/embed/tv/${id}/${s}/${e}`,
+  },
+  {
     label: 'VidSrc.to',
     movie: (id) => `https://vidsrc.to/embed/movie/${id}`,
     tv:    (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
@@ -229,11 +234,11 @@ export default function PlayerModal({ item, type, onClose }) {
 
     if (!embedUrl || !iframeLoading || lookingUp || manualSwitch) return
 
-    const failoverIdx = visibleServers.findIndex(s => s.label === 'AutoEmbed')
+    const failoverIdx = visibleServers.findIndex(s => s.label === '2Embed v3')
     if (failoverIdx === -1 || failoverIdx === safeIdx) return
 
     failoverRef.current = setTimeout(() => {
-      setFailoverMsg('Stream timed out — switching to AutoEmbed…')
+      setFailoverMsg('Stream timed out — switching to 2Embed v3…')
       setServerIdx(failoverIdx)
       setIframeLoading(true)
       failoverRef.current = null
@@ -344,7 +349,7 @@ export default function PlayerModal({ item, type, onClose }) {
                   {failoverMsg || `Loading ${srv?.label}…`}
                 </p>
                 {!failoverMsg && (
-                  <p className="mb-loader-sub">Auto-switching to AutoEmbed if stream is slow…</p>
+                  <p className="mb-loader-sub">Auto-switching to 2Embed v3 if stream is slow…</p>
                 )}
               </div>
             )}
@@ -359,9 +364,9 @@ export default function PlayerModal({ item, type, onClose }) {
                 referrerPolicy="no-referrer-when-downgrade"
                 onLoad={() => { setIframeLoading(false); setFailoverMsg(null) }}
                 onError={() => {
-                  const failIdx = visibleServers.findIndex(s => s.label === 'AutoEmbed')
+                  const failIdx = visibleServers.findIndex(s => s.label === '2Embed v3')
                   if (failIdx !== -1 && failIdx !== safeIdx) {
-                    setFailoverMsg('Stream error — switching to AutoEmbed…')
+                    setFailoverMsg('Stream error — switching to 2Embed v3…')
                     setServerIdx(failIdx)
                     setIframeLoading(true)
                   }
