@@ -27,7 +27,7 @@ app.use(helmet({
 }))
 
 /* ── CORS — allow configured origins ── */
-const ALWAYS_ALLOWED = ['https://ez-movies.vercel.app']
+const ALWAYS_ALLOWED = ['https://ez-movies.vercel.app', 'https://perez-movies.vercel.app']
 const EXTRA_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
 const ALLOWED_ORIGINS = [...ALWAYS_ALLOWED, ...EXTRA_ORIGINS]
 app.use(cors({
