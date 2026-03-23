@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import './NewtoxicPlayer.css'
 
-export default function NewtoxicPlayer({ slug, type = 'movie', onError }) {
+export default function NewtoxicPlayer({ slug, type = 'movie', onError, title, poster }) {
   const videoRef = useRef(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -92,6 +92,58 @@ export default function NewtoxicPlayer({ slug, type = 'movie', onError }) {
       return () => clearTimeout(t)
     }
   }, [resolving, loading, streamUrl, error])
+
+  useEffect(() => {
+    const vid = videoRef.current
+    if (!vid || !streamUrl) return
+    if (!('mediaSession' in navigator)) return
+
+    const displayTitle = activeEp?.name || title || 'Video'
+    const artwork = poster
+      ? [{ src: poster, sizes: '512x512', type: 'image/jpeg' }]
+      : []
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: displayTitle,
+      artist: 'Ignatius Streaming',
+      artwork,
+    })
+
+    const onPlay = () => { navigator.mediaSession.playbackState = 'playing' }
+    const onPause = () => { navigator.mediaSession.playbackState = 'paused' }
+
+    vid.addEventListener('play', onPlay)
+    vid.addEventListener('pause', onPause)
+
+    navigator.mediaSession.setActionHandler('play', () => {
+      vid.play().catch(() => {})
+    })
+    navigator.mediaSession.setActionHandler('pause', () => {
+      vid.pause()
+    })
+
+    return () => {
+      vid.removeEventListener('play', onPlay)
+      vid.removeEventListener('pause', onPause)
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', null)
+        navigator.mediaSession.setActionHandler('pause', null)
+        navigator.mediaSession.metadata = null
+        navigator.mediaSession.playbackState = 'none'
+      }
+    }
+  }, [streamUrl, title, poster, activeEp])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!('mediaSession' in navigator)) return
+      const vid = videoRef.current
+      if (!vid) return
+      navigator.mediaSession.playbackState = vid.paused ? 'paused' : 'playing'
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
 
   if (loading || resolving) {
     return (

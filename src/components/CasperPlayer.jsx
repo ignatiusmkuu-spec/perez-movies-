@@ -3,7 +3,7 @@ import './CasperPlayer.css'
 
 const QUALITIES = [1080, 720, 480, 360]
 
-export default function CasperPlayer({ subjectId, season, episode, onNativeError }) {
+export default function CasperPlayer({ subjectId, season, episode, onNativeError, title, poster }) {
   const videoRef = useRef(null)
   const [captions, setCaptions] = useState([])
   const [captionsLoading, setCaptionsLoading] = useState(true)
@@ -68,6 +68,65 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
       track.mode = track.language === activeLang ? 'showing' : 'hidden'
     })
   }, [activeLang, captions])
+
+  useEffect(() => {
+    const vid = videoRef.current
+    if (!vid || resolving || resolveError) return
+
+    if (!('mediaSession' in navigator)) return
+
+    const artwork = poster
+      ? [{ src: poster, sizes: '512x512', type: 'image/jpeg' }]
+      : []
+
+    const displayTitle = title || 'Video'
+    const episodeLabel = season && episode ? ` S${season}E${episode}` : ''
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: displayTitle + episodeLabel,
+      artist: 'Ignatius Streaming',
+      artwork,
+    })
+
+    const onPlay = () => {
+      navigator.mediaSession.playbackState = 'playing'
+    }
+    const onPause = () => {
+      navigator.mediaSession.playbackState = 'paused'
+    }
+
+    vid.addEventListener('play', onPlay)
+    vid.addEventListener('pause', onPause)
+
+    navigator.mediaSession.setActionHandler('play', () => {
+      vid.play().catch(() => {})
+    })
+    navigator.mediaSession.setActionHandler('pause', () => {
+      vid.pause()
+    })
+
+    return () => {
+      vid.removeEventListener('play', onPlay)
+      vid.removeEventListener('pause', onPause)
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', null)
+        navigator.mediaSession.setActionHandler('pause', null)
+        navigator.mediaSession.metadata = null
+        navigator.mediaSession.playbackState = 'none'
+      }
+    }
+  }, [resolving, resolveError, title, poster, season, episode, subjectId, quality])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!('mediaSession' in navigator)) return
+      const vid = videoRef.current
+      if (!vid) return
+      navigator.mediaSession.playbackState = vid.paused ? 'paused' : 'playing'
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
 
   const handleQualityChange = (q) => {
     const vid = videoRef.current

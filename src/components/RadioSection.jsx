@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import { useRadio } from '../context/RadioContext'
 import './RadioSection.css'
 
 const RADIO_COUNTRIES = [
@@ -105,18 +106,13 @@ function StationCard({ station, isPlaying, isLoading, onClick }) {
 }
 
 export default function RadioSection() {
-  const [country, setCountry]           = useState('kenya')
-  const [stations, setStations]         = useState([])
-  const [loading, setLoading]           = useState(false)
-  const [error, setError]               = useState(null)
-  const [playing, setPlaying]           = useState(null)
-  const [audioLoading, setAudioLoading] = useState(false)
-  const [audioError, setAudioError]     = useState(null)
-  const [volume, setVolume]             = useState(0.8)
-  const [muted, setMuted]               = useState(false)
-  const [search, setSearch]             = useState('')
+  const { playing, audioLoading, audioError, volume, muted, playStation, stopPlaying, toggleMute, handleVolume } = useRadio()
 
-  const audioRef = useRef(null)
+  const [country, setCountry] = useState('kenya')
+  const [stations, setStations] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     setLoading(true)
@@ -134,70 +130,12 @@ export default function RadioSection() {
     })
   }, [country])
 
-  const playStation = useCallback((station) => {
-    if (playing?.stationuuid === station.stationuuid) {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.src = ''
-      }
-      setPlaying(null)
-      setAudioError(null)
-      return
-    }
-
-    setPlaying(station)
-    setAudioLoading(true)
-    setAudioError(null)
-
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.src = station.url_resolved
-      audioRef.current.volume = muted ? 0 : volume
-      audioRef.current.play().catch(() => {
-        setAudioError('Could not connect to stream. Try another station.')
-        setAudioLoading(false)
-      })
-    }
-  }, [playing, volume, muted])
-
-  const stopPlaying = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.src = ''
-    }
-    setPlaying(null)
-    setAudioError(null)
-  }
-
-  const toggleMute = () => {
-    setMuted(m => {
-      if (audioRef.current) audioRef.current.volume = m ? volume : 0
-      return !m
-    })
-  }
-
-  const handleVolume = (e) => {
-    const v = parseFloat(e.target.value)
-    setVolume(v)
-    if (audioRef.current && !muted) audioRef.current.volume = v
-  }
-
   const filtered = search.trim()
     ? stations.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.tags?.toLowerCase().includes(search.toLowerCase()))
     : stations
 
   return (
     <div className="radio-section">
-      <audio
-        ref={audioRef}
-        onCanPlay={() => setAudioLoading(false)}
-        onPlaying={() => setAudioLoading(false)}
-        onWaiting={() => setAudioLoading(true)}
-        onError={() => { setAudioError('Stream error. Try another station.'); setAudioLoading(false) }}
-        onEnded={() => setPlaying(null)}
-        preload="none"
-      />
-
       {/* Header */}
       <div className="radio-hero">
         <div className="radio-hero-left">
@@ -236,7 +174,7 @@ export default function RadioSection() {
               type="range"
               min="0" max="1" step="0.05"
               value={muted ? 0 : volume}
-              onChange={handleVolume}
+              onChange={e => handleVolume(parseFloat(e.target.value))}
               className="radio-vol-slider"
             />
             <button className="radio-stop-btn" onClick={stopPlaying}>■ Stop</button>

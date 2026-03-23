@@ -127,16 +127,19 @@ export default function PlayerModal({ item, type, onClose }) {
   const isAnime = type === 'anime'
   const isTV    = type === 'moviebox-tv' || type === 'tv'
 
-  let title, year
+  let title, year, poster
   if (isAnime) {
-    title = item.title_english || item.title || item.Title || ''
-    year  = item.year || item.Year
+    title  = item.title_english || item.title || item.Title || ''
+    year   = item.year || item.Year
+    poster = item.images?.jpg?.image_url || item.image_url || null
   } else if (isTV) {
-    title = item.name || item.Title || item.title
-    year  = item.premiered?.slice(0,4) || item.Year || item.releaseDate?.slice(0,4)
+    title  = item.name || item.Title || item.title
+    year   = item.premiered?.slice(0,4) || item.Year || item.releaseDate?.slice(0,4)
+    poster = item.image?.medium || item.image?.original || item.Poster || item.cover?.url || null
   } else {
-    title = item.Title || item.title || item.name
-    year  = item.Year || item.releaseDate?.slice(0,4) || item.premiered?.slice(0,4)
+    title  = item.Title || item.title || item.name
+    year   = item.Year || item.releaseDate?.slice(0,4) || item.premiered?.slice(0,4)
+    poster = item.Poster || item.cover?.url || item.thumbnail || item.image?.medium || null
   }
 
   const showEps      = isTV || isAnime
@@ -433,6 +436,8 @@ export default function PlayerModal({ item, type, onClose }) {
                 slug={item._newtoxicSlug}
                 type={item._newtoxicType || (showEps ? 'tv' : 'movie')}
                 onError={() => setNativePlayerFailed(true)}
+                title={title}
+                poster={poster}
               />
             ) : !isLookingUpAny && srv?.usesSubjectId && casperSubjectId && !nativePlayerFailed ? (
               <CasperPlayer
@@ -441,6 +446,8 @@ export default function PlayerModal({ item, type, onClose }) {
                 season={showEps ? season : undefined}
                 episode={showEps ? episode : undefined}
                 onNativeError={() => setNativePlayerFailed(true)}
+                title={title}
+                poster={poster}
               />
             ) : !isLookingUpAny && embedUrl ? (
               <iframe

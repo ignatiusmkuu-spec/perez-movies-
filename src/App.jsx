@@ -11,6 +11,8 @@ import RadioSection from './components/RadioSection'
 import PremiumAccess from './components/PremiumAccess'
 import RankingsSection from './components/RankingsSection'
 import PlayerModal from './components/PlayerModal'
+import RadioMiniPlayer from './components/RadioMiniPlayer'
+import { RadioProvider } from './context/RadioContext'
 
 export default function App() {
   const [tab, setTab] = useState('movies')
@@ -41,32 +43,35 @@ export default function App() {
   }, [tab])
 
   return (
-    <div className="app">
-      <Header onSearch={handleSearch} activeTab={tab} />
-      <div className="page-content">
-        {tab === 'movies' && (
-          <MoviesSection searchQuery={searchQuery} onPlay={handlePlay} />
+    <RadioProvider>
+      <div className="app">
+        <Header onSearch={handleSearch} activeTab={tab} />
+        <div className="page-content">
+          {tab === 'movies' && (
+            <MoviesSection searchQuery={searchQuery} onPlay={handlePlay} />
+          )}
+          {tab === 'drama' && (
+            <DramaSection searchQuery={searchQuery} onPlay={handlePlay} />
+          )}
+          {tab === 'anime' && (
+            <AnimeSection searchQuery={searchQuery} onPlay={handlePlay} />
+          )}
+          {tab === 'rankings' && <RankingsSection onPlay={handlePlay} />}
+          {tab === 'football' && <LiveFootball />}
+          {tab === 'sports' && <LiveSports />}
+          {tab === 'radio' && <RadioSection />}
+          {tab === 'premium' && <PremiumAccess />}
+        </div>
+        <RadioMiniPlayer />
+        <BottomNav active={tab} onChange={handleTabChange} />
+        {player && (
+          <PlayerModal
+            item={player.item}
+            type={player.type}
+            onClose={() => setPlayer(null)}
+          />
         )}
-        {tab === 'drama' && (
-          <DramaSection searchQuery={searchQuery} onPlay={handlePlay} />
-        )}
-        {tab === 'anime' && (
-          <AnimeSection searchQuery={searchQuery} onPlay={handlePlay} />
-        )}
-        {tab === 'rankings' && <RankingsSection onPlay={handlePlay} />}
-        {tab === 'football' && <LiveFootball />}
-        {tab === 'sports' && <LiveSports />}
-        {tab === 'radio' && <RadioSection />}
-        {tab === 'premium' && <PremiumAccess />}
       </div>
-      <BottomNav active={tab} onChange={handleTabChange} />
-      {player && (
-        <PlayerModal
-          item={player.item}
-          type={player.type}
-          onClose={() => setPlayer(null)}
-        />
-      )}
-    </div>
+    </RadioProvider>
   )
 }

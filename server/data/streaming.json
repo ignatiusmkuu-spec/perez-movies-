@@ -1,20 +1,7 @@
 {
   "movies": [],
   "sources": [],
-  "tokens": [
-    {
-      "jti": "06c835ba-49c4-4828-95cd-741d83348336",
-      "movieId": "0182b344-28d0-419a-87f8-44650d158606",
-      "quality": "720p",
-      "protocol": "hls",
-      "clientIp": null,
-      "singleUse": false,
-      "expiresAt": "2026-03-22T09:46:48.000Z",
-      "createdAt": "2026-03-22T05:46:48.720Z",
-      "usedAt": null,
-      "useCount": 0
-    }
-  ],
+  "tokens": [],
   "servers": [
     {
       "id": "primary",
