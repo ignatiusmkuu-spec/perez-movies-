@@ -21,11 +21,9 @@ const CATEGORIES = {
   ],
 }
 
-const FALLBACK_TIMEOUT_MS = 8000
-
-function ChannelCard({ item, type, onClick, isActive, isNontongo }) {
+function ChannelCard({ item, onClick, isActive, isNontongo }) {
   const [imgErr, setImgErr] = useState(false)
-  const id = isNontongo ? item.id : item.slug
+  const isRadio = !isNontongo && item.stream !== undefined && item.ytId === undefined
   return (
     <button
       className={`ist-card ${isActive ? 'ist-card--active' : ''}`}
@@ -34,16 +32,9 @@ function ChannelCard({ item, type, onClick, isActive, isNontongo }) {
     >
       <div className="ist-card__img-wrap">
         {!imgErr ? (
-          <img
-            src={item.img}
-            alt={item.name}
-            onError={() => setImgErr(true)}
-            loading="lazy"
-          />
+          <img src={item.img} alt={item.name} onError={() => setImgErr(true)} loading="lazy" />
         ) : (
-          <div className="ist-card__img-fallback">
-            {type === 'radio' ? '📻' : '📺'}
-          </div>
+          <div className="ist-card__img-fallback">{isRadio ? '📻' : '📺'}</div>
         )}
         {isActive && <span className="ist-card__live-dot">● LIVE</span>}
       </div>
@@ -56,7 +47,7 @@ function NontongoPlayer({ channel, onClose }) {
   return (
     <div className="ist-player">
       <div className="ist-player__header">
-        <img src={channel.img} alt={channel.name} className="ist-player__logo" onError={e => e.target.style.display='none'} />
+        <img src={channel.img} alt={channel.name} className="ist-player__logo" onError={e => (e.target.style.display = 'none')} />
         <div>
           <h2 className="ist-player__title">{channel.name}</h2>
           <span className="ist-player__badge ist-player__badge--nontongo">📺 NontonGo Live</span>
@@ -76,28 +67,36 @@ function NontongoPlayer({ channel, onClose }) {
   )
 }
 
-function TVPlayer({ channel, onClose, onFallback }) {
+function TVPlayer({ channel, onClose, onStreamFail }) {
   const [streamData, setStreamData] = useState(channel.ytId ? { ytId: channel.ytId } : null)
   const [loading, setLoading] = useState(!channel.ytId)
   const [error, setError] = useState(null)
-  const [iframeError, setIframeError] = useState(false)
-  const fallbackTimerRef = useRef(null)
+  const failTimerRef = useRef(null)
 
   useEffect(() => {
     if (channel.ytId) { setStreamData({ ytId: channel.ytId }); setLoading(false); return }
     setLoading(true)
-    fetch(`/api/kenya-stream?slug=${channel.slug}&type=tv`, { signal: AbortSignal.timeout(10000) })
+    const ctrl = new AbortController()
+    fetch(`/api/kenya-stream?slug=${channel.slug}&type=tv`, { signal: ctrl.signal })
       .then(r => r.json())
-      .then(d => { setStreamData(d); setLoading(false) })
-      .catch(() => { setError('Stream not available'); setLoading(false) })
+      .then(d => {
+        if (!d.ytId && !d.stream) {
+          setError('no_stream')
+        } else {
+          setStreamData(d)
+        }
+        setLoading(false)
+      })
+      .catch(() => { setError('no_stream'); setLoading(false) })
+    return () => ctrl.abort()
   }, [channel.slug, channel.ytId])
 
   useEffect(() => {
-    if (error && onFallback) {
-      fallbackTimerRef.current = setTimeout(() => onFallback(), 2000)
+    if (error === 'no_stream') {
+      failTimerRef.current = setTimeout(() => onStreamFail && onStreamFail(), 1500)
     }
-    return () => clearTimeout(fallbackTimerRef.current)
-  }, [error, onFallback])
+    return () => clearTimeout(failTimerRef.current)
+  }, [error, onStreamFail])
 
   const ytSrc = streamData?.ytId
     ? `https://www.youtube.com/embed/live_stream?channel=${streamData.ytId}&autoplay=1&mute=0&rel=0`
@@ -106,7 +105,7 @@ function TVPlayer({ channel, onClose, onFallback }) {
   return (
     <div className="ist-player">
       <div className="ist-player__header">
-        <img src={channel.img} alt={channel.name} className="ist-player__logo" onError={e => e.target.style.display='none'} />
+        <img src={channel.img} alt={channel.name} className="ist-player__logo" onError={e => (e.target.style.display = 'none')} />
         <div>
           <h2 className="ist-player__title">{channel.name}</h2>
           <span className="ist-player__badge">● LIVE</span>
@@ -117,10 +116,8 @@ function TVPlayer({ channel, onClose, onFallback }) {
         {loading ? (
           <div className="ist-player__loading">Loading stream…</div>
         ) : error ? (
-          <div className="ist-player__error">
-            Stream unavailable — switching to backup…
-          </div>
-        ) : ytSrc && !iframeError ? (
+          <div className="ist-player__loading">Stream unavailable — switching to backup…</div>
+        ) : ytSrc ? (
           <iframe
             src={ytSrc}
             allow="autoplay; encrypted-media; fullscreen"
@@ -149,11 +146,13 @@ function RadioPlayer({ station, onClose }) {
 
   useEffect(() => {
     if (station.stream) { setStreamData({ stream: station.stream }); setLoading(false); return }
+    const ctrl = new AbortController()
     setLoading(true)
-    fetch(`/api/kenya-stream?slug=${station.slug}&type=radio`, { signal: AbortSignal.timeout(10000) })
+    fetch(`/api/kenya-stream?slug=${station.slug}&type=radio`, { signal: ctrl.signal })
       .then(r => r.json())
       .then(d => { setStreamData(d); setLoading(false) })
       .catch(() => { setError('Stream not available'); setLoading(false) })
+    return () => ctrl.abort()
   }, [station.slug, station.stream])
 
   const handlePlayPause = () => {
@@ -169,7 +168,7 @@ function RadioPlayer({ station, onClose }) {
   return (
     <div className="ist-player ist-player--radio">
       <div className="ist-player__header">
-        <img src={station.img} alt={station.name} className="ist-player__logo" onError={e => e.target.style.display='none'} />
+        <img src={station.img} alt={station.name} className="ist-player__logo" onError={e => (e.target.style.display = 'none')} />
         <div>
           <h2 className="ist-player__title">{station.name}</h2>
           <span className="ist-player__badge">📻 RADIO</span>
@@ -184,7 +183,7 @@ function RadioPlayer({ station, onClose }) {
         ) : m3u8Url ? (
           <>
             <div className="ist-radio__art">
-              <img src={station.img} alt={station.name} onError={e => e.target.style.display='none'} />
+              <img src={station.img} alt={station.name} onError={e => (e.target.style.display = 'none')} />
               <div className={`ist-radio__pulse ${playing ? 'ist-radio__pulse--active' : ''}`} />
             </div>
             <div className="ist-radio__controls">
@@ -197,12 +196,7 @@ function RadioPlayer({ station, onClose }) {
               </button>
               <span className="ist-radio__status">{playing ? '● Playing live' : 'Press play to stream'}</span>
             </div>
-            <audio
-              ref={audioRef}
-              src={m3u8Url}
-              onEnded={() => setPlaying(false)}
-              onError={() => setError('Audio stream failed')}
-            />
+            <audio ref={audioRef} src={m3u8Url} onEnded={() => setPlaying(false)} onError={() => setError('Audio stream failed')} />
           </>
         ) : ytId ? (
           <iframe
@@ -232,7 +226,8 @@ function NontongoFallback({ onRetry }) {
   const autoPlayedRef = useRef(false)
 
   useEffect(() => {
-    fetch('/api/nontongo-live', { signal: AbortSignal.timeout(15000) })
+    const ctrl = new AbortController()
+    fetch('/api/nontongo-live', { signal: ctrl.signal })
       .then(r => r.json())
       .then(d => {
         const chs = d.channels || []
@@ -240,11 +235,12 @@ function NontongoFallback({ onRetry }) {
         setNtLoading(false)
         if (chs.length > 0 && !autoPlayedRef.current) {
           autoPlayedRef.current = true
-          const preferred = chs.find(c => /bbc.news|cnn|al.?jaz|france.?24/i.test(c.name)) || chs[0]
+          const preferred = chs.find(c => /bbc.news|cnn|al.?jaz|france.?24|sky.news/i.test(c.name)) || chs[0]
           setActiveNt(preferred)
         }
       })
       .catch(() => { setNtLoadErr(true); setNtLoading(false) })
+    return () => ctrl.abort()
   }, [])
 
   const filtered = ntSearch
@@ -254,13 +250,11 @@ function NontongoFallback({ onRetry }) {
   return (
     <div className="ist-wrap">
       <div className="ist-fallback-banner">
-        <span>⚠️ IgnatiusStream is temporarily unavailable — streaming from <strong>NontonGo Live TV</strong> (850+ channels)</span>
-        <button className="ist-retry-btn" onClick={onRetry}>Retry IgnatiusStream</button>
+        <span>⚠️ IgnatiusStream unavailable — now on <strong>NontonGo Live TV</strong> (850+ channels)</span>
+        <button className="ist-retry-btn" onClick={onRetry}>↩ Retry IgnatiusStream</button>
       </div>
 
-      {activeNt && (
-        <NontongoPlayer channel={activeNt} onClose={() => setActiveNt(null)} />
-      )}
+      {activeNt && <NontongoPlayer channel={activeNt} onClose={() => setActiveNt(null)} />}
 
       <div className="ist-nt-search-wrap">
         <input
@@ -277,14 +271,16 @@ function NontongoFallback({ onRetry }) {
           {Array(12).fill(0).map((_, i) => <div key={i} className="ist-skeleton-card" />)}
         </div>
       ) : ntLoadErr ? (
-        <div className="ist-empty">Failed to load backup channels. <button className="ist-retry-btn" onClick={onRetry}>Retry</button></div>
+        <div className="ist-empty">
+          Failed to load backup channels.{' '}
+          <button className="ist-retry-btn" style={{ marginLeft: 8 }} onClick={onRetry}>Retry</button>
+        </div>
       ) : (
         <div className="ist-grid">
           {filtered.map(ch => (
             <ChannelCard
               key={ch.id}
               item={ch}
-              type="tv"
               onClick={setActiveNt}
               isActive={activeNt?.id === ch.id}
               isNontongo
@@ -305,10 +301,8 @@ export default function IgnatiusStreamSection() {
   const [activeItem, setActiveItem] = useState(null)
   const [fallbackMode, setFallbackMode] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
-  const fallbackTimerRef = useRef(null)
 
   const activateFallback = useCallback(() => {
-    clearTimeout(fallbackTimerRef.current)
     setFallbackMode(true)
     setLoading(false)
     setActiveItem(null)
@@ -321,38 +315,28 @@ export default function IgnatiusStreamSection() {
     setStations([])
     setActiveItem(null)
 
-    fallbackTimerRef.current = setTimeout(activateFallback, FALLBACK_TIMEOUT_MS)
+    const ctrl = new AbortController()
 
     Promise.all([
-      fetch('/api/kenya-tv', { signal: AbortSignal.timeout(7000) })
-        .then(r => r.json())
-        .catch(() => ({ channels: [], sourceHealthy: false })),
-      fetch('/api/kenya-radio', { signal: AbortSignal.timeout(7000) })
-        .then(r => r.json())
-        .catch(() => ({ stations: [] })),
+      fetch('/api/kenya-tv', { signal: ctrl.signal, cache: 'no-store' })
+        .then(r => r.json()),
+      fetch('/api/kenya-radio', { signal: ctrl.signal, cache: 'no-store' })
+        .then(r => r.json()),
     ]).then(([tv, radio]) => {
-      clearTimeout(fallbackTimerRef.current)
       const tvChannels = tv.channels || []
       const radioStations = radio.stations || []
-
-      if (!tv.sourceHealthy && tvChannels.length === 0) {
+      if (tvChannels.length === 0 && radioStations.length === 0) {
         activateFallback()
         return
       }
-
       setChannels(tvChannels)
       setStations(radioStations)
       setLoading(false)
-
-      if (!tv.sourceHealthy) {
-        fallbackTimerRef.current = setTimeout(activateFallback, 3000)
-      }
     }).catch(() => {
-      clearTimeout(fallbackTimerRef.current)
       activateFallback()
     })
 
-    return () => clearTimeout(fallbackTimerRef.current)
+    return () => ctrl.abort()
   }, [retryKey, activateFallback])
 
   const handleRetry = () => {
@@ -360,11 +344,9 @@ export default function IgnatiusStreamSection() {
     setRetryKey(k => k + 1)
   }
 
-  const handleTabSwitch = (t) => { setTab(t); setCategory('all'); setActiveItem(null) }
+  const handleTabSwitch = t => { setTab(t); setCategory('all'); setActiveItem(null) }
 
-  if (fallbackMode) {
-    return <NontongoFallback onRetry={handleRetry} />
-  }
+  if (fallbackMode) return <NontongoFallback onRetry={handleRetry} />
 
   const currentList = tab === 'tv' ? channels : stations
   const filtered = category === 'all' ? currentList : currentList.filter(c => c.category === category)
@@ -400,7 +382,7 @@ export default function IgnatiusStreamSection() {
           ? <TVPlayer
               channel={activeItem}
               onClose={() => setActiveItem(null)}
-              onFallback={activateFallback}
+              onStreamFail={activateFallback}
             />
           : <RadioPlayer station={activeItem} onClose={() => setActiveItem(null)} />
       )}
@@ -429,7 +411,6 @@ export default function IgnatiusStreamSection() {
             <ChannelCard
               key={item.slug}
               item={item}
-              type={tab}
               onClick={setActiveItem}
               isActive={activeItem?.slug === item.slug}
             />

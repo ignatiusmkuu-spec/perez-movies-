@@ -1996,13 +1996,9 @@ async function fetchNontongoChannels() {
   } catch { return _nontongoCache || [] }
 }
 
-app.get('/api/kenya-tv', async (req, res) => {
+app.get('/api/kenya-tv', (req, res) => {
   res.set('Access-Control-Allow-Origin', '*')
-  const healthy = await Promise.race([
-    fetch('https://kenyalivetv.co.ke/', { signal: AbortSignal.timeout(5000) }).then(() => true).catch(() => false),
-    new Promise(r => setTimeout(() => r(false), 5500))
-  ])
-  res.json({ channels: KENYA_TV_CHANNELS, sourceHealthy: healthy })
+  res.json({ channels: KENYA_TV_CHANNELS, ok: true })
 })
 
 app.get('/api/kenya-radio', (req, res) => {
