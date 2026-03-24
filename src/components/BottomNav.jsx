@@ -9,6 +9,7 @@ const TABS = [
   { id: 'football', icon: '⚽', label: 'Football', live: true },
   { id: 'sports',   icon: '📡', label: 'Live TV',  live: true },
   { id: 'radio',    icon: '📻', label: 'Radio',    live: true },
+  { id: 'ignatius-live', icon: '🌐', label: 'Live TV & Radio', live: true },
   { id: 'premium',  icon: '💎', label: 'Premiums' },
 ]
 

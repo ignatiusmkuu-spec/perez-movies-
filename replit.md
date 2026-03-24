@@ -9,8 +9,9 @@ Made by **Ignatius** · Contact: +254 706 535 581
 - **Frontend**: React 18 + Vite 5 (port 5000)
 - **Backend**: Express.js proxy server (port 3001)
 - **Styling**: CSS (component-level, CSS variables defined in `src/index.css`)
-- **Content APIs**: MovieBox (`h5-api.aoneroom.com`), YTS.mx (movies), OMDB (search/fallback), Jikan (anime), TVMaze (drama), Scorebat (football)
+- **Content APIs**: MovieBox (`h5-api.aoneroom.com`), YTS.mx (movies), OMDB (search/fallback), Jikan (anime), TVMaze (drama), Scorebat (football), kenyalivetv.co.ke (live TV & radio)
 - **Streaming**: 22 iframe player servers (movie) / 20 (TV); all listed in PlayerModal.jsx
+- **IgnatiusStream**: Live Kenya TV (25 channels via YouTube embeds) + Radio (20 stations, 4 with M3U8 HLS streams)
 
 ## Vercel Deployment
 - `vercel.json` configured with `@vercel/static-build` (frontend) + `@vercel/node` (backend)

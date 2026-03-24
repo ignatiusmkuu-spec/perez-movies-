@@ -1896,6 +1896,107 @@ app.get('/api/fmovies', async (req, res) => {
   res.json({ movies, page, total_pages: TOTAL_PAGES })
 })
 
+/* ── IgnatiusStream: Kenya Live TV & Radio ── */
+const KENYA_TV_CHANNELS = [
+  { slug:'citizen-tv-live', name:'Citizen TV', ytId:'UChBQgieUidXV1CmDxSdRm3g', img:'https://kenyalivetv.co.ke/uploads/tv/1_icon_citizentv.webp', category:'news' },
+  { slug:'ktn-home-live', name:'KTN Home', ytId:'UCKVsdeoHExltrWMuK0hOWmg', img:'https://kenyalivetv.co.ke/uploads/tv/2_icon_ktnhome.webp', category:'entertainment' },
+  { slug:'ramogi-tv-live', name:'Ramogi TV', ytId:'UCmKXJ4C59JjVVJ-axXfpJcg', img:'https://kenyalivetv.co.ke/uploads/tv/3_icon_ramogitv.webp', category:'local' },
+  { slug:'inooro-tv-live', name:'Inooro TV', ytId:null, img:'https://kenyalivetv.co.ke/uploads/tv/4_icon_inoorotv.webp', category:'local' },
+  { slug:'ntv-live', name:'NTV Kenya', ytId:'UCqBJ47FjJcl61fmSbcadAVg', img:'https://kenyalivetv.co.ke/uploads/tv/5_icon_ntvkenya.webp', category:'news' },
+  { slug:'kbc-channel-1-live', name:'KBC Channel 1', ytId:'UCypNjM5hP1qcUqQZe57jNfg', img:'https://kenyalivetv.co.ke/uploads/tv/6_icon_kbctv.webp', category:'news' },
+  { slug:'k24-tv-live', name:'K24 TV', ytId:'UCt3SE-Mvs3WwP7UW-PiFdqQ', img:'https://kenyalivetv.co.ke/uploads/tv/7_icon_k24tv.webp', category:'news' },
+  { slug:'ktn-news-live', name:'KTN News', ytId:'UC4dxH0vjPNq5oO6oGNTt9Jg', img:'https://kenyalivetv.co.ke/uploads/tv/8_icon_ktnnews.webp', category:'news' },
+  { slug:'lolwe-tv-live', name:'Lolwe TV', ytId:'UCv59gwDoN_VKXJcH4rxYkOA', img:'https://kenyalivetv.co.ke/uploads/tv/9_icon_lolwetv.webp', category:'local' },
+  { slug:'tv47-live', name:'TV47', ytId:'UC_zA9UIWE1fB-jfFk_DBSYw', img:'https://kenyalivetv.co.ke/uploads/tv/10_icon_tv47.webp', category:'news' },
+  { slug:'elimu-tv-live', name:'Elimu TV', ytId:'UCVT0cpN1epST6cu9G-dsxhA', img:'https://kenyalivetv.co.ke/uploads/tv/11_icon_elimutv.webp', category:'education' },
+  { slug:'kameme-tv-live', name:'Kameme TV', ytId:'UCd9nkc2XA77NMxBvQz35I2Q', img:'https://kenyalivetv.co.ke/uploads/tv/12_icon_kamemetv.webp', category:'local' },
+  { slug:'y254-tv-live', name:'Y254 TV', ytId:'UCyN7zreAYtk9mRmuCw4ZzHA', img:'https://kenyalivetv.co.ke/uploads/tv/13_icon_y254tv.webp', category:'entertainment' },
+  { slug:'ebru-tv-live', name:'Ebru TV', ytId:'UCdYjYt4YGhEbCGMv1fbv0pg', img:'https://kenyalivetv.co.ke/uploads/tv/14_icon_ebrutv.webp', category:'entertainment' },
+  { slug:'family-tv-live', name:'Family TV', ytId:'UCaezQJtBqkyuNFN8bGmBeMQ', img:'https://kenyalivetv.co.ke/uploads/tv/16_icon_familytv.webp', category:'entertainment' },
+  { slug:'akili-kids-tv-live', name:'Akili Kids TV', ytId:'UCHBIm_ITwYy_FG9iIfIZxGQ', img:'https://kenyalivetv.co.ke/uploads/tv/16_icon_akilikidstv.webp', category:'kids' },
+  { slug:'utv-live', name:'UTV Kenya', ytId:null, img:'https://kenyalivetv.co.ke/uploads/tv/17_icon_utvkenya.webp', category:'local' },
+  { slug:'hope-tv-live', name:'Hope TV', ytId:'UClJq8G6FjEeXyMH6UgimnLw', img:'https://kenyalivetv.co.ke/uploads/tv/18_icon_hopetv.webp', category:'religious' },
+  { slug:'homeboyz-tv-live', name:'Homeboyz TV', ytId:null, img:'https://kenyalivetv.co.ke/uploads/tv/19_icon_homeboyz.webp', category:'entertainment' },
+  { slug:'aljazeera-tv-live', name:'Al Jazeera', ytId:'UCNye-wNBqNL5ZzHSJj3l8Bg', img:'https://kenyalivetv.co.ke/uploads/tv/20_icon_aljazeera.webp', category:'international' },
+  { slug:'france-24-live', name:'France 24', ytId:'UCQfwfsi5VrQ8yKZ-UWmAEFg', img:'https://kenyalivetv.co.ke/uploads/tv/21_icon_france24.webp', category:'international' },
+  { slug:'african-news-live', name:'African News', ytId:'UC1_E8NeF5QHY2dtdLRBCCLA', img:'https://kenyalivetv.co.ke/uploads/tv/22_icon_africannews.webp', category:'international' },
+  { slug:'dgtv-live', name:'DGTV', ytId:'UChk71_i62pjZ0UHdOSyrEoA', img:'https://kenyalivetv.co.ke/uploads/tv/23_icon_dgtv.webp', category:'entertainment' },
+  { slug:'edu-channel-live', name:'Edu Channel', ytId:'UCByj0XrDmb0UDUui63EOnhA', img:'https://kenyalivetv.co.ke/uploads/tv/24_icon_educhannel.webp', category:'education' },
+  { slug:'afrobeats-tv-live', name:'Afrobeats TV', ytId:null, img:'https://kenyalivetv.co.ke/uploads/tv/25_icon_afrobeatstv.webp', category:'music' },
+]
+
+const KENYA_RADIO_STATIONS = [
+  { slug:'radio-citizen-live', name:'Radio Citizen', stream:'https://stream-232223.castr.net/675fd91b151838bd5e6819ae/live_04c533b0bb8211ef836b334509acaa00/index.m3u8', img:'https://kenyalivetv.co.ke/uploads/radio/1_icon_citizenfm.webp', category:'mainstream' },
+  { slug:'hot-96-fm-live', name:'Hot 96 FM', stream:'https://stream-232223.castr.net/675fd91b151838bd5e6819ae/live_f8af1da0bb9211ef9dc55ffde42d4b34/index.m3u8', img:'https://kenyalivetv.co.ke/uploads/radio/2_icon_hot96.webp', category:'mainstream' },
+  { slug:'ramogi-fm-live', name:'Ramogi FM', stream:'https://stream-232223.castr.net/675fd91b151838bd5e6819ae/live_c0670020e93c11eface869d25798e5f4/index.m3u8', img:'https://kenyalivetv.co.ke/uploads/radio/3_icon_ramogifm.webp', category:'local' },
+  { slug:'inooro-fm-live', name:'Inooro FM', stream:'https://stream-232223.castr.net/675fd91b151838bd5e6819ae/live_b4e01b60bb9211efab6957df0a4f9304/index.m3u8', img:'https://kenyalivetv.co.ke/uploads/radio/4_icon_inoorofm.webp', category:'local' },
+  { slug:'classic-105-fm-live', name:'Classic 105 FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/5_icon_classic105.webp', category:'mainstream' },
+  { slug:'milele-fm-live', name:'Milele FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/6_icon_milelefm.webp', category:'mainstream' },
+  { slug:'kiss-100-live', name:'Kiss 100', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/7_icon_kiss100.webp', category:'mainstream' },
+  { slug:'nation-fm-live', name:'Nation FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/8_icon_nationfm.webp', category:'mainstream' },
+  { slug:'capital-fm-live', name:'Capital FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/9_icon_capitalfm.webp', category:'mainstream' },
+  { slug:'easy-fm-live', name:'Easy FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/10_icon_easyfm.webp', category:'mainstream' },
+  { slug:'ghetto-radio-live', name:'Ghetto Radio', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/11_icon_ghettoradio.webp', category:'mainstream' },
+  { slug:'kameme-fm-live', name:'Kameme FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/12_icon_kamemefm.webp', category:'local' },
+  { slug:'chamgei-fm-live', name:'Chamgei FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/13_icon_chamgeifm.webp', category:'local' },
+  { slug:'egesa-fm-live', name:'Egesa FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/14_icon_egesafm.webp', category:'local' },
+  { slug:'east-fm-live', name:'East FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/15_icon_eastfm.webp', category:'mainstream' },
+  { slug:'family-radio-live', name:'Family Radio', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/16_icon_familyradio.webp', category:'religious' },
+  { slug:'baraka-fm-live', name:'Baraka FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/17_icon_barakafm.webp', category:'local' },
+  { slug:'homeboyz-radio-live', name:'Homeboyz Radio', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/18_icon_homeboyzradio.webp', category:'mainstream' },
+  { slug:'dala-fm-live', name:'Dala FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/19_icon_dalafm.webp', category:'local' },
+  { slug:'lake-victoria-fm-live', name:'Lake Victoria FM', stream:null, img:'https://kenyalivetv.co.ke/uploads/radio/20_icon_lakevictoriafm.webp', category:'local' },
+]
+
+const _kenyaStreamCache = {}
+const KENYA_TTL = 2 * 60 * 60 * 1000
+
+async function fetchKenyaStream(slug, type) {
+  const key = `${type}_${slug}`
+  if (_kenyaStreamCache[key] && Date.now() - _kenyaStreamCache[key].at < KENYA_TTL) return _kenyaStreamCache[key].data
+  try {
+    const url = `https://kenyalivetv.co.ke/${type}/${slug}`
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' } })
+    const html = await r.text()
+    let data = {}
+    if (type === 'tv') {
+      const yt = html.match(/youtube\.com\/embed\/live_stream\?channel=([A-Za-z0-9_-]+)/)
+      const m3u = html.match(/src="(https?:\/\/[^"]+\.m3u8[^"]*)"/)
+      data = { ytId: yt?.[1] || null, stream: m3u?.[1] || null }
+    } else {
+      const m3u = html.match(/src="(https?:\/\/[^"]+\.m3u8[^"]*)"/)
+      const yt = html.match(/youtube\.com\/embed\/live_stream\?channel=([A-Za-z0-9_-]+)/)
+      data = { stream: m3u?.[1] || null, ytId: yt?.[1] || null }
+    }
+    _kenyaStreamCache[key] = { data, at: Date.now() }
+    return data
+  } catch { return null }
+}
+
+app.get('/api/kenya-tv', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*')
+  res.json({ channels: KENYA_TV_CHANNELS })
+})
+
+app.get('/api/kenya-radio', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*')
+  res.json({ stations: KENYA_RADIO_STATIONS })
+})
+
+app.get('/api/kenya-stream', async (req, res) => {
+  const { slug, type = 'tv' } = req.query
+  if (!slug) return res.status(400).json({ error: 'slug required' })
+  res.set('Access-Control-Allow-Origin', '*')
+  const staticList = type === 'tv' ? KENYA_TV_CHANNELS : KENYA_RADIO_STATIONS
+  const static_ = staticList.find(c => c.slug === slug)
+  if (static_) {
+    if (type === 'tv' && static_.ytId) return res.json({ ytId: static_.ytId, stream: null })
+    if (type === 'radio' && static_.stream) return res.json({ stream: static_.stream, ytId: null })
+  }
+  const live = await fetchKenyaStream(slug, type)
+  res.json(live || { ytId: null, stream: null })
+})
+
 /* ── Serve built Vite frontend in production ── */
 if (process.env.NODE_ENV === 'production') {
   const distDir = path.join(__dirname, '..', 'dist')

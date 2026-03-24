@@ -14,6 +14,7 @@ import FmoviesSection from './components/FmoviesSection'
 import PlayerModal from './components/PlayerModal'
 import RadioMiniPlayer from './components/RadioMiniPlayer'
 import { RadioProvider } from './context/RadioContext'
+import IgnatiusStreamSection from './components/IgnatiusStreamSection'
 
 export default function App() {
   const [tab, setTab] = useState('movies')
@@ -64,6 +65,7 @@ export default function App() {
           {tab === 'football' && <LiveFootball />}
           {tab === 'sports' && <LiveSports />}
           {tab === 'radio' && <RadioSection />}
+          {tab === 'ignatius-live' && <IgnatiusStreamSection />}
           {tab === 'premium' && <PremiumAccess />}
         </div>
         <RadioMiniPlayer />
