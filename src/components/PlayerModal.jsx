@@ -311,8 +311,12 @@ export default function PlayerModal({ item, type, onClose }) {
     if (!casperLookupDoneRef.current) return
     const nextIdx = visibleServers.findIndex(s => s.label === 'NontonGo')
     if (nextIdx === -1) return
-    setServerIdx(nextIdx)
-    setIframeLoading(true)
+    setFailoverMsg('Source not found on IgnatiusMovies — switching to NontonGo…')
+    const t = setTimeout(() => {
+      setServerIdx(nextIdx)
+      setIframeLoading(true)
+    }, 4000)
+    return () => clearTimeout(t)
   }, [casperLookingUp, casperSubjectId])
 
   useEffect(() => {
@@ -320,8 +324,12 @@ export default function PlayerModal({ item, type, onClose }) {
     if (manualSwitch) return
     const nextIdx = visibleServers.findIndex(s => s.label === 'NontonGo')
     if (nextIdx === -1) return
-    setServerIdx(nextIdx)
-    setIframeLoading(true)
+    setFailoverMsg('IgnatiusMovies error — switching to NontonGo…')
+    const t = setTimeout(() => {
+      setServerIdx(nextIdx)
+      setIframeLoading(true)
+    }, 3000)
+    return () => clearTimeout(t)
   }, [nativePlayerFailed])
 
   const handleClose = () => {
@@ -425,7 +433,7 @@ export default function PlayerModal({ item, type, onClose }) {
                   {failoverMsg || `Loading ${srv?.label}…`}
                 </p>
                 {!failoverMsg && !srv?.usesSubjectId && (
-                  <p className="mb-loader-sub">Auto-switching to VidSrc.to if stream is slow…</p>
+                  <p className="mb-loader-sub">Auto-switching to NontonGo if stream is slow…</p>
                 )}
               </div>
             )}
