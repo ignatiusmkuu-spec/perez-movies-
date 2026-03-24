@@ -4,12 +4,6 @@ import './FmoviesSection.css'
 const GRID_SIZE = 24
 const TOTAL_PAGES = 38
 
-function slugToTitle(slug) {
-  const parts = slug.split('-')
-  const titleParts = parts[parts.length - 1].match(/^\d+$/) ? parts.slice(0, -1) : parts
-  return titleParts.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-}
-
 function MovieCard({ movie, onClick, loading }) {
   const [imgErr, setImgErr] = useState(false)
   return (
@@ -41,7 +35,66 @@ function MovieCard({ movie, onClick, loading }) {
   )
 }
 
-export default function FmoviesSection({ onPlay }) {
+function FmoviesPlayer({ movie, onClose }) {
+  const [loading, setLoading] = useState(true)
+  const fmoviesUrl = movie.fmoviesUrl || `https://ww4.fmovies.co/film/${movie.slug}/`
+  const proxyUrl = `/api/fmovies-page?slug=${encodeURIComponent(movie.slug)}`
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="fm-player-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="fm-player-modal">
+        <div className="fm-player-header">
+          <div className="fm-player-title-wrap">
+            <span className="fm-player-badge">FMovies</span>
+            <span className="fm-player-title">{movie.title}</span>
+          </div>
+          <div className="fm-player-actions">
+            <a
+              href={fmoviesUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="fm-player-external"
+              title="Open in new tab"
+            >
+              ↗ Open in FMovies
+            </a>
+            <button className="fm-player-close" onClick={onClose} aria-label="Close">✕</button>
+          </div>
+        </div>
+        <div className="fm-player-frame-wrap">
+          {loading && (
+            <div className="fm-player-loading">
+              <div className="fm-player-spinner" />
+              <p>Loading FMovies…</p>
+            </div>
+          )}
+          <iframe
+            src={proxyUrl}
+            className="fm-player-frame"
+            title={movie.title}
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allowFullScreen
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation allow-pointer-lock"
+            onLoad={() => setLoading(false)}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function FmoviesSection() {
   const [page, setPage] = useState(1)
   const [movies, setMovies] = useState([])
   const [loadingPage, setLoadingPage] = useState(true)
@@ -49,7 +102,7 @@ export default function FmoviesSection({ onPlay }) {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [displayCount, setDisplayCount] = useState(GRID_SIZE)
-  const [loadingMovie, setLoadingMovie] = useState(null)
+  const [activeMovie, setActiveMovie] = useState(null)
   const searchTimer = useRef(null)
 
   const loadMovies = useCallback(async (pg, srch) => {
@@ -88,36 +141,15 @@ export default function FmoviesSection({ onPlay }) {
     }, 400)
   }
 
-  const handleMovieClick = async (movie) => {
-    setLoadingMovie(movie.id)
-    try {
-      const title = movie.title
-      const r = await fetch(`/api/imdb-lookup?t=${encodeURIComponent(title)}&type=movie`)
-      const data = await r.json()
-      const imdbID = data.imdbID || null
-      onPlay({
-        title: movie.title,
-        poster: movie.poster,
-        imdbID,
-        _fmoviesSlug: movie.slug,
-      }, 'movie')
-    } catch {
-      onPlay({
-        title: movie.title,
-        poster: movie.poster,
-        imdbID: null,
-        _fmoviesSlug: movie.slug,
-      }, 'movie')
-    } finally {
-      setLoadingMovie(null)
-    }
-  }
-
   const displayedMovies = movies.slice(0, displayCount)
   const hasMore = displayCount < movies.length
 
   return (
     <div className="fm-section">
+      {activeMovie && (
+        <FmoviesPlayer movie={activeMovie} onClose={() => setActiveMovie(null)} />
+      )}
+
       <div className="fm-hero">
         <div className="fm-hero-left">
           <div className="fm-hero-icon">🎬</div>
@@ -184,8 +216,8 @@ export default function FmoviesSection({ onPlay }) {
               <MovieCard
                 key={movie.id}
                 movie={movie}
-                onClick={handleMovieClick}
-                loading={loadingMovie === movie.id}
+                onClick={setActiveMovie}
+                loading={false}
               />
             ))}
           </div>

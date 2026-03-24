@@ -1871,6 +1871,37 @@ function parseFmoviesSitemap(xml) {
   })
 }
 
+app.get('/api/fmovies-page', async (req, res) => {
+  const { slug } = req.query
+  if (!slug || !/^[\w-]+$/.test(slug)) return res.status(400).send('invalid slug')
+  const targetUrl = `https://ww4.fmovies.co/film/${slug}/`
+  try {
+    const r = await fetch(targetUrl, {
+      signal: AbortSignal.timeout(15000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://ww4.fmovies.co/',
+      }
+    })
+    let html = await r.text()
+    const base = 'https://ww4.fmovies.co'
+    html = html
+      .replace(/(<head[^>]*>)/i, `$1<base href="${base}/">`)
+      .replace(/href="\//g, `href="${base}/`)
+      .replace(/src="\//g, `src="${base}/`)
+      .replace(/action="\//g, `action="${base}/`)
+      .replace(/url\('\//g, `url('${base}/`)
+      .replace(/url\("\//g, `url("${base}/`)
+    res.set('Content-Type', 'text/html; charset=utf-8')
+    res.set('X-Frame-Options', 'ALLOWALL')
+    res.send(html)
+  } catch (e) {
+    res.status(502).send(`<html><body style="background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:16px"><h2>Could not load FMovies</h2><p>${e.message}</p><a href="${targetUrl}" target="_blank" style="color:#e50914;font-size:18px">Open directly →</a></body></html>`)
+  }
+})
+
 app.get('/api/fmovies', async (req, res) => {
   const TOTAL_PAGES = 38
   const page = Math.max(1, Math.min(TOTAL_PAGES, parseInt(req.query.page) || 1))
