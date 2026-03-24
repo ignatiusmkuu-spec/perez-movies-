@@ -285,11 +285,11 @@ export default function PlayerModal({ item, type, onClose }) {
 
     if (!embedUrl || !iframeLoading || lookingUp || manualSwitch || srv?.usesSubjectId) return
 
-    const failoverIdx = visibleServers.findIndex(s => s.label === 'VidSrc.to')
+    const failoverIdx = visibleServers.findIndex(s => s.label === 'NontonGo')
     if (failoverIdx === -1 || failoverIdx === safeIdx) return
 
     failoverRef.current = setTimeout(() => {
-      setFailoverMsg('Stream timed out — switching to VidSrc.to…')
+      setFailoverMsg('Stream timed out — switching to NontonGo…')
       setServerIdx(failoverIdx)
       setIframeLoading(true)
       failoverRef.current = null
@@ -309,7 +309,7 @@ export default function PlayerModal({ item, type, onClose }) {
     if (casperSubjectId) return
     if (manualSwitch) return
     if (!casperLookupDoneRef.current) return
-    const nextIdx = visibleServers.findIndex(s => !s.usesSubjectId)
+    const nextIdx = visibleServers.findIndex(s => s.label === 'NontonGo')
     if (nextIdx === -1) return
     setServerIdx(nextIdx)
     setIframeLoading(true)
@@ -318,7 +318,7 @@ export default function PlayerModal({ item, type, onClose }) {
   useEffect(() => {
     if (!nativePlayerFailed) return
     if (manualSwitch) return
-    const nextIdx = visibleServers.findIndex(s => !s.usesSubjectId)
+    const nextIdx = visibleServers.findIndex(s => s.label === 'NontonGo')
     if (nextIdx === -1) return
     setServerIdx(nextIdx)
     setIframeLoading(true)
