@@ -1977,6 +1977,10 @@ let _nontongoCache = null
 let _nontongoAt = 0
 const NONTONGO_TTL = 6 * 60 * 60 * 1000
 
+function buildNontongoEmbedUrl(channelId) {
+  return `https://enviromentalspace.sbs/premiumtv/daddyhd.php?id=${channelId}`
+}
+
 async function fetchNontongoChannels() {
   if (_nontongoCache && Date.now() - _nontongoAt < NONTONGO_TTL) return _nontongoCache
   try {
@@ -1989,7 +1993,7 @@ async function fetchNontongoChannels() {
     const re = /data-stream="https:\/\/www\.nontongo\.win\/livetv\/(\d+)"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"[\s\S]*?<h3[^>]+>([^<]+)<\/h3>/g
     let m
     while ((m = re.exec(html)) !== null) {
-      channels.push({ id: m[1], embedUrl: `https://nontongo.win/livetv/play-movie.php?id=${m[1]}`, img: m[2], name: m[3].trim() })
+      channels.push({ id: m[1], embedUrl: `https://enviromentalspace.sbs/premiumtv/daddyhd.php?id=${m[1]}`, img: m[2], name: m[3].trim() })
     }
     if (channels.length > 0) { _nontongoCache = channels; _nontongoAt = Date.now() }
     return channels
@@ -2023,7 +2027,15 @@ app.get('/api/kenya-stream', async (req, res) => {
 app.get('/api/nontongo-live', async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*')
   const channels = await fetchNontongoChannels()
-  res.json({ channels, count: channels.length })
+  const corrected = channels.map(c => ({ ...c, embedUrl: buildNontongoEmbedUrl(c.id) }))
+  res.json({ channels: corrected, count: corrected.length })
+})
+
+app.get('/api/nontongo-stream', (req, res) => {
+  const { id } = req.query
+  if (!id || !/^\d+$/.test(id)) return res.status(400).json({ error: 'valid numeric id required' })
+  res.set('Access-Control-Allow-Origin', '*')
+  res.json({ embedUrl: buildNontongoEmbedUrl(id), id })
 })
 
 /* ── Serve built Vite frontend in production ── */

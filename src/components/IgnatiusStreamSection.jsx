@@ -44,6 +44,21 @@ function ChannelCard({ item, onClick, isActive, isNontongo }) {
 }
 
 function NontongoPlayer({ channel, onClose }) {
+  const [embedUrl, setEmbedUrl] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (channel.embedUrl) {
+      setEmbedUrl(channel.embedUrl)
+      setLoading(false)
+      return
+    }
+    fetch(`/api/nontongo-stream?id=${channel.id}`)
+      .then(r => r.json())
+      .then(d => { setEmbedUrl(d.embedUrl); setLoading(false) })
+      .catch(() => { setEmbedUrl(`https://enviromentalspace.sbs/premiumtv/daddyhd.php?id=${channel.id}`); setLoading(false) })
+  }, [channel.id, channel.embedUrl])
+
   return (
     <div className="ist-player">
       <div className="ist-player__header">
@@ -55,13 +70,19 @@ function NontongoPlayer({ channel, onClose }) {
         <button className="ist-player__close" onClick={onClose} aria-label="Close">✕</button>
       </div>
       <div className="ist-player__frame-wrap">
-        <iframe
-          src={channel.embedUrl}
-          allow="autoplay; encrypted-media; fullscreen"
-          allowFullScreen
-          className="ist-player__frame"
-          title={channel.name}
-        />
+        {loading ? (
+          <div className="ist-player__loading">Loading stream…</div>
+        ) : (
+          <iframe
+            key={embedUrl}
+            src={embedUrl}
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen; camera; microphone"
+            allowFullScreen
+            className="ist-player__frame"
+            title={channel.name}
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+          />
+        )}
       </div>
     </div>
   )
