@@ -147,10 +147,11 @@ export default function MoviesSection({ searchQuery, onPlay }) {
         setHasMore(false)
 
       } else {
-        // "All" tab — fetch MovieBox + YTS + OMDB in parallel for maximum reliability
-        const [mbResult, ytsResult, ...omdbResults] = await Promise.allSettled([
+        // "All" tab — fetch MovieBox + YTS + OMDB + Andrespecht in parallel
+        const [mbResult, ytsResult, andrespeResult, ...omdbResults] = await Promise.allSettled([
           fetchHomeData(),
           fetchFlixerMovies(),
+          fetch('/api/andrespecht-movies').then(r => r.json()),
           omdbSearch(OMDB_SEEDS[0], 1),
           omdbSearch(OMDB_SEEDS[1], 1),
           omdbSearch(OMDB_SEEDS[2], 1),
@@ -182,12 +183,32 @@ export default function MoviesSection({ searchQuery, onPlay }) {
           .filter(m => { if (omdbSeen.has(m.imdbID)) return false; omdbSeen.add(m.imdbID); return true })
           .map(r => ({ ...r, _source: 'omdb', Poster: r.Poster !== 'N/A' ? r.Poster : null }))
 
-        // Merge: OMDB first (always works), then YTS, then MovieBox (skip duplicates)
+        // Andrespecht classic movies
+        const andrespeMovies = (andrespeResult.status === 'fulfilled'
+          ? (andrespeResult.value?.movies || [])
+          : []
+        ).map(m => ({
+          Title: m.title,
+          Year: String(m.year || ''),
+          Genre: Array.isArray(m.genre) ? m.genre.join(', ') : (m.genre || ''),
+          Poster: m.poster || null,
+          imdbID: null,
+          _source: 'andrespecht',
+          _andrespeSlug: m.slug,
+          _runningTime: m.runningTime,
+          _description: m.description,
+        }))
+
+        // Merge: OMDB first (always works), then YTS, then MovieBox, then Andrespecht
         const seenIds = new Set(omdbMovies.map(m => m.imdbID).filter(Boolean))
+        const seenTitles = new Set(omdbMovies.map(m => m.Title?.toLowerCase()).filter(Boolean))
         const ytsFiltered = yts.filter(m => !seenIds.has(m.imdbID))
         ytsFiltered.forEach(m => m.imdbID && seenIds.add(m.imdbID))
         const mbFiltered = mbNormalized.filter(m => !seenIds.has(m.imdbID))
-        let combined = [...omdbMovies, ...ytsFiltered, ...mbFiltered]
+        const andrespeFiltered = andrespeMovies.filter(m =>
+          !seenTitles.has(m.Title?.toLowerCase())
+        )
+        let combined = [...omdbMovies, ...ytsFiltered, ...mbFiltered, ...andrespeFiltered]
 
         // If still low on results, fetch more OMDB seeds
         if (combined.length < 10) {

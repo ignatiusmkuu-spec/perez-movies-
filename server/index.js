@@ -511,6 +511,61 @@ app.get('/api/xcasper-ranking-items', async (req, res) => {
   }
 })
 
+const ANDRESPECHT_BASE = 'https://api.andrespecht.dev/v1'
+const ANDRESPECHT_HEADERS = {
+  'Accept': 'application/json',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+}
+
+app.get('/api/andrespecht-movies', async (req, res) => {
+  try {
+    const r = await fetch(`${ANDRESPECHT_BASE}/movies`, {
+      headers: ANDRESPECHT_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    const movies = (json?.movies || []).map(m => ({
+      id: m.id,
+      slug: m.slug,
+      title: m.title,
+      year: m.year,
+      runningTime: m.runningTime,
+      description: m.description,
+      genre: m.genre,
+      poster: m.poster,
+    }))
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ movies, count: movies.length })
+  } catch (err) {
+    res.status(502).json({ error: err.message, movies: [] })
+  }
+})
+
+app.get('/api/andrespecht-movie', async (req, res) => {
+  const { slug } = req.query
+  if (!slug) return res.status(400).json({ error: 'slug required' })
+  try {
+    const r = await fetch(`${ANDRESPECHT_BASE}/movies/${encodeURIComponent(slug)}`, {
+      headers: ANDRESPECHT_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    if (!json?.movie) return res.status(404).json({ error: 'Movie not found' })
+    const m = json.movie
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({
+      id: m.id,
+      slug: m.slug,
+      title: m.title,
+      year: m.year,
+      runningTime: m.runningTime,
+      description: m.description,
+      genre: m.genre,
+      poster: m.poster,
+    })
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
 const NEWTOXIC_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'application/json',
