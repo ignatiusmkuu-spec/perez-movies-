@@ -8,6 +8,7 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { fileURLToPath } from 'url'
 import path from 'path'
+import { Readable } from 'stream'
 import streamingRoutes from './streaming/routes.js'
 import proxyRoutes from './streaming/proxy.js'
 import { startHealthChecks } from './streaming/servers.js'
@@ -652,7 +653,7 @@ app.get('/api/newtoxic-stream', async (req, res) => {
     passHeaders.forEach(h => { const v = cdnRes.headers.get(h); if (v) res.set(h, v) })
     res.set('Access-Control-Allow-Origin', '*')
     const reader = cdnRes.body.getReader()
-    const stream = new require('stream').Readable({
+    const stream = new Readable({
       async read() {
         const { done, value } = await reader.read()
         if (done) this.push(null)
@@ -683,7 +684,7 @@ app.get('/api/live-stream', async (req, res) => {
     pass.forEach(h => { const v = upstream.headers.get(h); if (v) res.set(h, v) })
     res.set('Access-Control-Allow-Origin', '*')
     const reader = upstream.body.getReader()
-    const stream = new require('stream').Readable({
+    const stream = new Readable({
       async read() {
         const { done, value } = await reader.read()
         if (done) this.push(null)
@@ -1798,7 +1799,7 @@ app.get('/api/youtube/channel', async (req, res) => {
 if (process.env.NODE_ENV === 'production') {
   const distDir = path.join(__dirname, '..', 'dist')
   app.use(express.static(distDir, { maxAge: '1d', etag: true }))
-  app.get('*', (_req, res) => res.sendFile(path.join(distDir, 'index.html')))
+  app.get('/{*path}', (_req, res) => res.sendFile(path.join(distDir, 'index.html')))
 }
 
 if (!process.env.VERCEL) {
