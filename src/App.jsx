@@ -10,6 +10,7 @@ import LiveFootball from './components/LiveFootball'
 import RadioSection from './components/RadioSection'
 import PremiumAccess from './components/PremiumAccess'
 import RankingsSection from './components/RankingsSection'
+import FmoviesSection from './components/FmoviesSection'
 import PlayerModal from './components/PlayerModal'
 import RadioMiniPlayer from './components/RadioMiniPlayer'
 import { RadioProvider } from './context/RadioContext'
@@ -49,6 +50,9 @@ export default function App() {
         <div className="page-content">
           {tab === 'movies' && (
             <MoviesSection searchQuery={searchQuery} onPlay={handlePlay} />
+          )}
+          {tab === 'fmovies' && (
+            <FmoviesSection onPlay={handlePlay} />
           )}
           {tab === 'drama' && (
             <DramaSection searchQuery={searchQuery} onPlay={handlePlay} />

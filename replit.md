@@ -1,6 +1,6 @@
-# Ignatius Streaming Site
+# IgnatiusMovies
 
-A Netflix-style streaming platform with React/Vite frontend and Express backend.
+A Netflix-style streaming platform with React/Vite frontend and Express backend. Formerly "Ignatius Streaming Site" — rebranded to **IgnatiusMovies**.
 
 ## Developer
 Made by **Ignatius** · Contact: +254 706 535 581

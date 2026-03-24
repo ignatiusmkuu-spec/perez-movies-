@@ -7,7 +7,7 @@ import './PlayerModal.css'
 
 const ALL_SERVERS = [
   {
-    label: 'IgnatiuStream',
+    label: 'IgnatiusMovies',
     usesSubjectId: true,
     movie: (id) => `https://movieapi.xcasper.space/api/play?subjectId=${id}`,
     tv:    (id, s, e) => `https://movieapi.xcasper.space/api/play?subjectId=${id}&season=${s}&episode=${e}`,
@@ -413,7 +413,7 @@ export default function PlayerModal({ item, type, onClose }) {
               <div className="mb-loader">
                 <div className="mb-spinner" />
                 <p className="mb-loader-text">
-                  {srv?.usesSubjectId && casperLookingUp ? 'Finding IgnatiuStream source…' : 'Finding stream…'}
+                  {srv?.usesSubjectId && casperLookingUp ? 'Finding IgnatiusMovies source…' : 'Finding stream…'}
                 </p>
               </div>
             )}

@@ -9,7 +9,7 @@ export default function Logo({ className = '' }) {
             <span key={i} className="logo-char" style={{ animationDelay: `${i * 0.12}s` }}>{ch}</span>
           ))}
         </span>
-        <span className="logo-bottom">STREAMING SITE</span>
+        <span className="logo-bottom">MOVIES</span>
         <div className="logo-scanline" />
       </div>
       <div className="logo-signal">

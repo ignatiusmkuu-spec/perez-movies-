@@ -30,7 +30,7 @@ export default function HeroBanner({ onPlay }) {
         const ntItems = (data.items || []).map(i => ({
           title: i.title,
           year: '',
-          desc: `${i.category} — Available on IgnatiuStream`,
+          desc: `${i.category} — Available on IgnatiusMovies`,
           bg: i.thumbnail || FALLBACK_BG,
           genre: i.category,
           _newtoxicSlug: i.slug,

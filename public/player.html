@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Ignatius Streaming Site Player</title>
+  <title>IgnatiusMovies Player</title>
 
   <!-- Speed: preconnect to CDNs we'll load from -->
   <link rel="preconnect" href="https://vjs.zencdn.net" crossorigin />
@@ -341,7 +341,7 @@
   <div class="top-bar">
     <a class="back-btn" id="backBtn" href="/">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      Ignatius Streaming Site
+      IgnatiusMovies
     </a>
     <div class="top-title">
       <div class="top-title-name" id="titleEl">Loading…</div>
@@ -451,7 +451,7 @@
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 01-14.14 14.14M4.93 4.93a10 10 0 0114.14 14.14"/></svg>
         <span id="qualLabel">Quality</span>
       </button>
-      <button class="action-btn protected" id="protectedBtn" style="display:none" title="Stream is proxied through Ignatius Streaming Site servers — real URL is hidden">
+      <button class="action-btn protected" id="protectedBtn" style="display:none" title="Stream is proxied through IgnatiusMovies servers — real URL is hidden">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Stream Protected
       </button>
@@ -528,7 +528,7 @@ if (SERVERS.length === 0) {
 /* ── 2. Populate metadata ── */
 document.getElementById('titleEl').textContent = TITLE;
 document.getElementById('metaEl').textContent  = [YEAR, GENRE].filter(Boolean).join(' · ');
-document.title = TITLE + ' — Ignatius Streaming Site';
+document.title = TITLE + ' — IgnatiusMovies';
 if (IS_PROXY) {
   document.getElementById('proxyBadge').classList.add('show');
   document.getElementById('protectedBtn').style.display = '';
@@ -1192,7 +1192,7 @@ document.getElementById('backBtn').addEventListener('click', (e) => {
 });
 
 document.getElementById('protectedBtn').addEventListener('click', () => {
-  toast('Stream is routed through Ignatius Streaming Site — original URL is hidden', 4000);
+  toast('Stream is routed through IgnatiusMovies — original URL is hidden', 4000);
 });
 
 /* ── 18. Boot ── */

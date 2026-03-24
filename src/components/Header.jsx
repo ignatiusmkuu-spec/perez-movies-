@@ -13,7 +13,7 @@ export default function Header({ onSearch, activeTab }) {
   return (
     <header className="header">
       <Logo />
-      {activeTab !== 'sports' && (
+      {activeTab !== 'sports' && activeTab !== 'fmovies' && (
         <form className="search-form" onSubmit={handleSubmit}>
           <input
             className="search-input"

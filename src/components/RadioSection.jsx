@@ -36,7 +36,7 @@ async function fetchStations(country) {
   const url = `${api}/${encodeURIComponent(country)}?limit=60&hidebroken=true&order=votes&reverse=true`
 
   try {
-    const r = await fetch(url, { headers: { 'User-Agent': 'IgnatiusStreaming/1.0' } })
+    const r = await fetch(url, { headers: { 'User-Agent': 'IgnatiusMovies/1.0' } })
     if (!r.ok) throw new Error('API error')
     const data = await r.json()
     const filtered = data.filter(s => s.url_resolved && s.url_resolved.startsWith('http'))
@@ -249,7 +249,7 @@ export default function RadioSection() {
       )}
 
       <div className="radio-footer">
-        📡 Streaming from radio-browser.info · 40,000+ stations worldwide · Ignatius Streaming
+        📡 Streaming from radio-browser.info · 40,000+ stations worldwide · IgnatiusMovies
       </div>
     </div>
   )

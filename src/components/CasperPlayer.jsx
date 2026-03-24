@@ -84,7 +84,7 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: displayTitle + episodeLabel,
-      artist: 'Ignatius Streaming',
+      artist: 'IgnatiusMovies',
       artwork,
     })
 
@@ -157,7 +157,7 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
     return (
       <div className="cp-loading">
         <div className="cp-spinner" />
-        <p>Loading IgnatiuStream…</p>
+        <p>Loading IgnatiusMovies…</p>
       </div>
     )
   }
@@ -253,7 +253,7 @@ export default function CasperPlayer({ subjectId, season, episode, onNativeError
         </div>
 
         <div className="cp-toolbar-right">
-          <span className="cp-badge">IgnatiuStream</span>
+          <span className="cp-badge">IgnatiusMovies</span>
           {captions.length > 0 && (
             <span className="cp-subs-count">{captions.length} subtitle{captions.length !== 1 ? 's' : ''}</span>
           )}

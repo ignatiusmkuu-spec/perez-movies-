@@ -1850,6 +1850,51 @@ app.get('/api/youtube/channel', async (req, res) => {
   }
 })
 
+// ── FMovies sitemap scraper ─────────────────────────────────────────────────
+const _fmoviesCache = {}
+const FMOVIES_TTL = 24 * 60 * 60 * 1000
+
+function parseFmoviesSitemap(xml) {
+  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1])
+    .filter(u => u.includes('/film/'))
+  const imgTitles = [...xml.matchAll(/<image:title>([^<]+)<\/image:title>/g)].map(m => m[1])
+  const imgLocs = [...xml.matchAll(/<image:loc>([^<]+)<\/image:loc>/g)].map(m => m[1])
+  return urls.map((url, i) => {
+    const slug = url.replace(/.*\/film\//, '').replace(/\/$/, '')
+    const parts = slug.split('-')
+    const fmoviesId = parts[parts.length - 1]
+    const title = imgTitles[i * 2 + 1] || imgTitles[i * 2] || parts.slice(0, -1).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    const poster = imgLocs[i * 2 + 1] || `https://img.cdno.my.id/thumb/w_200/h_300/${slug}.jpg`
+    const cover = imgLocs[i * 2] || ''
+    return { id: fmoviesId, slug, title, poster, cover, fmoviesUrl: url }
+  })
+}
+
+app.get('/api/fmovies', async (req, res) => {
+  const TOTAL_PAGES = 38
+  const page = Math.max(1, Math.min(TOTAL_PAGES, parseInt(req.query.page) || 1))
+  const search = (req.query.search || '').toLowerCase().trim()
+  const cacheKey = `fmovies_p${page}`
+
+  if (!_fmoviesCache[cacheKey] || Date.now() - _fmoviesCache[cacheKey].at > FMOVIES_TTL) {
+    try {
+      const xml = await fetch(`https://ww4.fmovies.co/sitemap-post-${page}.xml`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        signal: AbortSignal.timeout(15000),
+      }).then(r => r.text())
+      const movies = parseFmoviesSitemap(xml)
+      _fmoviesCache[cacheKey] = { movies, at: Date.now() }
+    } catch (e) {
+      return res.status(502).json({ error: 'Failed to fetch FMovies data', movies: [], total_pages: TOTAL_PAGES })
+    }
+  }
+
+  let movies = _fmoviesCache[cacheKey].movies
+  if (search) movies = movies.filter(m => m.title.toLowerCase().includes(search))
+
+  res.json({ movies, page, total_pages: TOTAL_PAGES })
+})
+
 /* ── Serve built Vite frontend in production ── */
 if (process.env.NODE_ENV === 'production') {
   const distDir = path.join(__dirname, '..', 'dist')

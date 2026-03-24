@@ -105,7 +105,7 @@ export default function NewtoxicPlayer({ slug, type = 'movie', onError, title, p
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: displayTitle,
-      artist: 'Ignatius Streaming',
+      artist: 'IgnatiusMovies',
       artwork,
     })
 
@@ -149,7 +149,7 @@ export default function NewtoxicPlayer({ slug, type = 'movie', onError, title, p
     return (
       <div className="ntx-loading">
         <div className="ntx-spinner" />
-        <p>Loading IgnatiuStream content…</p>
+        <p>Loading IgnatiusMovies content…</p>
       </div>
     )
   }
