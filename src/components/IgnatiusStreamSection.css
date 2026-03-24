@@ -213,21 +213,43 @@
 
 /* ── Player ── */
 .ist-player {
-  margin: 0 16px 14px;
-  background: #111;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #333;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
 }
 
 .ist-player__header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  background: #0a0a0a;
+  padding: 10px 14px;
+  background: #111;
   border-bottom: 1px solid #222;
+  flex-shrink: 0;
+}
+
+.ist-player__header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ist-player__source-link {
+  color: #aaa;
+  font-size: 14px;
+  text-decoration: none;
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ist-player__source-link:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,0.4);
 }
 
 .ist-player__logo {
@@ -253,7 +275,6 @@
 }
 
 .ist-player__close {
-  margin-left: auto;
   background: #2a2a2a;
   border: none;
   color: #aaa;
@@ -272,9 +293,10 @@
 
 .ist-player__frame-wrap {
   position: relative;
+  flex: 1;
   width: 100%;
-  aspect-ratio: 16/9;
   background: #000;
+  overflow: hidden;
 }
 
 .ist-player__frame {

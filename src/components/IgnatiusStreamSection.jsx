@@ -67,7 +67,9 @@ function NontongoPlayer({ channel, onClose }) {
           <h2 className="ist-player__title">{channel.name}</h2>
           <span className="ist-player__badge ist-player__badge--nontongo">📺 NontonGo Live</span>
         </div>
-        <button className="ist-player__close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="ist-player__header-actions">
+          <button className="ist-player__close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
       </div>
       <div className="ist-player__frame-wrap">
         {loading ? (
@@ -88,40 +90,9 @@ function NontongoPlayer({ channel, onClose }) {
   )
 }
 
-function TVPlayer({ channel, onClose, onStreamFail }) {
-  const [streamData, setStreamData] = useState(channel.ytId ? { ytId: channel.ytId } : null)
-  const [loading, setLoading] = useState(!channel.ytId)
-  const [error, setError] = useState(null)
-  const failTimerRef = useRef(null)
-
-  useEffect(() => {
-    if (channel.ytId) { setStreamData({ ytId: channel.ytId }); setLoading(false); return }
-    setLoading(true)
-    const ctrl = new AbortController()
-    fetch(`/api/kenya-stream?slug=${channel.slug}&type=tv`, { signal: ctrl.signal })
-      .then(r => r.json())
-      .then(d => {
-        if (!d.ytId && !d.stream) {
-          setError('no_stream')
-        } else {
-          setStreamData(d)
-        }
-        setLoading(false)
-      })
-      .catch(() => { setError('no_stream'); setLoading(false) })
-    return () => ctrl.abort()
-  }, [channel.slug, channel.ytId])
-
-  useEffect(() => {
-    if (error === 'no_stream') {
-      failTimerRef.current = setTimeout(() => onStreamFail && onStreamFail(), 1500)
-    }
-    return () => clearTimeout(failTimerRef.current)
-  }, [error, onStreamFail])
-
-  const ytSrc = streamData?.ytId
-    ? `https://www.youtube.com/embed/live_stream?channel=${streamData.ytId}&autoplay=1&mute=0&rel=0`
-    : null
+function TVPlayer({ channel, onClose }) {
+  const [loading, setLoading] = useState(true)
+  const sourceUrl = `https://kenyalivetv.co.ke/tv/${channel.slug}`
 
   return (
     <div className="ist-player">
@@ -131,60 +102,31 @@ function TVPlayer({ channel, onClose, onStreamFail }) {
           <h2 className="ist-player__title">{channel.name}</h2>
           <span className="ist-player__badge">● LIVE</span>
         </div>
-        <button className="ist-player__close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="ist-player__header-actions">
+          <a href={sourceUrl} target="_blank" rel="noreferrer" className="ist-player__source-link" title="Open on Kenya Live TV">↗</a>
+          <button className="ist-player__close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
       </div>
       <div className="ist-player__frame-wrap">
-        {loading ? (
-          <div className="ist-player__loading">Loading stream…</div>
-        ) : error ? (
-          <div className="ist-player__loading">Stream unavailable — switching to backup…</div>
-        ) : ytSrc ? (
-          <iframe
-            src={ytSrc}
-            allow="autoplay; encrypted-media; fullscreen"
-            allowFullScreen
-            className="ist-player__frame"
-            title={channel.name}
-          />
-        ) : (
-          <div className="ist-player__error">
-            Stream not available.{' '}
-            <a href={`https://kenyalivetv.co.ke/tv/${channel.slug}`} target="_blank" rel="noreferrer">Watch on source ↗</a>
-          </div>
-        )}
+        {loading && <div className="ist-player__loading">Loading stream…</div>}
+        <iframe
+          key={channel.slug}
+          src={sourceUrl}
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          allowFullScreen
+          className="ist-player__frame"
+          title={channel.name}
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation allow-pointer-lock"
+          onLoad={() => setLoading(false)}
+        />
       </div>
     </div>
   )
 }
 
 function RadioPlayer({ station, onClose }) {
-  const [streamData, setStreamData] = useState(station.stream ? { stream: station.stream } : null)
-  const [loading, setLoading] = useState(!station.stream)
-  const [error, setError] = useState(null)
-  const [playing, setPlaying] = useState(false)
-  const [loadingAudio, setLoadingAudio] = useState(false)
-  const audioRef = useRef(null)
-
-  useEffect(() => {
-    if (station.stream) { setStreamData({ stream: station.stream }); setLoading(false); return }
-    const ctrl = new AbortController()
-    setLoading(true)
-    fetch(`/api/kenya-stream?slug=${station.slug}&type=radio`, { signal: ctrl.signal })
-      .then(r => r.json())
-      .then(d => { setStreamData(d); setLoading(false) })
-      .catch(() => { setError('Stream not available'); setLoading(false) })
-    return () => ctrl.abort()
-  }, [station.slug, station.stream])
-
-  const handlePlayPause = () => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (playing) { audio.pause(); setPlaying(false) }
-    else { setLoadingAudio(true); audio.play().then(() => setPlaying(true)).finally(() => setLoadingAudio(false)) }
-  }
-
-  const m3u8Url = streamData?.stream
-  const ytId = streamData?.ytId
+  const [loading, setLoading] = useState(true)
+  const sourceUrl = `https://kenyalivetv.co.ke/radio/${station.slug}`
 
   return (
     <div className="ist-player ist-player--radio">
@@ -194,45 +136,23 @@ function RadioPlayer({ station, onClose }) {
           <h2 className="ist-player__title">{station.name}</h2>
           <span className="ist-player__badge">📻 RADIO</span>
         </div>
-        <button className="ist-player__close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="ist-player__header-actions">
+          <a href={sourceUrl} target="_blank" rel="noreferrer" className="ist-player__source-link" title="Open on Kenya Live TV">↗</a>
+          <button className="ist-player__close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
       </div>
-      <div className="ist-player__radio-body">
-        {loading ? (
-          <div className="ist-player__loading">Loading stream…</div>
-        ) : error ? (
-          <div className="ist-player__error">{error}</div>
-        ) : m3u8Url ? (
-          <>
-            <div className="ist-radio__art">
-              <img src={station.img} alt={station.name} onError={e => (e.target.style.display = 'none')} />
-              <div className={`ist-radio__pulse ${playing ? 'ist-radio__pulse--active' : ''}`} />
-            </div>
-            <div className="ist-radio__controls">
-              <button
-                className={`ist-radio__play-btn ${playing ? 'ist-radio__play-btn--pause' : ''}`}
-                onClick={handlePlayPause}
-                disabled={loadingAudio}
-              >
-                {loadingAudio ? '⏳' : playing ? '⏸' : '▶'}
-              </button>
-              <span className="ist-radio__status">{playing ? '● Playing live' : 'Press play to stream'}</span>
-            </div>
-            <audio ref={audioRef} src={m3u8Url} onEnded={() => setPlaying(false)} onError={() => setError('Audio stream failed')} />
-          </>
-        ) : ytId ? (
-          <iframe
-            src={`https://www.youtube.com/embed/live_stream?channel=${ytId}&autoplay=1&mute=0&rel=0`}
-            allow="autoplay; encrypted-media; fullscreen"
-            allowFullScreen
-            className="ist-player__frame"
-            title={station.name}
-          />
-        ) : (
-          <div className="ist-player__error">
-            Stream not available.{' '}
-            <a href={`https://kenyalivetv.co.ke/radio/${station.slug}`} target="_blank" rel="noreferrer">Listen on source ↗</a>
-          </div>
-        )}
+      <div className="ist-player__frame-wrap">
+        {loading && <div className="ist-player__loading">Loading stream…</div>}
+        <iframe
+          key={station.slug}
+          src={sourceUrl}
+          allow="autoplay; encrypted-media; fullscreen"
+          allowFullScreen
+          className="ist-player__frame"
+          title={station.name}
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+          onLoad={() => setLoading(false)}
+        />
       </div>
     </div>
   )
@@ -400,11 +320,7 @@ export default function IgnatiusStreamSection() {
 
       {activeItem && (
         tab === 'tv'
-          ? <TVPlayer
-              channel={activeItem}
-              onClose={() => setActiveItem(null)}
-              onStreamFail={activateFallback}
-            />
+          ? <TVPlayer channel={activeItem} onClose={() => setActiveItem(null)} />
           : <RadioPlayer station={activeItem} onClose={() => setActiveItem(null)} />
       )}
 
