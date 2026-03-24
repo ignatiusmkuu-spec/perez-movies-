@@ -1,5 +1,5 @@
 const MB = '/api/moviebox'
-const OMDB = 'https://www.omdbapi.com'
+const OMDB = '/proxy/omdb'
 
 let _homeCache = null
 let _homeCacheAt = 0
@@ -50,10 +50,16 @@ export function getBannerItem(sections) {
   return firstMovie?.subjects?.[0] || null
 }
 
+function fetchWithTimeout(url, ms = 8000) {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), ms)
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t))
+}
+
 async function _omdbFetch(params) {
   try {
     const qs = new URLSearchParams({ apikey: 'trilogy', ...params }).toString()
-    const r = await fetch(`${OMDB}/?${qs}`)
+    const r = await fetchWithTimeout(`${OMDB}/?${qs}`)
     const text = await r.text()
     return JSON.parse(text)
   } catch { return {} }
@@ -64,7 +70,7 @@ export async function getImdbId(title, year, isTV = false) {
   const y = year ? String(year) : ''
   try {
     const qs = new URLSearchParams({ t: title, type, ...(y && { y }) }).toString()
-    const r = await fetch(`/api/imdb-lookup?${qs}`)
+    const r = await fetchWithTimeout(`/api/imdb-lookup?${qs}`)
     const d = await r.json()
     if (d.imdbID) return d.imdbID
   } catch { /* fall through */ }
@@ -73,7 +79,7 @@ export async function getImdbId(title, year, isTV = false) {
 
 export async function omdbSearch(keyword, page = 1) {
   try {
-    const res = await fetch(`${OMDB}/?apikey=trilogy&s=${encodeURIComponent(keyword)}&page=${page}`)
+    const res = await fetchWithTimeout(`${OMDB}/?apikey=trilogy&s=${encodeURIComponent(keyword)}&page=${page}`)
     const text = await res.text()
     const data = JSON.parse(text)
     return (data.Search || []).map(m => ({

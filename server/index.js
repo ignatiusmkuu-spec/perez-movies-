@@ -930,6 +930,7 @@ async function fetchYtsMovies({ genre, sort = 'download_count', page = 1, limit 
   if (ytsGenre) url += `&genre=${encodeURIComponent(ytsGenre)}`
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)', 'Accept': 'application/json' },
+    signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) throw new Error(`YTS upstream error: ${res.status} ${res.statusText}`)
   const json = await res.json()
