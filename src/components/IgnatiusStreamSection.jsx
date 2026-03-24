@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import './IgnatiusStreamSection.css'
 
 const CATEGORIES = {
@@ -21,8 +21,11 @@ const CATEGORIES = {
   ],
 }
 
-function ChannelCard({ item, type, onClick, isActive }) {
+const FALLBACK_TIMEOUT_MS = 8000
+
+function ChannelCard({ item, type, onClick, isActive, isNontongo }) {
   const [imgErr, setImgErr] = useState(false)
+  const id = isNontongo ? item.id : item.slug
   return (
     <button
       className={`ist-card ${isActive ? 'ist-card--active' : ''}`}
@@ -49,10 +52,36 @@ function ChannelCard({ item, type, onClick, isActive }) {
   )
 }
 
-function TVPlayer({ channel, onClose }) {
+function NontongoPlayer({ channel, onClose }) {
+  return (
+    <div className="ist-player">
+      <div className="ist-player__header">
+        <img src={channel.img} alt={channel.name} className="ist-player__logo" onError={e => e.target.style.display='none'} />
+        <div>
+          <h2 className="ist-player__title">{channel.name}</h2>
+          <span className="ist-player__badge ist-player__badge--nontongo">📺 NontonGo Live</span>
+        </div>
+        <button className="ist-player__close" onClick={onClose} aria-label="Close">✕</button>
+      </div>
+      <div className="ist-player__frame-wrap">
+        <iframe
+          src={channel.embedUrl}
+          allow="autoplay; encrypted-media; fullscreen"
+          allowFullScreen
+          className="ist-player__frame"
+          title={channel.name}
+        />
+      </div>
+    </div>
+  )
+}
+
+function TVPlayer({ channel, onClose, onFallback }) {
   const [streamData, setStreamData] = useState(channel.ytId ? { ytId: channel.ytId } : null)
   const [loading, setLoading] = useState(!channel.ytId)
   const [error, setError] = useState(null)
+  const [iframeError, setIframeError] = useState(false)
+  const fallbackTimerRef = useRef(null)
 
   useEffect(() => {
     if (channel.ytId) { setStreamData({ ytId: channel.ytId }); setLoading(false); return }
@@ -62,6 +91,13 @@ function TVPlayer({ channel, onClose }) {
       .then(d => { setStreamData(d); setLoading(false) })
       .catch(() => { setError('Stream not available'); setLoading(false) })
   }, [channel.slug, channel.ytId])
+
+  useEffect(() => {
+    if (error && onFallback) {
+      fallbackTimerRef.current = setTimeout(() => onFallback(), 2000)
+    }
+    return () => clearTimeout(fallbackTimerRef.current)
+  }, [error, onFallback])
 
   const ytSrc = streamData?.ytId
     ? `https://www.youtube.com/embed/live_stream?channel=${streamData.ytId}&autoplay=1&mute=0&rel=0`
@@ -81,8 +117,10 @@ function TVPlayer({ channel, onClose }) {
         {loading ? (
           <div className="ist-player__loading">Loading stream…</div>
         ) : error ? (
-          <div className="ist-player__error">{error}</div>
-        ) : ytSrc ? (
+          <div className="ist-player__error">
+            Stream unavailable — switching to backup…
+          </div>
+        ) : ytSrc && !iframeError ? (
           <iframe
             src={ytSrc}
             allow="autoplay; encrypted-media; fullscreen"
@@ -92,7 +130,8 @@ function TVPlayer({ channel, onClose }) {
           />
         ) : (
           <div className="ist-player__error">
-            Stream not available. <a href={`https://kenyalivetv.co.ke/tv/${channel.slug}`} target="_blank" rel="noreferrer">Watch on source ↗</a>
+            Stream not available.{' '}
+            <a href={`https://kenyalivetv.co.ke/tv/${channel.slug}`} target="_blank" rel="noreferrer">Watch on source ↗</a>
           </div>
         )}
       </div>
@@ -175,10 +214,84 @@ function RadioPlayer({ station, onClose }) {
           />
         ) : (
           <div className="ist-player__error">
-            Stream not available. <a href={`https://kenyalivetv.co.ke/radio/${station.slug}`} target="_blank" rel="noreferrer">Listen on source ↗</a>
+            Stream not available.{' '}
+            <a href={`https://kenyalivetv.co.ke/radio/${station.slug}`} target="_blank" rel="noreferrer">Listen on source ↗</a>
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function NontongoFallback({ onRetry }) {
+  const [ntChannels, setNtChannels] = useState([])
+  const [ntLoading, setNtLoading] = useState(true)
+  const [ntSearch, setNtSearch] = useState('')
+  const [activeNt, setActiveNt] = useState(null)
+  const [ntLoadErr, setNtLoadErr] = useState(false)
+  const autoPlayedRef = useRef(false)
+
+  useEffect(() => {
+    fetch('/api/nontongo-live', { signal: AbortSignal.timeout(15000) })
+      .then(r => r.json())
+      .then(d => {
+        const chs = d.channels || []
+        setNtChannels(chs)
+        setNtLoading(false)
+        if (chs.length > 0 && !autoPlayedRef.current) {
+          autoPlayedRef.current = true
+          const preferred = chs.find(c => /bbc.news|cnn|al.?jaz|france.?24/i.test(c.name)) || chs[0]
+          setActiveNt(preferred)
+        }
+      })
+      .catch(() => { setNtLoadErr(true); setNtLoading(false) })
+  }, [])
+
+  const filtered = ntSearch
+    ? ntChannels.filter(c => c.name.toLowerCase().includes(ntSearch.toLowerCase()))
+    : ntChannels
+
+  return (
+    <div className="ist-wrap">
+      <div className="ist-fallback-banner">
+        <span>⚠️ IgnatiusStream is temporarily unavailable — streaming from <strong>NontonGo Live TV</strong> (850+ channels)</span>
+        <button className="ist-retry-btn" onClick={onRetry}>Retry IgnatiusStream</button>
+      </div>
+
+      {activeNt && (
+        <NontongoPlayer channel={activeNt} onClose={() => setActiveNt(null)} />
+      )}
+
+      <div className="ist-nt-search-wrap">
+        <input
+          className="ist-nt-search"
+          type="search"
+          placeholder="Search 850+ live channels…"
+          value={ntSearch}
+          onChange={e => setNtSearch(e.target.value)}
+        />
+      </div>
+
+      {ntLoading ? (
+        <div className="ist-skeleton-grid">
+          {Array(12).fill(0).map((_, i) => <div key={i} className="ist-skeleton-card" />)}
+        </div>
+      ) : ntLoadErr ? (
+        <div className="ist-empty">Failed to load backup channels. <button className="ist-retry-btn" onClick={onRetry}>Retry</button></div>
+      ) : (
+        <div className="ist-grid">
+          {filtered.map(ch => (
+            <ChannelCard
+              key={ch.id}
+              item={ch}
+              type="tv"
+              onClick={setActiveNt}
+              isActive={activeNt?.id === ch.id}
+              isNontongo
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -190,19 +303,68 @@ export default function IgnatiusStreamSection() {
   const [stations, setStations] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeItem, setActiveItem] = useState(null)
+  const [fallbackMode, setFallbackMode] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
+  const fallbackTimerRef = useRef(null)
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/kenya-tv').then(r => r.json()).catch(() => ({ channels: [] })),
-      fetch('/api/kenya-radio').then(r => r.json()).catch(() => ({ stations: [] })),
-    ]).then(([tv, radio]) => {
-      setChannels(tv.channels || [])
-      setStations(radio.stations || [])
-      setLoading(false)
-    })
+  const activateFallback = useCallback(() => {
+    clearTimeout(fallbackTimerRef.current)
+    setFallbackMode(true)
+    setLoading(false)
+    setActiveItem(null)
   }, [])
 
+  useEffect(() => {
+    setLoading(true)
+    setFallbackMode(false)
+    setChannels([])
+    setStations([])
+    setActiveItem(null)
+
+    fallbackTimerRef.current = setTimeout(activateFallback, FALLBACK_TIMEOUT_MS)
+
+    Promise.all([
+      fetch('/api/kenya-tv', { signal: AbortSignal.timeout(7000) })
+        .then(r => r.json())
+        .catch(() => ({ channels: [], sourceHealthy: false })),
+      fetch('/api/kenya-radio', { signal: AbortSignal.timeout(7000) })
+        .then(r => r.json())
+        .catch(() => ({ stations: [] })),
+    ]).then(([tv, radio]) => {
+      clearTimeout(fallbackTimerRef.current)
+      const tvChannels = tv.channels || []
+      const radioStations = radio.stations || []
+
+      if (!tv.sourceHealthy && tvChannels.length === 0) {
+        activateFallback()
+        return
+      }
+
+      setChannels(tvChannels)
+      setStations(radioStations)
+      setLoading(false)
+
+      if (!tv.sourceHealthy) {
+        fallbackTimerRef.current = setTimeout(activateFallback, 3000)
+      }
+    }).catch(() => {
+      clearTimeout(fallbackTimerRef.current)
+      activateFallback()
+    })
+
+    return () => clearTimeout(fallbackTimerRef.current)
+  }, [retryKey, activateFallback])
+
+  const handleRetry = () => {
+    setFallbackMode(false)
+    setRetryKey(k => k + 1)
+  }
+
   const handleTabSwitch = (t) => { setTab(t); setCategory('all'); setActiveItem(null) }
+
+  if (fallbackMode) {
+    return <NontongoFallback onRetry={handleRetry} />
+  }
 
   const currentList = tab === 'tv' ? channels : stations
   const filtered = category === 'all' ? currentList : currentList.filter(c => c.category === category)
@@ -235,7 +397,11 @@ export default function IgnatiusStreamSection() {
 
       {activeItem && (
         tab === 'tv'
-          ? <TVPlayer channel={activeItem} onClose={() => setActiveItem(null)} />
+          ? <TVPlayer
+              channel={activeItem}
+              onClose={() => setActiveItem(null)}
+              onFallback={activateFallback}
+            />
           : <RadioPlayer station={activeItem} onClose={() => setActiveItem(null)} />
       )}
 

@@ -1973,9 +1973,36 @@ async function fetchKenyaStream(slug, type) {
   } catch { return null }
 }
 
-app.get('/api/kenya-tv', (req, res) => {
+let _nontongoCache = null
+let _nontongoAt = 0
+const NONTONGO_TTL = 6 * 60 * 60 * 1000
+
+async function fetchNontongoChannels() {
+  if (_nontongoCache && Date.now() - _nontongoAt < NONTONGO_TTL) return _nontongoCache
+  try {
+    const r = await fetch('https://www.nontongo.win/livetv/', {
+      signal: AbortSignal.timeout(12000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    })
+    const html = await r.text()
+    const channels = []
+    const re = /data-stream="https:\/\/www\.nontongo\.win\/livetv\/(\d+)"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"[\s\S]*?<h3[^>]+>([^<]+)<\/h3>/g
+    let m
+    while ((m = re.exec(html)) !== null) {
+      channels.push({ id: m[1], embedUrl: `https://nontongo.win/livetv/play-movie.php?id=${m[1]}`, img: m[2], name: m[3].trim() })
+    }
+    if (channels.length > 0) { _nontongoCache = channels; _nontongoAt = Date.now() }
+    return channels
+  } catch { return _nontongoCache || [] }
+}
+
+app.get('/api/kenya-tv', async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*')
-  res.json({ channels: KENYA_TV_CHANNELS })
+  const healthy = await Promise.race([
+    fetch('https://kenyalivetv.co.ke/', { signal: AbortSignal.timeout(5000) }).then(() => true).catch(() => false),
+    new Promise(r => setTimeout(() => r(false), 5500))
+  ])
+  res.json({ channels: KENYA_TV_CHANNELS, sourceHealthy: healthy })
 })
 
 app.get('/api/kenya-radio', (req, res) => {
@@ -1995,6 +2022,12 @@ app.get('/api/kenya-stream', async (req, res) => {
   }
   const live = await fetchKenyaStream(slug, type)
   res.json(live || { ytId: null, stream: null })
+})
+
+app.get('/api/nontongo-live', async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*')
+  const channels = await fetchNontongoChannels()
+  res.json({ channels, count: channels.length })
 })
 
 /* ── Serve built Vite frontend in production ── */
