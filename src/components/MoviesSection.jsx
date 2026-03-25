@@ -53,18 +53,52 @@ export default function MoviesSection({ searchQuery, onPlay }) {
     setLoading(true)
     try {
       if (q) {
-        const results = await omdbSearch(q, p)
-        const normalized = results.map(r => ({
-          ...r,
-          _source: 'omdb',
-          Poster: r.Poster !== 'N/A' ? r.Poster : null,
-        }))
-        if (p === 1) setMovies(normalized)
+        const [omdbMovies, omdbSeries, showboxRes] = await Promise.allSettled([
+          omdbSearch(q, p),
+          fetch(`/proxy/omdb/?apikey=trilogy&s=${encodeURIComponent(q)}&type=series&page=${p}`)
+            .then(r => r.json())
+            .then(d => (d.Search || []).map(m => ({ ...m, Poster: m.Poster !== 'N/A' ? m.Poster : null })))
+            .catch(() => []),
+          fetch(`/api/showbox-search?q=${encodeURIComponent(q)}&type=movie`)
+            .then(r => r.json())
+            .then(d => (d.items || []).map(i => ({
+              Title: i.title,
+              Year: String(i.year || ''),
+              Genre: i.genre || '',
+              Poster: i.poster || null,
+              imdbID: null,
+              _source: 'showbox',
+              _showboxId: i.id,
+              _showboxType: i.boxType || 'movie',
+            })))
+            .catch(() => []),
+        ])
+
+        const movies = (omdbMovies.status === 'fulfilled' ? omdbMovies.value : [])
+          .map(r => ({ ...r, _source: 'omdb', Poster: r.Poster !== 'N/A' ? r.Poster : null }))
+        const series = (omdbSeries.status === 'fulfilled' ? omdbSeries.value : [])
+          .map(r => ({ ...r, _source: 'omdb' }))
+        const showbox = showboxRes.status === 'fulfilled' ? showboxRes.value : []
+
+        const seenTitles = new Set()
+        const seenIds = new Set()
+        const all = []
+        for (const item of [...movies, ...series, ...showbox]) {
+          const titleKey = (item.Title || '').toLowerCase().trim()
+          const idKey = item.imdbID
+          if ((idKey && seenIds.has(idKey)) || (titleKey && seenTitles.has(titleKey))) continue
+          if (idKey) seenIds.add(idKey)
+          if (titleKey) seenTitles.add(titleKey)
+          all.push(item)
+        }
+
+        if (p === 1) setMovies(all)
         else setMovies(prev => {
-          const ids = new Set(prev.map(m => m.imdbID))
-          return [...prev, ...normalized.filter(m => !ids.has(m.imdbID))]
+          const ids = new Set(prev.map(m => m.imdbID).filter(Boolean))
+          const titles = new Set(prev.map(m => m.Title?.toLowerCase()).filter(Boolean))
+          return [...prev, ...all.filter(m => !ids.has(m.imdbID) && !titles.has(m.Title?.toLowerCase()))]
         })
-        setHasMore(results.length >= 10)
+        setHasMore(movies.length >= 10 || showbox.length >= 10)
 
       } else if (g === 'new-releases') {
         const [ytsResult, ntResult] = await Promise.allSettled([
@@ -263,7 +297,7 @@ export default function MoviesSection({ searchQuery, onPlay }) {
               ? <div className="no-results">No movies found.</div>
               : movies.map((m, i) => (
                   <MediaCard
-                    key={m.imdbID || m._mbId || m._ytsId || m.subjectId || m._newtoxicSlug || i}
+                    key={m.imdbID || m._mbId || m._ytsId || m.subjectId || m._newtoxicSlug || m._showboxId || i}
                     item={m}
                     type={
                       m._source === 'yts' ? 'movie' :

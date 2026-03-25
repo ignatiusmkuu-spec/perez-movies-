@@ -71,13 +71,41 @@ export default function DramaSection({ searchQuery, onPlay }) {
     const load = async () => {
       try {
         if (searchQuery) {
-          const [mbResults, tvResults] = await Promise.allSettled([
+          const [omdbRes, tvRes, showboxRes] = await Promise.allSettled([
             omdbSearch(searchQuery, 1),
             searchShows(searchQuery),
+            fetch(`/api/showbox-search?q=${encodeURIComponent(searchQuery)}&type=tv`)
+              .then(r => r.json())
+              .then(d => (d.items || []).map(i => ({
+                Title: i.title,
+                Year: String(i.year || ''),
+                Genre: i.genre || '',
+                Poster: i.poster || null,
+                imdbID: null,
+                _source: 'showbox',
+                _showboxId: i.id,
+                _showboxType: 'tv',
+              })))
+              .catch(() => []),
           ])
-          const mb = mbResults.status === 'fulfilled' ? mbResults.value.map(r => ({ ...r, _source: 'omdb', Poster: r.Poster || null })) : []
-          const tv = tvResults.status === 'fulfilled' ? tvResults.value : []
-          setShows(mb.length > 0 ? mb : tv.map(s => ({ ...s, _source: 'tv' })))
+          const omdb = (omdbRes.status === 'fulfilled' ? omdbRes.value : [])
+            .map(r => ({ ...r, _source: 'omdb', Poster: r.Poster || null }))
+          const tv = (tvRes.status === 'fulfilled' ? tvRes.value : [])
+            .map(s => ({ ...s, _source: 'tv' }))
+          const showbox = showboxRes.status === 'fulfilled' ? showboxRes.value : []
+
+          const seenTitles = new Set()
+          const seenIds = new Set()
+          const combined = []
+          for (const item of [...omdb, ...tv, ...showbox]) {
+            const titleKey = (item.Title || item.name || '').toLowerCase().trim()
+            const idKey = item.imdbID
+            if ((idKey && seenIds.has(idKey)) || (titleKey && seenTitles.has(titleKey))) continue
+            if (idKey) seenIds.add(idKey)
+            if (titleKey) seenTitles.add(titleKey)
+            combined.push(item)
+          }
+          setShows(combined)
         } else if (genre === 'Popular Series') {
           const [ntResult, tvResult] = await Promise.allSettled([
             fetch('/api/newtoxic-latest?type=tv').then(r => r.json()),
@@ -168,7 +196,7 @@ export default function DramaSection({ searchQuery, onPlay }) {
               ? <div className="no-results">No shows found. Try another category.</div>
               : shows.map((s, i) => (
                   <MediaCard
-                    key={s.imdbID || s._mbId || s.subjectId || s._newtoxicSlug || s.id || i}
+                    key={s.imdbID || s._mbId || s.subjectId || s._newtoxicSlug || s._showboxId || s.id || i}
                     item={s}
                     type={
                       s._source === 'xcasper-browse' ? 'moviebox-tv' :
