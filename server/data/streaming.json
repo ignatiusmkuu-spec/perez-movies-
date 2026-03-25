@@ -11,9 +11,9 @@
       "active": true,
       "priority": 1,
       "healthUrl": "",
-      "lastCheck": "2026-03-25T18:52:23.601Z",
-      "healthy": false,
-      "failCount": 7
+      "lastCheck": "2026-03-25T18:56:53.058Z",
+      "healthy": true,
+      "failCount": 1
     },
     {
       "id": "backup1",
@@ -23,9 +23,9 @@
       "active": true,
       "priority": 2,
       "healthUrl": "",
-      "lastCheck": "2026-03-25T18:52:23.602Z",
-      "healthy": false,
-      "failCount": 7
+      "lastCheck": "2026-03-25T18:56:53.059Z",
+      "healthy": true,
+      "failCount": 1
     },
     {
       "id": "backup2",
@@ -35,9 +35,9 @@
       "active": true,
       "priority": 3,
       "healthUrl": "",
-      "lastCheck": "2026-03-25T18:52:23.603Z",
-      "healthy": false,
-      "failCount": 7
+      "lastCheck": "2026-03-25T18:56:53.061Z",
+      "healthy": true,
+      "failCount": 1
     }
   ]
 }

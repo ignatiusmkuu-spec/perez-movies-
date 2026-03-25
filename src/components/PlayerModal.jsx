@@ -277,6 +277,17 @@ export default function PlayerModal({ item, type, onClose }) {
     setFailoverMsg(null)
   }, [season, episode, serverIdx, imdbId])
 
+  // Find the index of the first reliable IMDB-based server to use as failover
+  const getFirstImdbServer = () => {
+    const preferred = ['VidSrc.to', 'VidSrc.rip', 'MultiEmbed', 'VidSrc', 'NontonGo']
+    for (const label of preferred) {
+      const idx = visibleServers.findIndex(s => s.label === label && !s.usesSubjectId)
+      if (idx !== -1) return idx
+    }
+    return visibleServers.findIndex(s => !s.usesSubjectId)
+  }
+
+  // Auto-advance to next embed server when iframe takes too long
   useEffect(() => {
     if (failoverRef.current) {
       clearTimeout(failoverRef.current)
@@ -285,12 +296,15 @@ export default function PlayerModal({ item, type, onClose }) {
 
     if (!embedUrl || !iframeLoading || lookingUp || manualSwitch || srv?.usesSubjectId) return
 
-    const failoverIdx = visibleServers.findIndex(s => s.label === 'NontonGo')
-    if (failoverIdx === -1 || failoverIdx === safeIdx) return
+    // Find the next non-usesSubjectId server after current one
+    const nextIdx = visibleServers.findIndex((s, i) => i > safeIdx && !s.usesSubjectId)
+    const fallbackIdx = nextIdx !== -1 ? nextIdx : getFirstImdbServer()
+    if (fallbackIdx === -1 || fallbackIdx === safeIdx) return
 
     failoverRef.current = setTimeout(() => {
-      setFailoverMsg('Stream timed out — switching to NontonGo…')
-      setServerIdx(failoverIdx)
+      const nextLabel = visibleServers[fallbackIdx]?.label || 'next server'
+      setFailoverMsg(`Stream timed out — switching to ${nextLabel}…`)
+      setServerIdx(fallbackIdx)
       setIframeLoading(true)
       failoverRef.current = null
     }, 8000)
@@ -303,32 +317,35 @@ export default function PlayerModal({ item, type, onClose }) {
     }
   }, [embedUrl, iframeLoading, lookingUp, manualSwitch])
 
+  // When IgnatiusMovies can't find a source, switch to best IMDB-based server
   useEffect(() => {
     if (!srv?.usesSubjectId) return
     if (casperLookingUp) return
     if (casperSubjectId) return
     if (manualSwitch) return
     if (!casperLookupDoneRef.current) return
-    const nextIdx = visibleServers.findIndex(s => s.label === 'NontonGo')
+    const nextIdx = getFirstImdbServer()
     if (nextIdx === -1) return
-    setFailoverMsg('Source not found on IgnatiusMovies — switching to NontonGo…')
+    const nextLabel = visibleServers[nextIdx]?.label || 'next server'
+    setFailoverMsg(`Source not found on IgnatiusMovies — switching to ${nextLabel}…`)
     const t = setTimeout(() => {
       setServerIdx(nextIdx)
       setIframeLoading(true)
-    }, 4000)
+    }, 3000)
     return () => clearTimeout(t)
   }, [casperLookingUp, casperSubjectId])
 
   useEffect(() => {
     if (!nativePlayerFailed) return
     if (manualSwitch) return
-    const nextIdx = visibleServers.findIndex(s => s.label === 'NontonGo')
+    const nextIdx = getFirstImdbServer()
     if (nextIdx === -1) return
-    setFailoverMsg('IgnatiusMovies error — switching to NontonGo…')
+    const nextLabel = visibleServers[nextIdx]?.label || 'next server'
+    setFailoverMsg(`IgnatiusMovies error — switching to ${nextLabel}…`)
     const t = setTimeout(() => {
       setServerIdx(nextIdx)
       setIframeLoading(true)
-    }, 3000)
+    }, 2000)
     return () => clearTimeout(t)
   }, [nativePlayerFailed])
 

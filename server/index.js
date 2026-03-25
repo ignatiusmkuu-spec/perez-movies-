@@ -257,12 +257,63 @@ app.get('/api/moviebox-search', async (req, res) => {
 app.get('/api/imdb-lookup', async (req, res) => {
   const { t, y, type } = req.query
   if (!t) return res.status(400).json({ error: 't required' })
+
+  const mType = type === 'tv' ? 'series' : 'movie'
+  const altType = mType === 'series' ? 'movie' : 'series'
+
+  // Build title variants
+  const variants = new Set()
+  variants.add(t)
+  const beforeColon = t.split(':')[0].trim()
+  if (beforeColon !== t) variants.add(beforeColon)
+  const afterColon = t.includes(':') ? t.split(':').slice(1).join(':').trim() : null
+  if (afterColon) variants.add(afterColon)
+  const noParens = t.split('(')[0].trim()
+  if (noParens !== t) variants.add(noParens)
+  const words = t.split(/\s+/)
+  if (words.length > 4) variants.add(words.slice(0, 4).join(' '))
+  if (words.length > 3) variants.add(words.slice(0, 3).join(' '))
+
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+
+  // Strategy 1: IMDB suggestion API (no key, fastest)
+  const tryImdbSuggestion = async (title, mediaType) => {
+    try {
+      const firstLetter = (title[0] || 'a').toLowerCase()
+      const r = await fetch(
+        `https://v2.sg.media-imdb.com/suggestion/${firstLetter}/${encodeURIComponent(title)}.json`,
+        { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(5000) }
+      )
+      const json = await r.json()
+      const qidMap = { movie: 'movie', series: 'tvSeries' }
+      const targetQid = qidMap[mediaType] || 'movie'
+      const items = json.d || []
+      // Year filter if provided
+      const yearNum = y ? parseInt(y) : null
+      // Try exact type + year match first
+      if (yearNum) {
+        const withYear = items.find(i =>
+          i.id?.startsWith('tt') && i.qid === targetQid &&
+          i.y && Math.abs(i.y - yearNum) <= 1
+        )
+        if (withYear) return withYear.id
+      }
+      // Type match
+      const typed = items.find(i => i.id?.startsWith('tt') && i.qid === targetQid)
+      if (typed) return typed.id
+      // Any tt item as last resort
+      const any = items.find(i => i.id?.startsWith('tt'))
+      return any?.id || null
+    } catch { return null }
+  }
+
+  // Strategy 2: OMDB (with trilogy key)
   const omdbBase = 'https://www.omdbapi.com'
   const key = 'trilogy'
   const doFetch = async (params) => {
     try {
       const qs = new URLSearchParams({ apikey: key, ...params }).toString()
-      const r = await fetch(`${omdbBase}/?${qs}`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+      const r = await fetch(`${omdbBase}/?${qs}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) })
       return await r.json()
     } catch { return {} }
   }
@@ -276,36 +327,28 @@ app.get('/api/imdb-lookup', async (req, res) => {
     const d = await doFetch({ s: title, type: mediaType })
     return d.Search?.[0]?.imdbID || null
   }
-  const mType = type === 'tv' ? 'series' : 'movie'
-  const altType = mType === 'series' ? 'movie' : 'series'
 
-  // Build title variants in priority order
-  const variants = new Set()
-  variants.add(t)
-  // part before first colon: "Marvel One-Shot: ..." → "Marvel One-Shot"
-  const beforeColon = t.split(':')[0].trim()
-  if (beforeColon !== t) variants.add(beforeColon)
-  // part after first colon: "Marvel One-Shot: A Funny Thing..." → "A Funny Thing..."
-  const afterColon = t.includes(':') ? t.split(':').slice(1).join(':').trim() : null
-  if (afterColon) variants.add(afterColon)
-  // strip parenthetical: "Title (year)" → "Title"
-  const noParens = t.split('(')[0].trim()
-  if (noParens !== t) variants.add(noParens)
-  // first 4 words (handles very long titles)
-  const words = t.split(/\s+/)
-  if (words.length > 4) variants.add(words.slice(0, 4).join(' '))
-  // first 3 words
-  if (words.length > 3) variants.add(words.slice(0, 3).join(' '))
+  // Run IMDB suggestion in parallel with first OMDB exact match for speed
+  const firstVariant = [...variants][0]
+  const [suggestionId, omdbExactId] = await Promise.all([
+    tryImdbSuggestion(firstVariant, mType),
+    tryExact(firstVariant, mType),
+  ])
+  if (suggestionId) return res.json({ imdbID: suggestionId })
+  if (omdbExactId) return res.json({ imdbID: omdbExactId })
 
+  // Sequential OMDB fallbacks for remaining variants
   const attempts = []
-  for (const v of variants) {
+  const variantArr = [...variants].slice(1)
+  for (const v of variantArr) {
+    attempts.push(() => tryImdbSuggestion(v, mType))
     attempts.push(() => tryExact(v, mType))
     attempts.push(() => trySearch(v, mType))
   }
-  // also try flipped type for each variant
-  for (const v of variants) {
+  for (const v of [...variants]) {
     attempts.push(() => tryExact(v, altType))
     attempts.push(() => trySearch(v, altType))
+    attempts.push(() => tryImdbSuggestion(v, altType))
   }
 
   for (const attempt of attempts) {
