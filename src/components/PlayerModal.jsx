@@ -279,7 +279,7 @@ export default function PlayerModal({ item, type, onClose }) {
 
   // Find the index of the first reliable IMDB-based server to use as failover
   const getFirstImdbServer = () => {
-    const preferred = ['VidSrc.to', 'VidSrc.rip', 'MultiEmbed', 'VidSrc', 'NontonGo']
+    const preferred = ['NontonGo', 'VidSrc.to', 'VidSrc.rip', 'MultiEmbed', 'VidSrc']
     for (const label of preferred) {
       const idx = visibleServers.findIndex(s => s.label === label && !s.usesSubjectId)
       if (idx !== -1) return idx
