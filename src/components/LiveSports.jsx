@@ -281,11 +281,17 @@ export default function LiveSports() {
   const ytActiveVideoRef = useRef(null)
 
   // Live Matches state (xcasper live feed)
-  const [liveMatches, setLiveMatches]         = useState([])
+  const [liveMatches, setLiveMatches]           = useState([])
+  const [liveHighlights, setLiveHighlights]     = useState([])
+  const [liveNewsList, setLiveNewsList]         = useState([])
   const [liveMatchLoading, setLiveMatchLoading] = useState(false)
-  const [liveMatchError, setLiveMatchError]   = useState(null)
-  const [activeMatch2, setActiveMatch2]       = useState(null)
-  const liveMatchPlayerRef                    = useRef(null)
+  const [liveMatchError, setLiveMatchError]     = useState(null)
+  const [activeMatch2, setActiveMatch2]         = useState(null)
+  const [liveMatchFilter, setLiveMatchFilter]   = useState('all')
+  const [liveSubTab, setLiveSubTab]             = useState('matches')
+  const [activeHighlight, setActiveHighlight]   = useState(null)
+  const liveMatchPlayerRef                      = useRef(null)
+  const highlightPlayerRef                      = useRef(null)
 
   useEffect(() => {
     if (tab !== 'highlights') return
@@ -362,8 +368,9 @@ export default function LiveSports() {
     fetch('/api/live-feed')
       .then(r => r.json())
       .then(data => {
-        const arr = Array.isArray(data) ? data : data.data || []
-        setLiveMatches(arr)
+        setLiveMatches(data.matches || [])
+        setLiveHighlights(data.highlights || [])
+        setLiveNewsList(data.newsList || [])
         setLiveMatchLoading(false)
       })
       .catch(() => {
@@ -1055,75 +1062,259 @@ export default function LiveSports() {
       {/* ==================== LIVE MATCHES TAB ==================== */}
       {tab === 'livematches' && (
         <div className="live-matches-tab">
-          <p className="lm-subtitle">Streaming live sports from xcasper — click a match to watch.</p>
+
+          {/* Sub-tab selector */}
+          <div className="lm-subtabs">
+            <button className={`lm-subtab ${liveSubTab === 'matches' ? 'active' : ''}`} onClick={() => setLiveSubTab('matches')}>
+              🏟️ Matches
+            </button>
+            <button className={`lm-subtab ${liveSubTab === 'highlights' ? 'active' : ''}`} onClick={() => { setLiveSubTab('highlights'); setActiveHighlight(null) }}>
+              🎬 Highlights
+            </button>
+            <button className={`lm-subtab ${liveSubTab === 'news' ? 'active' : ''}`} onClick={() => setLiveSubTab('news')}>
+              📰 News
+            </button>
+          </div>
 
           {liveMatchLoading && (
             <div className="lm-loading">
               <div className="lm-spinner" />
-              <span>Loading live matches…</span>
+              <span>Loading sports feed…</span>
             </div>
           )}
-
           {liveMatchError && !liveMatchLoading && (
             <div className="lm-error">{liveMatchError}</div>
           )}
 
-          {!liveMatchLoading && !liveMatchError && liveMatches.length === 0 && (
-            <div className="lm-empty">
-              <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>🏟️</div>
-              <div>No live matches right now. Check back soon!</div>
-            </div>
-          )}
-
-          {activeMatch2 && (
-            <div className="lm-player-wrap" ref={liveMatchPlayerRef}>
-              <div className="lm-player-header">
-                <span className="lm-live-badge">🔴 LIVE</span>
-                <span className="lm-match-title-big">
-                  {activeMatch2.team1?.name || 'Team 1'} vs {activeMatch2.team2?.name || 'Team 2'}
-                </span>
-                <button className="lm-close-player" onClick={() => setActiveMatch2(null)}>✕</button>
+          {/* ── MATCHES sub-tab ── */}
+          {!liveMatchLoading && liveSubTab === 'matches' && (
+            <>
+              {/* Status filters */}
+              <div className="lm-filter-row">
+                {['all','live','upcoming','ended'].map(f => (
+                  <button
+                    key={f}
+                    className={`lm-filter-btn ${liveMatchFilter === f ? 'active' : ''}`}
+                    onClick={() => { setLiveMatchFilter(f); setActiveMatch2(null) }}
+                  >
+                    {f === 'all' && '⚽ All'}
+                    {f === 'live' && '🔴 Live'}
+                    {f === 'upcoming' && '🕐 Upcoming'}
+                    {f === 'ended' && '✅ Ended'}
+                  </button>
+                ))}
               </div>
-              <iframe
-                className="lm-iframe"
-                src={`/api/live-stream?url=${encodeURIComponent(activeMatch2.playPath || '')}`}
-                allowFullScreen
-                allow="autoplay; fullscreen"
-                title="Live Match Stream"
-              />
-              <div className="lm-player-note">Stream via Ignitus Live — may require a moment to buffer.</div>
-            </div>
+
+              {(() => {
+                const filtered2 = liveMatches.filter(m => {
+                  if (liveMatchFilter === 'live') return m.status === 'MatchInProgress' || m.statusLive === 'Living'
+                  if (liveMatchFilter === 'upcoming') return m.status === 'MatchNotStart'
+                  if (liveMatchFilter === 'ended') return m.status === 'MatchEnded'
+                  return true
+                })
+
+                if (!liveMatchError && filtered2.length === 0) return (
+                  <div className="lm-empty">
+                    <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>🏟️</div>
+                    <div>No {liveMatchFilter !== 'all' ? liveMatchFilter : ''} matches right now. Check back soon!</div>
+                  </div>
+                )
+
+                return (
+                  <>
+                    {/* Inline player */}
+                    {activeMatch2 && (
+                      <div className="lm-player-wrap" ref={liveMatchPlayerRef}>
+                        <div className="lm-player-header">
+                          <div className="lm-player-meta">
+                            <span className={`lm-status-badge lm-status-${activeMatch2.status}`}>
+                              {activeMatch2.status === 'MatchInProgress' || activeMatch2.statusLive === 'Living' ? '🔴 LIVE'
+                                : activeMatch2.status === 'MatchEnded' ? '✅ FT'
+                                : '🕐 Upcoming'}
+                            </span>
+                            <span className="lm-match-title-big">
+                              {activeMatch2.team1?.name} vs {activeMatch2.team2?.name}
+                            </span>
+                            <span className="lm-player-league">{activeMatch2.league}</span>
+                          </div>
+                          <button className="lm-close-player" onClick={() => setActiveMatch2(null)}>✕</button>
+                        </div>
+                        {activeMatch2.playPath ? (
+                          <iframe
+                            className="lm-iframe"
+                            src={`/stream-proxy?target=${encodeURIComponent(activeMatch2.playPath)}`}
+                            allowFullScreen
+                            allow="autoplay; fullscreen"
+                            title="Live Match Stream"
+                          />
+                        ) : (
+                          <div className="lm-no-stream">
+                            <div>📡</div>
+                            <div>Stream not available yet for this match.</div>
+                            {activeMatch2.status === 'MatchNotStart' && activeMatch2.startTime && (
+                              <div className="lm-start-time">
+                                Starts: {new Date(activeMatch2.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className="lm-player-note">Streams are sourced from the live feed. If buffering, wait a moment or try again.</div>
+                      </div>
+                    )}
+
+                    <div className="lm-grid">
+                      {filtered2.map((match, i) => {
+                        const isLive = match.status === 'MatchInProgress' || match.statusLive === 'Living'
+                        const isEnded = match.status === 'MatchEnded'
+                        const isUpcoming = match.status === 'MatchNotStart'
+                        const hasScore = match.team1?.score != null && match.team2?.score != null
+                        const sportIcon = match.type === 'basketball' ? '🏀' : '⚽'
+                        const active = activeMatch2?.id === match.id
+                        return (
+                          <div
+                            key={match.id || i}
+                            className={`lm-card ${active ? 'lm-card-active' : ''} ${isLive ? 'lm-card-live' : ''} ${isEnded ? 'lm-card-ended' : ''}`}
+                            onClick={() => handleLiveMatchClick(match)}
+                          >
+                            <div className="lm-card-top">
+                              <span className="lm-sport-icon">{sportIcon}</span>
+                              <span className="lm-league-tag">{match.league}</span>
+                              {isLive && <span className="lm-live-dot-tag"><span className="lm-pulse" />LIVE</span>}
+                              {isEnded && match.timeDesc && <span className="lm-ended-tag">{match.timeDesc}</span>}
+                              {isUpcoming && match.startTime && (
+                                <span className="lm-time-tag">
+                                  {new Date(match.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                            <div className="lm-card-teams">
+                              <div className="lm-team">
+                                {match.team1?.avatar
+                                  ? <img src={match.team1.avatar} alt="" className="lm-avatar" onError={e => { e.currentTarget.style.display='none' }} />
+                                  : <span className="lm-avatar-placeholder">{sportIcon}</span>}
+                                <span className="lm-team-name">{match.team1?.name || 'Team 1'}</span>
+                              </div>
+                              <div className="lm-score-box">
+                                {hasScore && isEnded
+                                  ? <span className="lm-score lm-score-final">{match.team1.score} – {match.team2.score}</span>
+                                  : hasScore && isLive
+                                  ? <span className="lm-score lm-score-live">{match.team1.score} – {match.team2.score}</span>
+                                  : <span className="lm-vs">VS</span>}
+                              </div>
+                              <div className="lm-team lm-team-right">
+                                {match.team2?.avatar
+                                  ? <img src={match.team2.avatar} alt="" className="lm-avatar" onError={e => { e.currentTarget.style.display='none' }} />
+                                  : <span className="lm-avatar-placeholder">{sportIcon}</span>}
+                                <span className="lm-team-name">{match.team2?.name || 'Team 2'}</span>
+                              </div>
+                            </div>
+                            <div className="lm-card-footer">
+                              {isLive && match.playPath
+                                ? <span className="lm-watch-btn">▶ Watch Live</span>
+                                : isEnded && match.replay
+                                ? <span className="lm-replay-btn">↩ Replay</span>
+                                : isUpcoming
+                                ? <span className="lm-upcoming-btn">🔔 Soon</span>
+                                : <span className="lm-no-stream-btn">No stream</span>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )
+              })()}
+            </>
           )}
 
-          <div className="lm-grid">
-            {liveMatches.map((match, i) => (
-              <div
-                key={match.id || i}
-                className={`lm-card ${activeMatch2?.id === match.id ? 'lm-card-active' : ''}`}
-                onClick={() => handleLiveMatchClick(match)}
-              >
-                <div className="lm-card-teams">
-                  <div className="lm-team">
-                    {match.team1?.avatar && <img src={match.team1.avatar} alt="" className="lm-avatar" />}
-                    <span className="lm-team-name">{match.team1?.name || 'Team 1'}</span>
-                  </div>
-                  <div className="lm-score-box">
-                    {match.team1?.score != null && match.team2?.score != null
-                      ? <span className="lm-score">{match.team1.score} – {match.team2.score}</span>
-                      : <span className="lm-vs">VS</span>
-                    }
-                    <span className="lm-live-tag">🔴 LIVE</span>
-                  </div>
-                  <div className="lm-team lm-team-right">
-                    {match.team2?.avatar && <img src={match.team2.avatar} alt="" className="lm-avatar" />}
-                    <span className="lm-team-name">{match.team2?.name || 'Team 2'}</span>
-                  </div>
+          {/* ── HIGHLIGHTS sub-tab ── */}
+          {!liveMatchLoading && liveSubTab === 'highlights' && (
+            <div className="lm-highlights-section">
+              {liveHighlights.length === 0 && !liveMatchError ? (
+                <div className="lm-empty">
+                  <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>🎬</div>
+                  <div>No highlights available right now.</div>
                 </div>
-                {match.league && <div className="lm-league">{match.league}</div>}
-                <div className="lm-watch-btn">▶ Watch Live</div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                <>
+                  {activeHighlight && (
+                    <div className="lm-hl-player" ref={highlightPlayerRef}>
+                      <div className="lm-hl-player-header">
+                        <span className="lm-hl-title">{activeHighlight.title}</span>
+                        <button className="lm-close-player" onClick={() => setActiveHighlight(null)}>✕</button>
+                      </div>
+                      <video
+                        className="lm-hl-video"
+                        src={activeHighlight.path}
+                        controls
+                        autoPlay
+                        poster={activeHighlight.cover}
+                        playsInline
+                      />
+                      <div className="lm-hl-meta-row">
+                        <span>👁 {Number(activeHighlight.viewCount || 0).toLocaleString()} views</span>
+                        <span>⏱ {activeHighlight.duration}s</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="lm-hl-grid">
+                    {liveHighlights.map((h, i) => (
+                      <div
+                        key={h.id || i}
+                        className={`lm-hl-card ${activeHighlight?.id === h.id ? 'lm-hl-active' : ''}`}
+                        onClick={() => {
+                          if (activeHighlight?.id === h.id) { setActiveHighlight(null); return }
+                          setActiveHighlight(h)
+                          setTimeout(() => highlightPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+                        }}
+                      >
+                        <div className="lm-hl-thumb-wrap">
+                          {h.cover
+                            ? <img src={h.cover} alt={h.title} className="lm-hl-thumb" loading="lazy" onError={e => { e.currentTarget.style.display='none' }} />
+                            : <div className="lm-hl-thumb-placeholder">🎬</div>}
+                          <div className="lm-hl-play-overlay">▶</div>
+                          {h.duration && <span className="lm-hl-duration">{h.duration}s</span>}
+                        </div>
+                        <div className="lm-hl-info">
+                          <div className="lm-hl-card-title">{h.title}</div>
+                          <div className="lm-hl-card-meta">
+                            {Number(h.viewCount || 0).toLocaleString()} views
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── NEWS sub-tab ── */}
+          {!liveMatchLoading && liveSubTab === 'news' && (
+            <div className="lm-news-section">
+              {liveNewsList.length === 0 && !liveMatchError ? (
+                <div className="lm-empty">
+                  <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>📰</div>
+                  <div>No news available right now.</div>
+                </div>
+              ) : (
+                <div className="lm-news-grid">
+                  {liveNewsList.map((n, i) => (
+                    <div key={n.id || i} className="lm-news-card">
+                      {n.cover && (
+                        <div className="lm-news-cover-wrap">
+                          <img src={n.cover} alt={n.title} className="lm-news-cover" loading="lazy" onError={e => { e.currentTarget.parentElement.style.display='none' }} />
+                        </div>
+                      )}
+                      <div className="lm-news-body">
+                        <div className="lm-news-title">{n.title}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

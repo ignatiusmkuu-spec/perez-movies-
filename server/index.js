@@ -630,17 +630,35 @@ app.get('/api/live-feed', async (req, res) => {
       startTime: m.startTime,
       endTime: m.endTime,
       timeDesc: m.timeDesc,
-      team1: { name: m.team1?.name, avatar: m.team1?.avatar, score: m.team1?.score },
-      team2: { name: m.team2?.name, avatar: m.team2?.avatar, score: m.team2?.score },
+      type: m.type || 'football',
+      team1: { name: m.team1?.name, avatar: m.team1?.avatar, score: m.team1?.score, id: m.team1?.id },
+      team2: { name: m.team2?.name, avatar: m.team2?.avatar, score: m.team2?.score, id: m.team2?.id },
       playPath: m.playPath,
       playType: m.playType,
       replay: m.replay,
+      highlights: m.highlights || [],
     }))
-    const highlights = json?.data?.highlights || []
+    const highlights = (json?.data?.highlights || []).map(h => ({
+      id: h.id,
+      title: h.title,
+      path: h.path,
+      cover: h.cover?.url || (typeof h.cover === 'string' ? h.cover : ''),
+      duration: h.duration,
+      createTime: h.createTime,
+      viewCount: h.stat?.viewCount || '0',
+    }))
+    const newsList = (json?.data?.newsList || []).map(n => ({
+      id: n.id,
+      title: n.title,
+      cover: n.cover,
+      path: n.path,
+      duration: n.duration,
+      createTime: n.createTime,
+    }))
     res.set('Access-Control-Allow-Origin', '*')
-    res.json({ matches, highlights })
+    res.json({ matches, highlights, newsList })
   } catch (err) {
-    res.status(502).json({ error: err.message, matches: [], highlights: [] })
+    res.status(502).json({ error: err.message, matches: [], highlights: [], newsList: [] })
   }
 })
 
