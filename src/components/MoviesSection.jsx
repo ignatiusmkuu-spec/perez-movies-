@@ -146,13 +146,10 @@ export default function MoviesSection({ searchQuery, onPlay }) {
       } else if (YTS_GENRES.has(g)) {
         const genre_param = g === 'popular' ? 'all' : g
         const sort_param  = g === 'popular' ? 'download_count' : 'rating'
-        const xcasperGenre = g === 'sci-fi' ? 'Science Fiction' : g.charAt(0).toUpperCase() + g.slice(1)
 
-        const [ytsResult, xcasperResult] = await Promise.allSettled([
+        const [ytsResult, discoverResult] = await Promise.allSettled([
           fetchFlixerMovies(genre_param, sort_param),
-          g !== 'nollywood'
-            ? fetch(`/api/xcasper-browse?subjectType=1&genre=${encodeURIComponent(xcasperGenre)}&perPage=24`).then(r => r.json())
-            : Promise.resolve({ items: [] }),
+          fetch(`/api/moviebox-discover?genre=${encodeURIComponent(g)}`).then(r => r.json()),
         ])
 
         let yts = ytsResult.status === 'fulfilled' ? (ytsResult.value || []) : []
@@ -165,57 +162,49 @@ export default function MoviesSection({ searchQuery, onPlay }) {
           } catch {}
         }
 
-        const xcasperItems = (xcasperResult.status === 'fulfilled' ? (xcasperResult.value?.items || []) : [])
+        const discoverItems = (discoverResult.status === 'fulfilled' ? (discoverResult.value?.items || []) : [])
           .map(i => ({
-            ...i,
-            _source: 'xcasper-browse',
             Title: i.title,
-            Year: i.releaseDate?.slice(0, 4) || '',
-            Genre: i.genre,
-            Poster: i.cover?.url || null,
+            Year: String(i.year || ''),
+            Genre: i.genre || '',
+            Poster: i.poster || null,
+            imdbRating: i.rating || null,
+            imdbID: null,
+            _source: 'showbox',
+            _showboxId: i.id,
+            _showboxType: 'movie',
           }))
           .filter(i => !yts.find(m => m.Title?.toLowerCase() === i.title?.toLowerCase()))
 
-        const combined = p === 1 ? [...yts, ...xcasperItems] : yts
+        const combined = p === 1 ? [...discoverItems, ...yts] : yts
         if (p === 1) setMovies(combined)
         setHasMore(false)
 
       } else {
-        // "All" tab — fetch MovieBox + YTS + OMDB + Andrespecht in parallel
-        const [mbResult, ytsResult, andrespeResult, ...omdbResults] = await Promise.allSettled([
-          fetchHomeData(),
+        // "All" tab — MovieBox Discover + YTS + Andrespecht in parallel
+        const [discoverResult, ytsResult, andrespeResult] = await Promise.allSettled([
+          fetch(`/api/moviebox-discover?genre=all`).then(r => r.json()),
           fetchFlixerMovies(),
           fetch('/api/andrespecht-movies').then(r => r.json()),
-          omdbSearch(OMDB_SEEDS[0], 1),
-          omdbSearch(OMDB_SEEDS[1], 1),
-          omdbSearch(OMDB_SEEDS[2], 1),
         ])
 
-        // Normalize MovieBox items — only include actual movies (subjectType === 1)
-        let mbNormalized = []
-        const sections = mbResult.status === 'fulfilled' ? (mbResult.value || []) : []
-        if (sections.length) {
-          const allSections = sections.filter(s =>
-            s.type === 'SUBJECTS_MOVIE' && s.subjects?.length > 0
-          )
-          const mbItems = allSections.flatMap(s => s.subjects || [])
-          const unique = mbItems.filter((m, i, arr) =>
-            m.subjectType === 1 && arr.findIndex(x => x.subjectId === m.subjectId) === i
-          )
-          mbNormalized = unique.map(normalizeMbItem)
-        }
+        // MovieBox (ShowBox) discovered movies
+        const discoverItems = (discoverResult.status === 'fulfilled'
+          ? (discoverResult.value?.items || []) : [])
+          .map(i => ({
+            Title: i.title,
+            Year: String(i.year || ''),
+            Genre: i.genre || '',
+            Poster: i.poster || null,
+            imdbRating: i.rating || null,
+            imdbID: null,
+            _source: 'showbox',
+            _showboxId: i.id,
+            _showboxType: 'movie',
+          }))
 
         // YTS movies
         const yts = ytsResult.status === 'fulfilled' ? (ytsResult.value || []) : []
-
-        // OMDB movies — always include (not just as fallback)
-        const allOmdb = omdbResults.flatMap(r =>
-          r.status === 'fulfilled' ? (r.value || []) : []
-        )
-        const omdbSeen = new Set()
-        const omdbMovies = allOmdb
-          .filter(m => { if (omdbSeen.has(m.imdbID)) return false; omdbSeen.add(m.imdbID); return true })
-          .map(r => ({ ...r, _source: 'omdb', Poster: r.Poster !== 'N/A' ? r.Poster : null }))
 
         // Andrespecht classic movies
         const andrespeMovies = (andrespeResult.status === 'fulfilled'
@@ -233,30 +222,14 @@ export default function MoviesSection({ searchQuery, onPlay }) {
           _description: m.description,
         }))
 
-        // Merge: OMDB first (always works), then YTS, then MovieBox, then Andrespecht
-        const seenIds = new Set(omdbMovies.map(m => m.imdbID).filter(Boolean))
-        const seenTitles = new Set(omdbMovies.map(m => m.Title?.toLowerCase()).filter(Boolean))
-        const ytsFiltered = yts.filter(m => !seenIds.has(m.imdbID))
-        ytsFiltered.forEach(m => m.imdbID && seenIds.add(m.imdbID))
-        const mbFiltered = mbNormalized.filter(m => !seenIds.has(m.imdbID))
-        const andrespeFiltered = andrespeMovies.filter(m =>
-          !seenTitles.has(m.Title?.toLowerCase())
-        )
-        let combined = [...omdbMovies, ...ytsFiltered, ...mbFiltered, ...andrespeFiltered]
-
-        // If still low on results, fetch more OMDB seeds
-        if (combined.length < 10) {
-          try {
-            const extra = await Promise.all(
-              OMDB_SEEDS.slice(3).map(kw => omdbSearch(kw, 1))
-            )
-            const extraFlat = extra.flat()
-            const existingIds = new Set(combined.map(m => m.imdbID).filter(Boolean))
-            const extraNorm = extraFlat
-              .filter(m => !existingIds.has(m.imdbID))
-              .map(r => ({ ...r, _source: 'omdb', Poster: r.Poster !== 'N/A' ? r.Poster : null }))
-            combined = [...combined, ...extraNorm]
-          } catch {}
+        // Merge — ShowBox first (newest/popular), then YTS, then Andrespecht
+        const seenTitles = new Set()
+        const combined = []
+        for (const m of [...discoverItems, ...yts, ...andrespeMovies]) {
+          const key = (m.Title || '').toLowerCase().trim()
+          if (key && seenTitles.has(key)) continue
+          if (key) seenTitles.add(key)
+          combined.push(m)
         }
 
         if (p === 1) setMovies(combined)

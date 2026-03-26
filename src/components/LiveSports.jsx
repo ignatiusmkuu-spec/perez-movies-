@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import Hls from 'hls.js'
 import Logo from './Logo'
 import { useVideoPlayer } from '../context/VideoPlayerContext'
 import './LiveSports.css'
@@ -292,6 +293,8 @@ export default function LiveSports() {
   const [activeHighlight, setActiveHighlight]   = useState(null)
   const liveMatchPlayerRef                      = useRef(null)
   const highlightPlayerRef                      = useRef(null)
+  const hlsVideoRef                             = useRef(null)
+  const hlsInstanceRef                          = useRef(null)
 
   useEffect(() => {
     if (tab !== 'highlights') return
@@ -384,6 +387,51 @@ export default function LiveSports() {
     setActiveMatch2(match)
     setTimeout(() => liveMatchPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
+
+  // HLS.js initialization for live match streams
+  useEffect(() => {
+    const video = hlsVideoRef.current
+    const playPath = activeMatch2?.playPath
+    if (!video || !playPath) {
+      if (hlsInstanceRef.current) { hlsInstanceRef.current.destroy(); hlsInstanceRef.current = null }
+      return
+    }
+    // Use the direct URL — the signed HLS URLs are IP-tied to the viewer, CORS is open
+    const streamUrl = playPath
+    if (Hls.isSupported()) {
+      if (hlsInstanceRef.current) hlsInstanceRef.current.destroy()
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        xhrSetup: (xhr) => {
+          xhr.withCredentials = false
+        },
+      })
+      hls.loadSource(streamUrl)
+      hls.attachMedia(video)
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}) })
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          // Try server-side proxy as fallback on fatal error
+          const fallbackUrl = `/api/live-hls?url=${encodeURIComponent(streamUrl)}`
+          hls.destroy()
+          const hls2 = new Hls({ enableWorker: false, lowLatencyMode: true })
+          hls2.loadSource(fallbackUrl)
+          hls2.attachMedia(video)
+          hls2.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}) })
+          hlsInstanceRef.current = hls2
+        }
+      })
+      hlsInstanceRef.current = hls
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native HLS (Safari)
+      video.src = streamUrl
+      video.addEventListener('loadedmetadata', () => { video.play().catch(() => {}) })
+    }
+    return () => {
+      if (hlsInstanceRef.current) { hlsInstanceRef.current.destroy(); hlsInstanceRef.current = null }
+    }
+  }, [activeMatch2])
 
   // Keep ref in sync with ytActiveVideo state (for cleanup)
   useEffect(() => { ytActiveVideoRef.current = ytActiveVideo }, [ytActiveVideo])
@@ -1107,7 +1155,7 @@ export default function LiveSports() {
 
               {(() => {
                 const filtered2 = liveMatches.filter(m => {
-                  if (liveMatchFilter === 'live') return m.status === 'MatchInProgress' || m.statusLive === 'Living'
+                  if (liveMatchFilter === 'live') return m.status === 'MatchInProgress'
                   if (liveMatchFilter === 'upcoming') return m.status === 'MatchNotStart'
                   if (liveMatchFilter === 'ended') return m.status === 'MatchEnded'
                   return true
@@ -1128,7 +1176,7 @@ export default function LiveSports() {
                         <div className="lm-player-header">
                           <div className="lm-player-meta">
                             <span className={`lm-status-badge lm-status-${activeMatch2.status}`}>
-                              {activeMatch2.status === 'MatchInProgress' || activeMatch2.statusLive === 'Living' ? '🔴 LIVE'
+                              {activeMatch2.status === 'MatchInProgress' ? '🔴 LIVE'
                                 : activeMatch2.status === 'MatchEnded' ? '✅ FT'
                                 : '🕐 Upcoming'}
                             </span>
@@ -1140,12 +1188,12 @@ export default function LiveSports() {
                           <button className="lm-close-player" onClick={() => setActiveMatch2(null)}>✕</button>
                         </div>
                         {activeMatch2.playPath ? (
-                          <iframe
+                          <video
+                            ref={hlsVideoRef}
                             className="lm-iframe"
-                            src={`/stream-proxy?target=${encodeURIComponent(activeMatch2.playPath)}`}
-                            allowFullScreen
-                            allow="autoplay; fullscreen"
-                            title="Live Match Stream"
+                            controls
+                            playsInline
+                            style={{ background: '#000', display: 'block', width: '100%', aspectRatio: '16/9' }}
                           />
                         ) : (
                           <div className="lm-no-stream">
@@ -1164,7 +1212,7 @@ export default function LiveSports() {
 
                     <div className="lm-grid">
                       {filtered2.map((match, i) => {
-                        const isLive = match.status === 'MatchInProgress' || match.statusLive === 'Living'
+                        const isLive = match.status === 'MatchInProgress'
                         const isEnded = match.status === 'MatchEnded'
                         const isUpcoming = match.status === 'MatchNotStart'
                         const hasScore = match.team1?.score != null && match.team2?.score != null

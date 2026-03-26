@@ -438,6 +438,67 @@ app.get('/api/showbox-search', async (req, res) => {
   }
 })
 
+/* ── MovieBox Discover: multi-seed ShowBox search for movie browsing ── */
+const DISCOVER_SEEDS = {
+  all:          ['action 2024','comedy thriller','drama award','adventure 2024','horror mystery'],
+  popular:      ['marvel 2024','avengers','fast furious','top grossing 2024','batman 2024'],
+  'new-releases':['latest 2025','new movie 2025','movie 2024 release','recent film 2025'],
+  action:       ['action movie 2024','war film','superhero action','fight 2024'],
+  horror:       ['horror 2024','scary ghost','haunted thriller','supernatural horror'],
+  romance:      ['romance love 2024','romantic comedy','love story drama'],
+  'sci-fi':     ['science fiction 2024','space adventure','alien invasion','dystopian sci-fi'],
+  thriller:     ['thriller suspense 2024','mystery crime thriller','psychological thriller'],
+  animation:    ['animated movie 2024','pixar disney','cartoon film','anime movie'],
+  crime:        ['crime heist 2024','gangster film','detective mystery','crime drama'],
+  nollywood:    ['Nigeria film','Nollywood 2024','Nollywood drama','Lagos movie'],
+}
+
+app.get('/api/moviebox-discover', async (req, res) => {
+  const { genre = 'all', page = 1 } = req.query
+  const seeds = DISCOVER_SEEDS[genre] || DISCOVER_SEEDS.all
+  try {
+    const results = await Promise.allSettled(
+      seeds.map(keyword =>
+        fetch(
+          `https://movieapi.xcasper.space/api/showbox/search?keyword=${encodeURIComponent(keyword)}&type=movie&pagelimit=10`,
+          { headers: XCASPER_JSON_HEADERS, signal: AbortSignal.timeout(8000) }
+        ).then(r => r.json())
+      )
+    )
+    const seen = new Set()
+    const items = []
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue
+      const list = result.value?.data || []
+      for (const i of list) {
+        if (!i.id || seen.has(i.id)) continue
+        if (i.box_type === 2) continue // skip TV shows
+        seen.add(i.id)
+        items.push({
+          id: i.id,
+          title: i.title,
+          year: i.year || '',
+          poster: i.poster_org || i.poster_min || i.poster || null,
+          rating: i.imdb_rating || null,
+          genre: Array.isArray(i.cats) ? i.cats.map(c => c.name).join(',') : (i.cats || ''),
+          boxType: 'movie',
+          _source: 'showbox',
+        })
+      }
+    }
+    // Sort by year descending then by rating
+    items.sort((a, b) => {
+      const ya = parseInt(a.year) || 0, yb = parseInt(b.year) || 0
+      if (ya !== yb) return yb - ya
+      return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0)
+    })
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ items, hasMore: items.length >= 40 })
+  } catch (err) {
+    res.status(502).json({ error: err.message, items: [], hasMore: false })
+  }
+})
+
 app.get('/api/showbox-resolve', async (req, res) => {
   const { id, type, se, ep } = req.query
   if (!id) return res.status(400).json({ error: 'id required' })
@@ -1142,6 +1203,96 @@ app.get('/api/download', async (req, res) => {
     res.json({ results })
   } catch (err) {
     res.status(502).json({ error: 'Download search failed', message: err.message })
+  }
+})
+
+/* ── Live HLS m3u8 proxy — rewrites segment URLs so CORS is bypassed ── */
+app.get('/api/live-hls', async (req, res) => {
+  const { url } = req.query
+  if (!url) return res.status(400).send('url required')
+  try {
+    const parsedBase = new URL(url)
+    const upstream = await fetch(url, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': parsedBase.origin + '/',
+        'Origin': parsedBase.origin,
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!upstream.ok) return res.status(upstream.status).send('Upstream error')
+
+    const text = await upstream.text()
+    const baseUrl = upstream.url || url
+    const baseOrigin = new URL(baseUrl).origin
+    const baseDir = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1)
+
+    // Rewrite all URIs in the manifest to go through /api/live-seg?url=...
+    const rewritten = text.split('\n').map(line => {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) return line
+      let absoluteUrl
+      try {
+        absoluteUrl = new URL(trimmed, baseDir).href
+      } catch {
+        absoluteUrl = trimmed
+      }
+      return `/api/live-seg?url=${encodeURIComponent(absoluteUrl)}`
+    }).join('\n')
+
+    res.set('Content-Type', 'application/vnd.apple.mpegurl')
+    res.set('Access-Control-Allow-Origin', '*')
+    res.set('Cache-Control', 'no-cache')
+    res.send(rewritten)
+  } catch (err) {
+    res.status(502).send('HLS proxy error: ' + err.message)
+  }
+})
+
+/* ── Live HLS segment proxy ── */
+app.get('/api/live-seg', async (req, res) => {
+  const { url } = req.query
+  if (!url) return res.status(400).send('url required')
+  try {
+    const parsedBase = new URL(url)
+    const upstream = await fetch(url, {
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': parsedBase.origin + '/',
+        'Origin': parsedBase.origin,
+      },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!upstream.ok) return res.status(upstream.status).send('Segment error')
+
+    const contentType = upstream.headers.get('content-type') || 'application/octet-stream'
+    const isPlaylist = contentType.includes('mpegurl') || url.includes('.m3u8')
+
+    if (isPlaylist) {
+      // Nested playlist — rewrite recursively
+      const text = await upstream.text()
+      const baseDir = url.substring(0, url.lastIndexOf('/') + 1)
+      const rewritten = text.split('\n').map(line => {
+        const trimmed = line.trim()
+        if (!trimmed || trimmed.startsWith('#')) return line
+        let absoluteUrl
+        try { absoluteUrl = new URL(trimmed, baseDir).href } catch { absoluteUrl = trimmed }
+        return `/api/live-seg?url=${encodeURIComponent(absoluteUrl)}`
+      }).join('\n')
+      res.set('Content-Type', 'application/vnd.apple.mpegurl')
+      res.set('Access-Control-Allow-Origin', '*')
+      res.set('Cache-Control', 'no-cache')
+      return res.send(rewritten)
+    }
+
+    res.set('Content-Type', contentType)
+    res.set('Access-Control-Allow-Origin', '*')
+    res.set('Cache-Control', 'public, max-age=10')
+    upstream.body.pipe(res)
+  } catch (err) {
+    res.status(502).send('Segment proxy error: ' + err.message)
   }
 })
 
