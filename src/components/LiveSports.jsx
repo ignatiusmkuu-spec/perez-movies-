@@ -273,6 +273,7 @@ export default function LiveSports() {
   const [ytSearchQuery, setYtSearchQuery] = useState('')
   const [ytActiveVideo, setYtActiveVideo] = useState(null)
   const [ytPlayerLoading, setYtPlayerLoading] = useState(false)
+  const [ytVideoBlocked, setYtVideoBlocked] = useState(false)
   const ytPlayerRef = useRef(null)
   const ytSearchRef = useRef(null)
 
@@ -374,6 +375,23 @@ export default function LiveSports() {
     setTimeout(() => liveMatchPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
 
+  // YouTube: detect embedding errors via postMessage (error 101/150 = not embeddable)
+  useEffect(() => {
+    const handleYtMessage = (event) => {
+      if (!event.origin.includes('youtube.com')) return
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+        if (data?.event === 'infoDelivery' && data?.info?.playerState === 5) return
+        if (data?.event === 'onError' && (data?.info === 101 || data?.info === 150)) {
+          setYtVideoBlocked(true)
+          setYtPlayerLoading(false)
+        }
+      } catch (_) {}
+    }
+    window.addEventListener('message', handleYtMessage)
+    return () => window.removeEventListener('message', handleYtMessage)
+  }, [])
+
   // YouTube: fetch trending or search results
   useEffect(() => {
     if (tab !== 'youtube') return
@@ -412,6 +430,7 @@ export default function LiveSports() {
     if (ytActiveVideo?.vid === v.vid) { setYtActiveVideo(null); return }
     setYtActiveVideo(v)
     setYtPlayerLoading(true)
+    setYtVideoBlocked(false)
     setTimeout(() => ytPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
 
@@ -906,20 +925,36 @@ export default function LiveSports() {
                 </div>
               </div>
               <div className="yt-player-frame">
-                {ytPlayerLoading && (
+                {ytPlayerLoading && !ytVideoBlocked && (
                   <div className="match-player-loading">
                     <div style={{ width:40, height:40, border:'3px solid #222', borderTopColor:'#FF0000', borderRadius:'50%', animation:'nf-spin 0.8s linear infinite' }} />
                   </div>
                 )}
-                <iframe
-                  key={ytActiveVideo.vid}
-                  src={`https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1`}
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; fullscreen; encrypted-media; accelerometer; gyroscope; picture-in-picture"
-                  style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
-                  onLoad={() => setYtPlayerLoading(false)}
-                />
+                {ytVideoBlocked ? (
+                  <div className="yt-blocked-overlay">
+                    <div className="yt-blocked-icon">🚫</div>
+                    <div className="yt-blocked-title">Video can't be played here</div>
+                    <div className="yt-blocked-sub">The owner of this video has disabled playback on third-party sites.</div>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${ytActiveVideo.vid}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="yt-blocked-btn"
+                    >
+                      ▶ Watch on YouTube
+                    </a>
+                  </div>
+                ) : (
+                  <iframe
+                    key={ytActiveVideo.vid}
+                    src={`https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
+                    frameBorder="0"
+                    allowFullScreen
+                    allow="autoplay; fullscreen; encrypted-media; accelerometer; gyroscope; picture-in-picture"
+                    style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
+                    onLoad={() => setYtPlayerLoading(false)}
+                  />
+                )}
               </div>
             </div>
           )}
