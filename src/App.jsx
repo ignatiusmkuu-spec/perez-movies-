@@ -13,7 +13,9 @@ import RankingsSection from './components/RankingsSection'
 import FmoviesSection from './components/FmoviesSection'
 import PlayerModal from './components/PlayerModal'
 import RadioMiniPlayer from './components/RadioMiniPlayer'
+import GlobalVideoPlayer from './components/GlobalVideoPlayer'
 import { RadioProvider } from './context/RadioContext'
+import { VideoPlayerProvider } from './context/VideoPlayerContext'
 import IgnatiusStreamSection from './components/IgnatiusStreamSection'
 
 export default function App() {
@@ -46,38 +48,41 @@ export default function App() {
 
   return (
     <RadioProvider>
-      <div className="app">
-        <Header onSearch={handleSearch} activeTab={tab} />
-        <div className="page-content">
-          {tab === 'movies' && (
-            <MoviesSection searchQuery={searchQuery} onPlay={handlePlay} />
+      <VideoPlayerProvider>
+        <div className="app">
+          <Header onSearch={handleSearch} activeTab={tab} />
+          <div className="page-content">
+            {tab === 'movies' && (
+              <MoviesSection searchQuery={searchQuery} onPlay={handlePlay} />
+            )}
+            {tab === 'fmovies' && (
+              <FmoviesSection onPlay={handlePlay} />
+            )}
+            {tab === 'drama' && (
+              <DramaSection searchQuery={searchQuery} onPlay={handlePlay} />
+            )}
+            {tab === 'anime' && (
+              <AnimeSection searchQuery={searchQuery} onPlay={handlePlay} />
+            )}
+            {tab === 'rankings' && <RankingsSection onPlay={handlePlay} />}
+            {tab === 'football' && <LiveFootball />}
+            {tab === 'sports' && <LiveSports />}
+            {tab === 'radio' && <RadioSection />}
+            {tab === 'ignatius-live' && <IgnatiusStreamSection />}
+            {tab === 'premium' && <PremiumAccess />}
+          </div>
+          <RadioMiniPlayer />
+          <GlobalVideoPlayer />
+          <BottomNav active={tab} onChange={handleTabChange} />
+          {player && (
+            <PlayerModal
+              item={player.item}
+              type={player.type}
+              onClose={() => setPlayer(null)}
+            />
           )}
-          {tab === 'fmovies' && (
-            <FmoviesSection onPlay={handlePlay} />
-          )}
-          {tab === 'drama' && (
-            <DramaSection searchQuery={searchQuery} onPlay={handlePlay} />
-          )}
-          {tab === 'anime' && (
-            <AnimeSection searchQuery={searchQuery} onPlay={handlePlay} />
-          )}
-          {tab === 'rankings' && <RankingsSection onPlay={handlePlay} />}
-          {tab === 'football' && <LiveFootball />}
-          {tab === 'sports' && <LiveSports />}
-          {tab === 'radio' && <RadioSection />}
-          {tab === 'ignatius-live' && <IgnatiusStreamSection />}
-          {tab === 'premium' && <PremiumAccess />}
         </div>
-        <RadioMiniPlayer />
-        <BottomNav active={tab} onChange={handleTabChange} />
-        {player && (
-          <PlayerModal
-            item={player.item}
-            type={player.type}
-            onClose={() => setPlayer(null)}
-          />
-        )}
-      </div>
+      </VideoPlayerProvider>
     </RadioProvider>
   )
 }

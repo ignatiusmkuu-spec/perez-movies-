@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Logo from './Logo'
+import { useVideoPlayer } from '../context/VideoPlayerContext'
 import './LiveSports.css'
 
 // Featured inline streams — play directly inside the site
@@ -241,6 +242,7 @@ function YtVideoCard({ v, active, onClick }) {
 }
 
 export default function LiveSports() {
+  const { playMini } = useVideoPlayer()
   const [tab, setTab]               = useState('highlights')
   const [matches, setMatches]       = useState([])
   const [loading, setLoading]       = useState(false)
@@ -276,6 +278,7 @@ export default function LiveSports() {
   const [ytVideoBlocked, setYtVideoBlocked] = useState(false)
   const ytPlayerRef = useRef(null)
   const ytSearchRef = useRef(null)
+  const ytActiveVideoRef = useRef(null)
 
   // Live Matches state (xcasper live feed)
   const [liveMatches, setLiveMatches]         = useState([])
@@ -374,6 +377,25 @@ export default function LiveSports() {
     setActiveMatch2(match)
     setTimeout(() => liveMatchPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
+
+  // Keep ref in sync with ytActiveVideo state (for cleanup)
+  useEffect(() => { ytActiveVideoRef.current = ytActiveVideo }, [ytActiveVideo])
+
+  // Auto-minimize YouTube to PiP when LiveSports unmounts (user navigates to another section)
+  useEffect(() => {
+    return () => {
+      const v = ytActiveVideoRef.current
+      if (v) {
+        playMini({
+          embedUrl: `https://www.youtube.com/embed/${v.vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`,
+          title: v.title,
+          poster: v.thumb,
+          type: 'youtube',
+          channel: v.channel,
+        })
+      }
+    }
+  }, [playMini])
 
   // YouTube: detect embedding errors via postMessage (error 101/150 = not embeddable)
   useEffect(() => {
@@ -921,6 +943,25 @@ export default function LiveSports() {
                   >
                     ↗ YouTube
                   </a>
+                  <button
+                    className="yt-pip-btn"
+                    title="Play in background (PiP)"
+                    onClick={() => {
+                      playMini({
+                        embedUrl: `https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`,
+                        title: ytActiveVideo.title,
+                        poster: ytActiveVideo.thumb,
+                        type: 'youtube',
+                        channel: ytActiveVideo.channel,
+                      })
+                      setYtActiveVideo(null)
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+                      <rect x="14" y="14" width="8" height="6" rx="1"/>
+                      <path d="M2 3h13v10H2z"/>
+                    </svg>
+                  </button>
                   <button className="yt-player-close" onClick={() => setYtActiveVideo(null)}>✕</button>
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { getImdbId } from '../api/moviebox'
 import { fetchDownloads, groupByQuality } from '../api/download'
 import CasperPlayer from './CasperPlayer'
 import NewtoxicPlayer from './NewtoxicPlayer'
+import { useVideoPlayer } from '../context/VideoPlayerContext'
 import './PlayerModal.css'
 
 const ALL_SERVERS = [
@@ -100,6 +101,7 @@ const MAX_EPISODES = 30
 const MAX_SEASONS  = 15
 
 export default function PlayerModal({ item, type, onClose }) {
+  const { playMini } = useVideoPlayer()
   const [season, setSeason]               = useState(1)
   const [episode, setEpisode]             = useState(1)
   const [visible, setVisible]             = useState(false)
@@ -354,6 +356,14 @@ export default function PlayerModal({ item, type, onClose }) {
     setTimeout(onClose, 250)
   }
 
+  const handleMinimize = () => {
+    if (embedUrl) {
+      playMini({ embedUrl, title, poster, type: isAnime ? 'anime' : isTV ? 'tv' : 'movie' })
+    }
+    setVisible(false)
+    setTimeout(onClose, 250)
+  }
+
   const switchServer = (idx) => {
     setManualSwitch(true)
     setServerIdx(idx)
@@ -421,14 +431,24 @@ export default function PlayerModal({ item, type, onClose }) {
             {year && <span className="mb-title-badge">{year}</span>}
             {showEps && <span className="mb-title-badge mb-ep-badge">S{season} · E{episode}</span>}
           </div>
-          {showEps && (
-            <button className="mb-ep-toggle-btn" onClick={() => setShowEpPanel(p => !p)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-              </svg>
-              Episodes
-            </button>
-          )}
+          <div className="mb-top-actions">
+            {showEps && (
+              <button className="mb-ep-toggle-btn" onClick={() => setShowEpPanel(p => !p)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+                Episodes
+              </button>
+            )}
+            {embedUrl && (
+              <button className="mb-pip-btn" onClick={handleMinimize} title="Play in background (PiP)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                  <rect x="14" y="14" width="8" height="6" rx="1"/>
+                  <path d="M2 3h13v10H2z"/>
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mb-main">

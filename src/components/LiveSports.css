@@ -1271,6 +1271,19 @@
   transition: background 0.15s;
 }
 .yt-player-close:hover { background: rgba(255,255,255,0.15); }
+.yt-pip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 6px;
+  color: #a78bfa;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.yt-pip-btn:hover { background: rgba(139, 92, 246, 0.25); transform: scale(1.08); }
 .yt-player-frame {
   position: relative;
   width: 100%;
