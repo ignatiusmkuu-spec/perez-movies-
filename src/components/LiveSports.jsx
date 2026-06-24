@@ -27,14 +27,14 @@ const IGNATIUS_STREAMS = [
 ]
 
 const LIVE_STREAM_SITES = [
-  { name: 'SportSurge',   icon: '⚡', url: 'https://sportsurge.net/#Soccer',          color: '#f97316' },
-  { name: 'StreamEast',   icon: '🔴', url: 'https://streameast.to/soccer',             color: '#ef4444' },
-  { name: 'VIPBox',       icon: '📺', url: 'https://vipboxtv.se/soccer/',              color: '#8b5cf6' },
-  { name: 'Footybite',    icon: '⚽', url: 'https://www.footybite.do',                 color: '#22c55e' },
-  { name: 'LiveSoccerTV', icon: '🎯', url: 'https://www.livesoccertv.com',             color: '#3b82f6' },
-  { name: 'DaddyLive',    icon: '🏆', url: 'https://daddylive.mp/schedule/soccer.php', color: '#f59e0b' },
-  { name: 'SportsBay',    icon: '🌐', url: 'https://www.sportsbay.org/soccer',         color: '#06b6d4' },
-  { name: 'CrackStreams', icon: '🔥', url: 'https://crackstreams.io',                  color: '#ec4899' },
+  { name: 'SportSurge',   icon: '⚡', url: 'https://sportsurge.club/#Soccer',           color: '#f97316' },
+  { name: 'StreamEast',   icon: '🔴', url: 'https://www.streameast.app/soccer',          color: '#ef4444' },
+  { name: 'VIPBox',       icon: '📺', url: 'https://vipbox.si/soccer/',                  color: '#8b5cf6' },
+  { name: 'Footybite',    icon: '⚽', url: 'https://footybite.cc',                        color: '#22c55e' },
+  { name: 'LiveSoccerTV', icon: '🎯', url: 'https://www.livesoccertv.com',                color: '#3b82f6' },
+  { name: 'DaddyLive',    icon: '🏆', url: 'https://daddylive.dad/schedule/soccer.php',  color: '#f59e0b' },
+  { name: 'BossCast',     icon: '🌐', url: 'https://bosscast.eu/soccer',                 color: '#06b6d4' },
+  { name: 'RedstreamSport',icon: '🔥', url: 'https://redstreamsport.com',                color: '#ec4899' },
 ]
 
 const COMP_FILTERS = [

@@ -14,6 +14,11 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://movieapi.xcasper.space/api/play?subjectId=${id}&season=${s}&episode=${e}`,
   },
   {
+    label: 'NontonGo',
+    movie: (id) => `https://www.nontongo.win/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://www.nontongo.win/embed/tv/${id}/${s}/${e}`,
+  },
+  {
     label: 'VidSrc.to',
     movie: (id) => `https://vidsrc.to/embed/movie/${id}`,
     tv:    (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
@@ -24,9 +29,9 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://vidsrc.rip/embed/tv/${id}/${s}/${e}`,
   },
   {
-    label: 'NontonGo',
-    movie: (id) => `https://www.nontongo.win/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://www.nontongo.win/embed/tv/${id}/${s}/${e}`,
+    label: 'AutoEmbed',
+    movie: (id) => `https://autoembed.cc/movie/imdb/${id}`,
+    tv:    (id, s, e) => `https://autoembed.cc/tv/imdb/${id}/${s}/${e}`,
   },
   {
     label: 'Smashy',
@@ -44,14 +49,9 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://vidsrc.xyz/embed/tv?imdb=${id}&season=${s}&episode=${e}`,
   },
   {
-    label: 'Flixer',
-    movie: (id) => `https://flixer.su/embed/${id}`,
-    tv:    (id, s, e) => `https://flixer.su/embed/${id}?s=${s}&e=${e}`,
-  },
-  {
-    label: 'RiveStream',
-    movie: (id) => `https://rivestream.live/embed?type=movie&id=${id}`,
-    tv:    (id, s, e) => `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}`,
+    label: 'EmbedSu',
+    movie: (id) => `https://embed.su/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
   },
   {
     label: 'VidSrc.me',
@@ -69,24 +69,24 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://multiembed.mov/directstream.php?video_id=${id}&s=${s}&e=${e}`,
   },
   {
-    label: 'PStream',
-    movie: (id) => `https://pstream.mov/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://pstream.mov/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    label: '123Movies',
-    movie: (id) => `https://123movienow.cc/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://123movienow.cc/embed/tv/${id}/${s}/${e}`,
+    label: 'Vidfast',
+    movie: (id) => `https://vidfast.pro/movie/${id}`,
+    tv:    (id, s, e) => `https://vidfast.pro/tv/${id}/${s}/${e}`,
   },
   {
     label: 'MoviesAPI',
-    movie: (id) => `https://moviesapi.to/movie/${id}`,
-    tv:    (id, s, e) => `https://moviesapi.to/tv/${id}-${s}-${e}`,
+    movie: (id) => `https://moviesapi.club/movie/${id}`,
+    tv:    (id, s, e) => `https://moviesapi.club/tv/${id}-${s}-${e}`,
   },
   {
-    label: 'FilmPrime',
-    movie: (id) => `https://filmprime.link/embed/movie/${id}`,
-    tv:    (id, s, e) => `https://filmprime.link/embed/tv/${id}/${s}/${e}`,
+    label: 'Videasy',
+    movie: (id) => `https://player.videasy.net/movie/${id}`,
+    tv:    (id, s, e) => `https://player.videasy.net/tv/${id}/${s}/${e}`,
+  },
+  {
+    label: 'Vidbinge',
+    movie: (id) => `https://vidbinge.dev/embed/movie/${id}`,
+    tv:    (id, s, e) => `https://vidbinge.dev/embed/tv/${id}/${s}/${e}`,
   },
 ]
 
@@ -114,7 +114,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const [imdbId, setImdbId]               = useState(null)
   const [lookingUp, setLookingUp]         = useState(false)
   const [manualInput, setManualInput]     = useState('')
-  const [serverIdx, setServerIdx]               = useState(0)
+  const [serverIdx, setServerIdx]               = useState(1)
   const [showServers, setShowServers]           = useState(false)
   const [failoverMsg, setFailoverMsg]           = useState(null)
   const [manualSwitch, setManualSwitch]         = useState(false)
@@ -162,7 +162,7 @@ export default function PlayerModal({ item, type, onClose }) {
     setNativePlayerFailed(false)
     setSeason(1)
     setEpisode(1)
-    setServerIdx(0)
+    setServerIdx(1)
     setShowServers(false)
     setShowDlPanel(false)
     setDlGroups(null)
@@ -281,7 +281,7 @@ export default function PlayerModal({ item, type, onClose }) {
 
   // Find the index of the first reliable IMDB-based server to use as failover
   const getFirstImdbServer = () => {
-    const preferred = ['NontonGo', 'VidSrc.to', 'VidSrc.rip', 'MultiEmbed', 'VidSrc']
+    const preferred = ['NontonGo', 'AutoEmbed', 'VidSrc.to', 'VidSrc.rip', 'MultiEmbed', 'VidSrc']
     for (const label of preferred) {
       const idx = visibleServers.findIndex(s => s.label === label && !s.usesSubjectId)
       if (idx !== -1) return idx
