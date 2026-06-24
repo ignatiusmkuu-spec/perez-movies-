@@ -41,6 +41,17 @@ export default function PerezFootball() {
   const fetchMatches = useCallback(async (date) => {
     setLoading(true)
     try {
+      // Try xwolf sports first
+      const xwolfRes = await fetch('/api/xwolf/sports?sport=Soccer')
+        .then(r => r.json()).catch(() => null)
+
+      if (xwolfRes && !xwolfRes.rateLimited && Array.isArray(xwolfRes.matches) && xwolfRes.matches.length > 0) {
+        setMatches(xwolfRes.matches)
+        setLoading(false)
+        return
+      }
+
+      // Fall back to koora
       const r = await fetch(`/api/koora/matches?date=${date}`)
       const data = await r.json()
       setMatches(Array.isArray(data.matches) ? data.matches : [])
@@ -60,9 +71,28 @@ export default function PerezFootball() {
 
   const openMatch = async (match) => {
     setSelected(match)
-    setChannels([])
     setActiveChIdx(0)
     setIframeKey(k => k + 1)
+
+    // xwolf matches already carry stream data
+    if (match.streams?.length > 0) {
+      const channels = match.streams.map((s, i) => ({
+        id: s.id || i,
+        link: s.url || s.streamUrl || s.link || s,
+        server_name_en: s.name || s.quality || `Server ${i + 1}`,
+      }))
+      setChannels(channels)
+      setLoadingCh(false)
+      return
+    }
+    if (match.streamUrl) {
+      setChannels([{ id: 0, link: match.streamUrl, server_name_en: 'Server 1' }])
+      setLoadingCh(false)
+      return
+    }
+
+    // Fall back to koora channels
+    setChannels([])
     setLoadingCh(true)
     try {
       const r = await fetch(`/api/koora/match/${match.id}`)

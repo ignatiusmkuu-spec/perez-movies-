@@ -617,7 +617,7 @@ app.get('/api/xcasper-ranking-items', async (req, res) => {
 
 /* ── XWolf API proxy ── */
 const XWOLF_BASE = 'https://apis.xwolf.space/api'
-const XWOLF_KEY = 'wxa_d_test'
+const XWOLF_KEY = process.env.XWOLF_API_KEY || 'wxa_d_test'
 const XWOLF_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'application/json',
@@ -690,6 +690,46 @@ app.get('/api/xwolf/search', async (req, res) => {
     res.json({ movies: (json.movies || []).map(normalizeXwolfMovie), totalResults: json.totalResults || 0 })
   } catch (err) {
     res.status(502).json({ error: err.message, movies: [] })
+  }
+})
+
+app.get('/api/xwolf/sports', async (req, res) => {
+  const { sport = 'Soccer' } = req.query
+  try {
+    const r = await fetch(`${XWOLF_BASE}/sports/live?sport=${encodeURIComponent(sport)}&key=${XWOLF_KEY}`, {
+      headers: XWOLF_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    if (!json.success) {
+      return res.json({ matches: [], error: json.error || 'API error', rateLimited: json.limit != null })
+    }
+    // Normalize flexible field names to a common format
+    const raw = json.matches || json.events || json.games || json.data || []
+    const matches = raw.map((m, idx) => ({
+      id: m.id || m.matchId || m.event_id || idx,
+      home_en: m.home || m.homeTeam || m.home_team || m.team1 || 'Home',
+      away_en: m.away || m.awayTeam || m.away_team || m.team2 || 'Away',
+      home_logo: m.homeLogo || m.home_logo || m.team1Logo || null,
+      away_logo: m.awayLogo || m.away_logo || m.team2Logo || null,
+      league_en: m.league || m.competition || m.tournament || m.leagueName || sport,
+      league_logo: m.leagueLogo || m.league_logo || null,
+      score: m.score || m.result || (m.homeScore != null ? `${m.homeScore}-${m.awayScore}` : null),
+      time: m.time || m.matchTime || m.clock || m.kickoff || null,
+      status: (() => {
+        const s = (m.status || m.state || '').toString().toLowerCase()
+        if (s === 'live' || s === '1' || s === 'inprogress') return 1
+        if (s === 'finished' || s === 'ft' || s === '2' || s === 'ended') return 2
+        return 0
+      })(),
+      streamUrl: m.streamUrl || m.stream || m.link || null,
+      streams: m.streams || (m.streamUrl ? [{ url: m.streamUrl }] : []),
+      active: (m.streamUrl || m.streams?.length) ? 1 : 0,
+      has_channels: (m.streamUrl || m.streams?.length) ? 1 : 0,
+    }))
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ matches, sport })
+  } catch (err) {
+    res.status(502).json({ error: err.message, matches: [] })
   }
 })
 
