@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchHomeData, getBannerItem, getImdbId } from '../api/moviebox'
+import { getImdbId } from '../api/moviebox'
+import { fetchXwolfTrending } from '../api/xwolf'
 import './HeroBanner.css'
 
 const FALLBACK_BG = '/api/imgproxy?src=' + encodeURIComponent('https://pbcdnw.aoneroom.com/image/2026/03/19/2e7dc8ef8e55968a6217d0d82fdfa456.png')
@@ -23,42 +24,30 @@ export default function HeroBanner({ onPlay }) {
   const imdbId = imdbIds[idx] || null
 
   useEffect(() => {
-    // Load newtoxic featured first (faster)
-    fetch('/api/newtoxic-featured')
-      .then(r => r.json())
-      .then(data => {
-        const ntItems = (data.items || []).map(i => ({
-          title: i.title,
-          year: '',
-          desc: `${i.category} — Available on IgnatiusMovies`,
-          bg: i.thumbnail || FALLBACK_BG,
-          genre: i.category,
-          _newtoxicSlug: i.slug,
-          _newtoxicType: i.type,
-        }))
-        if (ntItems.length > 0) setItems(ntItems)
-      })
-      .catch(() => {})
+    fetchXwolfTrending('day').then(movies => {
+      if (!movies.length) return
+      // Pick top 5 trending with backdrops
+      const picks = movies.filter(m => m.backdrop).slice(0, 5)
+      if (!picks.length) return
 
-    // Also load moviebox banner
-    fetchHomeData().then(sections => {
-      const item = getBannerItem(sections)
-      if (item) {
-        const src = item.subject || item
-        const toStr = (v) => (typeof v === 'string' ? v : (Array.isArray(v) ? v[0] || '' : ''))
-        const title = toStr(src.title || item.title) || FALLBACK.title
-        const year = toStr(src.releaseDate).slice(0, 4) || FALLBACK.year
-        const genre = toStr(src.genre) || FALLBACK.genre
-        const rawBg = item.image?.url || src.cover?.url || null
-        const bg = rawBg ? `/api/imgproxy?src=${encodeURIComponent(rawBg)}` : FALLBACK.bg
-        const desc = toStr(src.description) || FALLBACK.desc
-        const isTV = (src.subjectType || item.subjectType) === 2
-        const mbItem = { title, year, genre, bg, desc }
-        setItems(prev => [...prev, mbItem])
-        getImdbId(title, year, isTV).then(id => {
-          if (id) setImdbIds(prev => ({ ...prev, [prev.__len || 0]: id }))
+      const bannerItems = picks.map(m => ({
+        title: m.Title,
+        year: m.Year,
+        desc: m.overview || '',
+        bg: m.backdrop,
+        imdbID: null,
+        _xwolfId: m._xwolfId,
+      }))
+
+      setItems(bannerItems)
+      setImdbIds({})
+
+      // Resolve IMDB IDs for each banner item in background
+      bannerItems.forEach((item, i) => {
+        getImdbId(item.title, item.year, false).then(id => {
+          if (id) setImdbIds(prev => ({ ...prev, [i]: id }))
         })
-      }
+      })
     }).catch(() => {})
   }, [])
 
@@ -72,24 +61,14 @@ export default function HeroBanner({ onPlay }) {
   }, [items.length])
 
   const handlePlay = () => {
-    if (featured._newtoxicSlug) {
-      onPlay({
-        Title: featured.title,
-        _newtoxicSlug: featured._newtoxicSlug,
-        _newtoxicType: featured._newtoxicType || 'movie',
-        Poster: featured.bg,
-        _source: 'newtoxic',
-      }, featured._newtoxicType === 'tv' ? 'tv' : 'movie')
-    } else {
-      onPlay({
-        Title: featured.title,
-        Year: featured.year,
-        imdbID: imdbId,
-        Genre: featured.genre,
-        Poster: featured.bg,
-        _source: 'moviebox',
-      }, 'movie')
-    }
+    onPlay({
+      Title: featured.title,
+      Year: featured.year,
+      imdbID: imdbId,
+      Poster: featured.bg,
+      _xwolfId: featured._xwolfId,
+      _source: 'xwolf',
+    }, 'movie')
   }
 
   return (
@@ -106,9 +85,9 @@ export default function HeroBanner({ onPlay }) {
         <h1 className="hero-title">{featured.title}</h1>
         <div className="hero-meta">
           {featured.year && <span>{featured.year}</span>}
-          {featured.genre && (
+          {featured.year && featured.genre && (
             <>
-              {featured.year && <span className="hero-dot">·</span>}
+              <span className="hero-dot">·</span>
               <span>{featured.genre}</span>
             </>
           )}
@@ -118,7 +97,7 @@ export default function HeroBanner({ onPlay }) {
           <button className="hero-play" onClick={handlePlay}>
             ▶ Play Now
           </button>
-          {imdbId && !featured._newtoxicSlug && (
+          {imdbId && (
             <a
               className="hero-info"
               href={`https://www.imdb.com/title/${imdbId}/`}

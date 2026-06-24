@@ -615,6 +615,84 @@ app.get('/api/xcasper-ranking-items', async (req, res) => {
   }
 })
 
+/* ── XWolf API proxy ── */
+const XWOLF_BASE = 'https://apis.xwolf.space/api'
+const XWOLF_KEY = 'wxa_d_test'
+const XWOLF_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+}
+
+function normalizeXwolfMovie(m) {
+  return {
+    id: m.id,
+    title: m.title,
+    year: m.year || (m.releaseDate ? m.releaseDate.slice(0, 4) : ''),
+    overview: m.overview || '',
+    poster: m.poster || null,
+    backdrop: m.backdrop || null,
+    rating: m.voteAverage ? parseFloat(m.voteAverage).toFixed(1) : null,
+    mediaType: m.mediaType || 'movie',
+  }
+}
+
+app.get('/api/xwolf/popular', async (req, res) => {
+  const { page = 1 } = req.query
+  try {
+    const r = await fetch(`${XWOLF_BASE}/movie/popular?page=${page}&key=${XWOLF_KEY}`, {
+      headers: XWOLF_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ movies: (json.movies || []).map(normalizeXwolfMovie), totalPages: json.totalPages || 1 })
+  } catch (err) {
+    res.status(502).json({ error: err.message, movies: [] })
+  }
+})
+
+app.get('/api/xwolf/trending', async (req, res) => {
+  const { time = 'day' } = req.query
+  try {
+    const r = await fetch(`${XWOLF_BASE}/movie/trending?time=${time}&key=${XWOLF_KEY}`, {
+      headers: XWOLF_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ movies: (json.movies || []).map(normalizeXwolfMovie) })
+  } catch (err) {
+    res.status(502).json({ error: err.message, movies: [] })
+  }
+})
+
+app.get('/api/xwolf/now-playing', async (req, res) => {
+  const { page = 1 } = req.query
+  try {
+    const r = await fetch(`${XWOLF_BASE}/movie/now-playing?page=${page}&key=${XWOLF_KEY}`, {
+      headers: XWOLF_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ movies: (json.movies || []).map(normalizeXwolfMovie), totalPages: json.totalPages || 1 })
+  } catch (err) {
+    res.status(502).json({ error: err.message, movies: [] })
+  }
+})
+
+app.get('/api/xwolf/search', async (req, res) => {
+  const { q, page = 1 } = req.query
+  if (!q) return res.status(400).json({ error: 'q required', movies: [] })
+  try {
+    const r = await fetch(`${XWOLF_BASE}/movie/search?q=${encodeURIComponent(q)}&page=${page}&key=${XWOLF_KEY}`, {
+      headers: XWOLF_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ movies: (json.movies || []).map(normalizeXwolfMovie), totalResults: json.totalResults || 0 })
+  } catch (err) {
+    res.status(502).json({ error: err.message, movies: [] })
+  }
+})
+
 const ANDRESPECHT_BASE = 'https://api.andrespecht.dev/v1'
 const ANDRESPECHT_HEADERS = {
   'Accept': 'application/json',
