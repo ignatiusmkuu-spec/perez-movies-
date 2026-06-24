@@ -11,7 +11,7 @@
       "active": true,
       "priority": 1,
       "healthUrl": "",
-      "lastCheck": "2026-06-24T07:12:37.308Z",
+      "lastCheck": "2026-06-24T07:17:10.321Z",
       "healthy": true,
       "failCount": 1
     },
@@ -23,7 +23,7 @@
       "active": true,
       "priority": 2,
       "healthUrl": "",
-      "lastCheck": "2026-06-24T07:12:37.312Z",
+      "lastCheck": "2026-06-24T07:17:10.329Z",
       "healthy": true,
       "failCount": 1
     },
@@ -35,7 +35,7 @@
       "active": true,
       "priority": 3,
       "healthUrl": "",
-      "lastCheck": "2026-06-24T07:12:37.316Z",
+      "lastCheck": "2026-06-24T07:17:10.334Z",
       "healthy": true,
       "failCount": 1
     }

@@ -693,6 +693,50 @@ app.get('/api/xwolf/search', async (req, res) => {
   }
 })
 
+app.get('/api/xwolf/tvshow/episodes', async (req, res) => {
+  const { id, season = 1 } = req.query
+  if (!id) return res.status(400).json({ error: 'id required', episodes: [] })
+  try {
+    const r = await fetch(`${XWOLF_BASE}/tvshow/episodes?id=${id}&season=${season}&key=${XWOLF_KEY}`, {
+      headers: XWOLF_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    const raw = json.episodes || json.data || []
+    const episodes = raw.map((ep, idx) => ({
+      episodeNumber: ep.episodeNumber || ep.episode_number || ep.number || idx + 1,
+      name: ep.name || ep.title || ep.episodeName || `Episode ${idx + 1}`,
+      overview: ep.overview || ep.description || '',
+      airDate: ep.airDate || ep.air_date || ep.firstAired || null,
+      stillPath: ep.stillPath || ep.still_path || ep.thumbnail || ep.image || null,
+      runtime: ep.runtime || null,
+    }))
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ episodes, season: Number(season), showId: id, totalEpisodes: episodes.length })
+  } catch (err) {
+    res.status(502).json({ error: err.message, episodes: [] })
+  }
+})
+
+app.get('/api/xwolf/movie/trailer', async (req, res) => {
+  const { id } = req.query
+  if (!id) return res.status(400).json({ error: 'id required', trailer: null })
+  try {
+    const r = await fetch(`${XWOLF_BASE}/movie/trailer?id=${id}&key=${XWOLF_KEY}`, {
+      headers: XWOLF_HEADERS, signal: AbortSignal.timeout(8000),
+    })
+    const json = await r.json()
+    const raw = json.trailer || json.video || json.result || json
+    const key = raw?.key || raw?.videoKey || raw?.youtubeKey || null
+    const url = raw?.url || raw?.embedUrl || raw?.link ||
+      (key ? `https://www.youtube.com/embed/${key}?autoplay=1&rel=0` : null)
+    const name = raw?.name || raw?.title || 'Official Trailer'
+    res.set('Access-Control-Allow-Origin', '*')
+    res.json({ trailer: url ? { url, name, key } : null, success: !!url })
+  } catch (err) {
+    res.status(502).json({ error: err.message, trailer: null })
+  }
+})
+
 app.get('/api/xwolf/sports', async (req, res) => {
   const { sport = 'Soccer' } = req.query
   try {

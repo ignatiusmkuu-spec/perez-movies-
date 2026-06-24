@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getImdbId } from '../api/moviebox'
+import { fetchXwolfEpisodes, fetchXwolfTrailer } from '../api/xwolf'
 import { fetchDownloads, groupByQuality } from '../api/download'
 import CasperPlayer from './CasperPlayer'
 import NewtoxicPlayer from './NewtoxicPlayer'
@@ -121,6 +122,11 @@ export default function PlayerModal({ item, type, onClose }) {
   const [casperSubjectId, setCasperSubjectId]   = useState(null)
   const [casperLookingUp, setCasperLookingUp]   = useState(false)
   const [nativePlayerFailed, setNativePlayerFailed] = useState(false)
+  const [trailerUrl, setTrailerUrl]             = useState(null)
+  const [showTrailer, setShowTrailer]           = useState(false)
+  const [trailerLoading, setTrailerLoading]     = useState(false)
+  const [xwolfEpisodes, setXwolfEpisodes]       = useState([])
+  const [xwolfEpLoading, setXwolfEpLoading]     = useState(false)
 
   const imdbRef               = useRef(null)
   const failoverRef           = useRef(null)
@@ -171,6 +177,11 @@ export default function PlayerModal({ item, type, onClose }) {
     setFailoverMsg(null)
     setManualSwitch(false)
     setManualInput('')
+    setTrailerUrl(null)
+    setShowTrailer(false)
+    setTrailerLoading(false)
+    setXwolfEpisodes([])
+    setXwolfEpLoading(false)
     if (failoverRef.current) {
       clearTimeout(failoverRef.current)
       failoverRef.current = null
@@ -412,6 +423,24 @@ export default function PlayerModal({ item, type, onClose }) {
     }
   }
 
+  useEffect(() => {
+    if (!showEpPanel || !item._xwolfId || !(isTV || isAnime)) return
+    setXwolfEpLoading(true)
+    setXwolfEpisodes([])
+    fetchXwolfEpisodes(item._xwolfId, season)
+      .then(eps => setXwolfEpisodes(eps))
+      .finally(() => setXwolfEpLoading(false))
+  }, [showEpPanel, season, item._xwolfId])
+
+  const openTrailer = async () => {
+    if (trailerUrl) { setShowTrailer(true); return }
+    if (!item._xwolfId) return
+    setTrailerLoading(true)
+    const t = await fetchXwolfTrailer(item._xwolfId)
+    setTrailerLoading(false)
+    if (t?.url) { setTrailerUrl(t.url); setShowTrailer(true) }
+  }
+
   const isLookingUpAny = lookingUp || (srv?.usesSubjectId && casperLookingUp)
   const noStream = !isLookingUpAny && (srv?.usesSubjectId ? !casperSubjectId : !imdbId)
 
@@ -628,6 +657,23 @@ export default function PlayerModal({ item, type, onClose }) {
               </div>
             )}
 
+            {showTrailer && trailerUrl && (
+              <div className="mb-trailer-overlay">
+                <div className="mb-trailer-header">
+                  <span>🎬 Official Trailer</span>
+                  <button className="mb-ep-panel-close" onClick={() => setShowTrailer(false)}>✕</button>
+                </div>
+                <div className="mb-trailer-frame">
+                  <iframe
+                    src={trailerUrl}
+                    allowFullScreen
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    title="Trailer"
+                  />
+                </div>
+              </div>
+            )}
+
             {showEpPanel && showEps && (
               <div className="mb-ep-panel">
                 <div className="mb-ep-panel-header">
@@ -644,17 +690,39 @@ export default function PlayerModal({ item, type, onClose }) {
                   ))}
                 </div>
                 <div className="mb-ep-panel-header" style={{ marginTop: 14 }}>
-                  <span>Episode</span>
+                  <span>Episodes{xwolfEpLoading ? ' …' : xwolfEpisodes.length > 0 ? ` · ${xwolfEpisodes.length}` : ''}</span>
                 </div>
-                <div className="mb-ep-grid">
-                  {Array.from({ length: MAX_EPISODES }, (_, i) => i + 1).map(ep => (
-                    <button
-                      key={ep}
-                      className={`mb-ep-num ${episode === ep ? 'mb-ep-active' : ''}`}
-                      onClick={() => { changeEpisode(ep); setShowEpPanel(false) }}
-                    >{ep}</button>
-                  ))}
-                </div>
+                {xwolfEpisodes.length > 0 ? (
+                  <div className="mb-ep-cards">
+                    {xwolfEpisodes.map(ep => (
+                      <button
+                        key={ep.episodeNumber}
+                        className={`mb-ep-card ${episode === ep.episodeNumber ? 'mb-ep-active' : ''}`}
+                        onClick={() => { changeEpisode(ep.episodeNumber); setShowEpPanel(false) }}
+                      >
+                        {ep.stillPath && (
+                          <img className="mb-ep-still" src={ep.stillPath} alt={ep.name} loading="lazy" />
+                        )}
+                        <div className="mb-ep-card-info">
+                          <span className="mb-ep-card-num">E{ep.episodeNumber}</span>
+                          <span className="mb-ep-card-name">{ep.name}</span>
+                          {ep.airDate && <span className="mb-ep-card-date">{ep.airDate.slice(0, 10)}</span>}
+                          {ep.overview && <span className="mb-ep-card-overview">{ep.overview.slice(0, 100)}{ep.overview.length > 100 ? '…' : ''}</span>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mb-ep-grid">
+                    {Array.from({ length: MAX_EPISODES }, (_, i) => i + 1).map(ep => (
+                      <button
+                        key={ep}
+                        className={`mb-ep-num ${episode === ep ? 'mb-ep-active' : ''}`}
+                        onClick={() => { changeEpisode(ep); setShowEpPanel(false) }}
+                      >{ep}</button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -686,6 +754,19 @@ export default function PlayerModal({ item, type, onClose }) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
               {showServers ? 'Hide Servers' : `${srv?.label} ▾`}
             </button>
+            {item._xwolfId && !showEps && (
+              <button
+                className={`mb-action-link mb-trailer-btn ${showTrailer ? 'mb-dl-active' : ''}`}
+                onClick={() => showTrailer ? setShowTrailer(false) : openTrailer()}
+                disabled={trailerLoading}
+              >
+                {trailerLoading
+                  ? <span className="mb-trailer-spin" />
+                  : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5,3 19,12 5,21"/></svg>
+                }
+                {trailerLoading ? 'Loading…' : showTrailer ? 'Hide Trailer' : 'Trailer'}
+              </button>
+            )}
             {embedUrl && (
               <a className="mb-action-link" href={embedUrl} target="_blank" rel="noreferrer">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>

@@ -49,3 +49,19 @@ export async function fetchXwolfSearch(q, page = 1) {
     return (d.movies || []).map(normalizeXwolfItem)
   } catch { return [] }
 }
+
+export async function fetchXwolfEpisodes(id, season = 1) {
+  try {
+    const r = await fetchWithTimeout(`/api/xwolf/tvshow/episodes?id=${id}&season=${season}`)
+    const d = await r.json()
+    return d.episodes || []
+  } catch { return [] }
+}
+
+export async function fetchXwolfTrailer(id) {
+  try {
+    const r = await fetchWithTimeout(`/api/xwolf/movie/trailer?id=${id}`)
+    const d = await r.json()
+    return d.trailer || null
+  } catch { return null }
+}
