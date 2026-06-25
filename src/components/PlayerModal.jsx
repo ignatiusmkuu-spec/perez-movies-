@@ -20,6 +20,12 @@ const ALL_SERVERS = [
     tv:    (id, s, e) => `https://www.nontongo.win/embed/tv/${id}/${s}/${e}`,
   },
   {
+    label: 'MovieBox',
+    usesTitle: true,
+    movie: (t) => `https://moviebox.ph/web/searchResult?keyword=${encodeURIComponent(t)}`,
+    tv:    (t) => `https://moviebox.ph/web/searchResult?keyword=${encodeURIComponent(t)}`,
+  },
+  {
     label: 'VidSrc.to',
     movie: (id) => `https://vidsrc.to/embed/movie/${id}`,
     tv:    (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
@@ -157,7 +163,9 @@ export default function PlayerModal({ item, type, onClose }) {
   const srv          = visibleServers[safeIdx]
   const embedUrl = srv?.usesSubjectId
     ? (casperSubjectId ? (showEps ? srv.tv(casperSubjectId, season, episode) : srv.movie(casperSubjectId)) : null)
-    : (imdbId && srv ? (showEps ? srv.tv(imdbId, season, episode) : srv.movie(imdbId)) : null)
+    : srv?.usesTitle
+      ? (title ? (showEps ? srv.tv(title) : srv.movie(title)) : null)
+      : (imdbId && srv ? (showEps ? srv.tv(imdbId, season, episode) : srv.movie(imdbId)) : null)
 
   useEffect(() => {
     setLookingUp(false)
@@ -296,10 +304,10 @@ export default function PlayerModal({ item, type, onClose }) {
   const getFirstImdbServer = () => {
     const preferred = ['NontonGo', 'AutoEmbed', 'VidSrc.to', 'VidSrc.rip', 'MultiEmbed', 'VidSrc']
     for (const label of preferred) {
-      const idx = visibleServers.findIndex(s => s.label === label && !s.usesSubjectId)
+      const idx = visibleServers.findIndex(s => s.label === label && !s.usesSubjectId && !s.usesTitle)
       if (idx !== -1) return idx
     }
-    return visibleServers.findIndex(s => !s.usesSubjectId)
+    return visibleServers.findIndex(s => !s.usesSubjectId && !s.usesTitle)
   }
 
   // Auto-cycle through all servers until one loads successfully
@@ -309,14 +317,14 @@ export default function PlayerModal({ item, type, onClose }) {
       failoverRef.current = null
     }
 
-    if (!embedUrl || !iframeLoading || lookingUp || manualSwitch || srv?.usesSubjectId) return
+    if (!embedUrl || !iframeLoading || lookingUp || manualSwitch || srv?.usesSubjectId || srv?.usesTitle) return
 
     // Mark current server as tried
     triedServersRef.current.add(safeIdx)
 
-    // Find next untried embed server (in list order)
+    // Find next untried embed server (in list order), skip special servers
     const nextIdx = visibleServers.findIndex((s, i) =>
-      !s.usesSubjectId && !triedServersRef.current.has(i)
+      !s.usesSubjectId && !s.usesTitle && !triedServersRef.current.has(i)
     )
 
     if (nextIdx === -1) {
@@ -325,7 +333,7 @@ export default function PlayerModal({ item, type, onClose }) {
       return
     }
 
-    const totalEmbed = visibleServers.filter(s => !s.usesSubjectId).length
+    const totalEmbed = visibleServers.filter(s => !s.usesSubjectId && !s.usesTitle).length
     const tried = triedServersRef.current.size
 
     failoverRef.current = setTimeout(() => {
@@ -456,7 +464,11 @@ export default function PlayerModal({ item, type, onClose }) {
   }
 
   const isLookingUpAny = lookingUp || (srv?.usesSubjectId && casperLookingUp)
-  const noStream = !isLookingUpAny && (srv?.usesSubjectId ? !casperSubjectId : !imdbId)
+  const noStream = !isLookingUpAny && (
+    srv?.usesSubjectId ? !casperSubjectId :
+    srv?.usesTitle     ? !title :
+    !imdbId
+  )
 
   return (
     <div className={`mb-overlay ${visible ? 'mb-visible' : ''}`}>
