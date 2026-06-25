@@ -2,7 +2,7 @@ import './BottomNav.css'
 
 const TABS = [
   { id: 'movies',   icon: '🎬', label: 'Movies' },
-  { id: 'fmovies',  icon: '🌐', label: 'FMovies' },
+  { id: 'fmovies',  icon: '🎬', label: 'IMovies' },
   { id: 'drama',    icon: '📺', label: 'Drama' },
   { id: 'anime',    icon: '⚡', label: 'Anime' },
   { id: 'rankings', icon: '🏆', label: 'Charts' },

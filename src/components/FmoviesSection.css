@@ -153,6 +153,12 @@
   gap: 12px;
 }
 
+.fm-logo {
+  transform: scale(0.75);
+  transform-origin: left center;
+  flex-shrink: 0;
+}
+
 .fm-hero-icon {
   font-size: 28px;
   line-height: 1;

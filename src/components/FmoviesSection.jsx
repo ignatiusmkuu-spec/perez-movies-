@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Logo from './Logo'
 import './FmoviesSection.css'
 
 const GRID_SIZE = 24
@@ -98,11 +99,8 @@ export default function FmoviesSection({ onPlay }) {
     <div className="fm-section">
       <div className="fm-hero">
         <div className="fm-hero-left">
-          <div className="fm-hero-icon">🎬</div>
-          <div>
-            <div className="fm-hero-title">FMovies Catalog</div>
-            <div className="fm-hero-sub">38,000+ movies — browse & stream instantly</div>
-          </div>
+          <Logo className="fm-logo" />
+          <div className="fm-hero-sub">38,000+ movies — browse & stream instantly</div>
         </div>
       </div>
 
@@ -112,7 +110,7 @@ export default function FmoviesSection({ onPlay }) {
           <input
             type="text"
             className="fm-search-input"
-            placeholder="Search movies…"
+            placeholder="Search Ignatius Movies…"
             value={searchInput}
             onChange={e => handleSearchInput(e.target.value)}
           />
