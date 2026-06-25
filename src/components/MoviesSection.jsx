@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchXwolfPopular, fetchXwolfNowPlaying, fetchXwolfSearch } from '../api/xwolf'
+import { fetchFlixerMovies } from '../api/flixer'
 import { omdbSearch } from '../api/moviebox'
 import SectionHeader from './SectionHeader'
 import MediaCard from './MediaCard'
@@ -34,135 +35,148 @@ function Skeleton() {
   )
 }
 
+function dedup(movies) {
+  const seenImdb = new Set()
+  const seenTitle = new Set()
+  return movies.filter(m => {
+    const id = m.imdbID
+    const titleKey = `${(m.Title || '').toLowerCase().trim()}|${m.Year || ''}`
+    if (id && seenImdb.has(id)) return false
+    if (id) seenImdb.add(id)
+    if (titleKey !== '|' && seenTitle.has(titleKey)) return false
+    if (titleKey !== '|') seenTitle.add(titleKey)
+    return true
+  })
+}
+
+function normalizeDiscover(i) {
+  return {
+    Title: i.title,
+    Year: String(i.year || ''),
+    Genre: i.genre || '',
+    Poster: i.poster || null,
+    imdbRating: i.rating || null,
+    imdbID: null,
+    _source: 'showbox',
+    _showboxId: i.id,
+    _showboxType: 'movie',
+  }
+}
+
+async function getDiscover(genre) {
+  try {
+    const r = await fetch(`/api/moviebox-discover?genre=${encodeURIComponent(genre)}`)
+    const d = await r.json()
+    return (d.items || []).map(normalizeDiscover)
+  } catch { return [] }
+}
+
+async function getOmdbBrowse(genre, page) {
+  try {
+    const r = await fetch(`/api/omdb/browse?genre=${encodeURIComponent(genre)}&page=${page}`)
+    const d = await r.json()
+    return (d.movies || []).map(m => ({ ...m, _source: 'omdb' }))
+  } catch { return [] }
+}
+
 export default function MoviesSection({ searchQuery, onPlay }) {
   const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
   const [genre, setGenre] = useState('all')
   const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
+  const [hasMore, setHasMore] = useState(false)
 
   const load = useCallback(async (g, p, q) => {
     setLoading(true)
     try {
+      let combined = []
+
       if (q) {
-        // Search: xwolf search first, OMDB as fallback
-        const [xwolfResults, omdbResults] = await Promise.allSettled([
+        const [xwolfRes, omdbRes] = await Promise.allSettled([
           fetchXwolfSearch(q, p),
           omdbSearch(q, p),
         ])
-
-        const xwolf = xwolfResults.status === 'fulfilled' ? xwolfResults.value : []
-        const omdb = (omdbResults.status === 'fulfilled' ? omdbResults.value : [])
+        const xwolf = xwolfRes.status === 'fulfilled' ? xwolfRes.value : []
+        const omdb  = (omdbRes.status === 'fulfilled' ? omdbRes.value : [])
           .map(r => ({ ...r, _source: 'omdb', Poster: r.Poster !== 'N/A' ? r.Poster : null }))
-
-        const seenTitles = new Set()
-        const all = []
-        for (const item of [...xwolf, ...omdb]) {
-          const key = (item.Title || '').toLowerCase().trim()
-          if (key && seenTitles.has(key)) continue
-          if (key) seenTitles.add(key)
-          all.push(item)
-        }
-
-        if (p === 1) setMovies(all)
-        else setMovies(prev => {
-          const titles = new Set(prev.map(m => m.Title?.toLowerCase()).filter(Boolean))
-          return [...prev, ...all.filter(m => !titles.has(m.Title?.toLowerCase()))]
-        })
+        combined = dedup([...xwolf, ...omdb])
         setHasMore(xwolf.length >= 10 || omdb.length >= 10)
 
       } else if (g === 'now-playing') {
-        const items = await fetchXwolfNowPlaying(p)
-        if (p === 1) setMovies(items)
-        else setMovies(prev => {
-          const titles = new Set(prev.map(m => m.Title?.toLowerCase()).filter(Boolean))
-          return [...prev, ...items.filter(m => !titles.has(m.Title?.toLowerCase()))]
-        })
-        setHasMore(items.length >= 18)
+        const [xwolfRes, ytsRes, omdbRes] = await Promise.allSettled([
+          fetchXwolfNowPlaying(p),
+          fetchFlixerMovies('all', 'date_added'),
+          getOmdbBrowse('now-playing', p),
+        ])
+        const xwolf = xwolfRes.status === 'fulfilled' ? xwolfRes.value : []
+        const yts   = ytsRes.status   === 'fulfilled' ? ytsRes.value   : []
+        const omdb  = omdbRes.status  === 'fulfilled' ? omdbRes.value  : []
+        combined = dedup([...xwolf, ...yts, ...omdb])
+        setHasMore(combined.length >= 20)
 
       } else if (g === 'popular') {
-        const items = await fetchXwolfPopular(p)
-        if (p === 1) setMovies(items)
-        else setMovies(prev => {
-          const titles = new Set(prev.map(m => m.Title?.toLowerCase()).filter(Boolean))
-          return [...prev, ...items.filter(m => !titles.has(m.Title?.toLowerCase()))]
-        })
-        setHasMore(items.length >= 18)
+        const [xwolfRes, ytsRes, omdbRes] = await Promise.allSettled([
+          fetchXwolfPopular(p),
+          fetchFlixerMovies('all', 'download_count'),
+          getOmdbBrowse('popular', p),
+        ])
+        const xwolf = xwolfRes.status === 'fulfilled' ? xwolfRes.value : []
+        const yts   = ytsRes.status   === 'fulfilled' ? ytsRes.value   : []
+        const omdb  = omdbRes.status  === 'fulfilled' ? omdbRes.value  : []
+        combined = dedup([...xwolf, ...yts, ...omdb])
+        setHasMore(combined.length >= 20)
 
       } else if (g === 'nollywood') {
-        const results = await omdbSearch('Nigeria film', p)
-        const normalized = results.map(r => ({
-          ...r, _source: 'omdb', Poster: r.Poster !== 'N/A' ? r.Poster : null,
-        }))
-        if (p === 1) setMovies(normalized)
-        else setMovies(prev => {
-          const ids = new Set(prev.map(m => m.imdbID))
-          return [...prev, ...normalized.filter(m => !ids.has(m.imdbID))]
-        })
-        setHasMore(results.length >= 10)
+        const [omdbRes, discoverRes] = await Promise.allSettled([
+          getOmdbBrowse('nollywood', p),
+          getDiscover('nollywood'),
+        ])
+        const omdb    = omdbRes.status    === 'fulfilled' ? omdbRes.value    : []
+        const discover= discoverRes.status=== 'fulfilled' ? discoverRes.value: []
+        combined = dedup([...omdb, ...discover])
+        setHasMore(omdb.length >= 30)
 
       } else if (['action','horror','romance','sci-fi','thriller','animation','crime'].includes(g)) {
-        // Genre tab: search xwolf by genre keyword
-        const keyword = g.replace('-', ' ')
-        const [xwolfResults, discoverResult] = await Promise.allSettled([
-          fetchXwolfSearch(keyword, p),
-          fetch(`/api/moviebox-discover?genre=${encodeURIComponent(g)}`).then(r => r.json()),
+        const [xwolfRes, ytsRes, omdbRes, discoverRes] = await Promise.allSettled([
+          fetchXwolfSearch(g.replace('-', ' '), p),
+          fetchFlixerMovies(g, 'download_count'),
+          getOmdbBrowse(g, p),
+          getDiscover(g),
         ])
-
-        const xwolf = xwolfResults.status === 'fulfilled' ? xwolfResults.value : []
-        const discoverItems = (discoverResult.status === 'fulfilled' ? (discoverResult.value?.items || []) : [])
-          .map(i => ({
-            Title: i.title,
-            Year: String(i.year || ''),
-            Genre: i.genre || '',
-            Poster: i.poster || null,
-            imdbRating: i.rating || null,
-            imdbID: null,
-            _source: 'showbox',
-            _showboxId: i.id,
-            _showboxType: 'movie',
-          }))
-          .filter(i => !xwolf.find(m => m.Title?.toLowerCase() === i.Title?.toLowerCase()))
-
-        const combined = [...xwolf, ...discoverItems]
-        if (p === 1) setMovies(combined)
-        setHasMore(xwolf.length >= 18)
+        const xwolf  = xwolfRes.status    === 'fulfilled' ? xwolfRes.value    : []
+        const yts    = ytsRes.status      === 'fulfilled' ? ytsRes.value      : []
+        const omdb   = omdbRes.status     === 'fulfilled' ? omdbRes.value     : []
+        const discover=discoverRes.status === 'fulfilled' ? discoverRes.value : []
+        combined = dedup([...xwolf, ...yts, ...omdb, ...discover])
+        setHasMore(combined.length >= 20)
 
       } else {
-        // "All" tab: xwolf popular + showbox discover in parallel
-        const [popularResult, discoverResult] = await Promise.allSettled([
+        const [xwolfRes, ytsRes, omdbRes, discoverRes] = await Promise.allSettled([
           fetchXwolfPopular(p),
-          fetch('/api/moviebox-discover?genre=all').then(r => r.json()),
+          fetchFlixerMovies('all', 'download_count'),
+          getOmdbBrowse('all', p),
+          getDiscover('all'),
         ])
-
-        const xwolf = popularResult.status === 'fulfilled' ? popularResult.value : []
-        const discoverItems = (discoverResult.status === 'fulfilled'
-          ? (discoverResult.value?.items || []) : [])
-          .map(i => ({
-            Title: i.title,
-            Year: String(i.year || ''),
-            Genre: i.genre || '',
-            Poster: i.poster || null,
-            imdbRating: i.rating || null,
-            imdbID: null,
-            _source: 'showbox',
-            _showboxId: i.id,
-            _showboxType: 'movie',
-          }))
-
-        const seenTitles = new Set()
-        const combined = []
-        for (const m of [...xwolf, ...discoverItems]) {
-          const key = (m.Title || '').toLowerCase().trim()
-          if (key && seenTitles.has(key)) continue
-          if (key) seenTitles.add(key)
-          combined.push(m)
-        }
-
-        if (p === 1) setMovies(combined)
+        const xwolf  = xwolfRes.status    === 'fulfilled' ? xwolfRes.value    : []
+        const yts    = ytsRes.status      === 'fulfilled' ? ytsRes.value      : []
+        const omdb   = omdbRes.status     === 'fulfilled' ? omdbRes.value     : []
+        const discover=discoverRes.status === 'fulfilled' ? discoverRes.value : []
+        combined = dedup([...xwolf, ...yts, ...omdb, ...discover])
         setHasMore(false)
-        setLoading(false)
-        return
+      }
+
+      if (p === 1) {
+        setMovies(combined)
+      } else {
+        setMovies(prev => {
+          const existKeys = new Set(prev.map(m =>
+            m.imdbID || m._xwolfId || m._ytsId || m._showboxId || m.Title
+          ).filter(Boolean))
+          return [...prev, ...combined.filter(m => {
+            const key = m.imdbID || m._xwolfId || m._ytsId || m._showboxId || m.Title
+            return key && !existKeys.has(key)
+          })]
+        })
       }
     } catch (e) { console.error('MoviesSection error:', e) }
     setLoading(false)

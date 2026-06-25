@@ -438,6 +438,67 @@ app.get('/api/showbox-search', async (req, res) => {
   }
 })
 
+/* ── OMDB Browse: parallel keyword searches per genre, server-side cached ── */
+const _omdbBrowseCache = {}
+const _omdbBrowseCacheAt = {}
+const OMDB_BROWSE_TTL = 25 * 60 * 1000
+
+const OMDB_GENRE_SEEDS = {
+  all:           ['avengers marvel','action thriller 2024','comedy drama 2023','adventure 2024','crime heist film','animated blockbuster','sci-fi space 2024','romance love story','horror mystery 2024','spy thriller movie'],
+  'now-playing': ['new movie 2024','latest film 2025','cinema release 2024','new movie 2025','box office hit 2024'],
+  popular:       ['avengers marvel','batman superhero','fast furious','mission impossible','spider-man','star wars','jurassic world','james bond 007','black panther','top gun maverick'],
+  action:        ['action movie 2024','war film 2024','superhero action','spy thriller action','military combat film','kung fu martial arts'],
+  horror:        ['horror movie 2024','supernatural horror','ghost thriller','zombie horror film','slasher horror','haunted house film'],
+  romance:       ['romance movie 2024','romantic comedy film','love story drama','wedding romantic film','drama romance 2023'],
+  'sci-fi':      ['sci-fi movie 2024','space adventure film','alien invasion sci-fi','dystopian future film','time travel sci-fi'],
+  thriller:      ['thriller movie 2024','psychological thriller','mystery suspense film','crime thriller drama','conspiracy thriller'],
+  animation:     ['animated movie 2024','pixar animated film','disney animation','dreamworks animation','cartoon family film'],
+  crime:         ['crime movie 2024','heist crime film','gangster movie','detective crime drama','mafia crime film'],
+  nollywood:     ['Nigeria film','Nollywood 2024','Nigerian drama film','Nollywood romance','Lagos movie','Yoruba film','African drama'],
+}
+
+app.get('/api/omdb/browse', async (req, res) => {
+  const { genre = 'all', page = 1 } = req.query
+  const cacheKey = `${genre}_${page}`
+  if (_omdbBrowseCache[cacheKey] && Date.now() - _omdbBrowseCacheAt[cacheKey] < OMDB_BROWSE_TTL) {
+    return res.set('Access-Control-Allow-Origin', '*').json(_omdbBrowseCache[cacheKey])
+  }
+  const seeds = OMDB_GENRE_SEEDS[genre] || OMDB_GENRE_SEEDS.all
+  const pageNum = parseInt(page) || 1
+  try {
+    const results = await Promise.allSettled(
+      seeds.map(keyword =>
+        fetch(`https://www.omdbapi.com/?apikey=trilogy&s=${encodeURIComponent(keyword)}&type=movie&page=${pageNum}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(6000),
+        }).then(r => r.json())
+      )
+    )
+    const seen = new Set()
+    const movies = []
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue
+      for (const item of (result.value?.Search || [])) {
+        if (!item.imdbID || seen.has(item.imdbID) || item.Type !== 'movie') continue
+        seen.add(item.imdbID)
+        movies.push({
+          Title: item.Title,
+          Year: item.Year,
+          imdbID: item.imdbID,
+          Poster: item.Poster !== 'N/A' ? item.Poster : null,
+          _source: 'omdb',
+        })
+      }
+    }
+    const payload = { movies, hasMore: pageNum < 5 }
+    _omdbBrowseCache[cacheKey] = payload
+    _omdbBrowseCacheAt[cacheKey] = Date.now()
+    res.set('Access-Control-Allow-Origin', '*').json(payload)
+  } catch (err) {
+    res.status(502).json({ error: err.message, movies: [] })
+  }
+})
+
 /* ── MovieBox Discover: multi-seed ShowBox search for movie browsing ── */
 const DISCOVER_SEEDS = {
   all:          ['action 2024','comedy thriller','drama award','adventure 2024','horror mystery'],
