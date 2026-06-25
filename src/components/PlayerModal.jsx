@@ -131,6 +131,7 @@ export default function PlayerModal({ item, type, onClose }) {
   const imdbRef               = useRef(null)
   const failoverRef           = useRef(null)
   const casperLookupDoneRef   = useRef(false)
+  const triedServersRef       = useRef(new Set())
 
   const isAnime = type === 'anime'
   const isTV    = type === 'moviebox-tv' || type === 'tv'
@@ -182,6 +183,7 @@ export default function PlayerModal({ item, type, onClose }) {
     setTrailerLoading(false)
     setXwolfEpisodes([])
     setXwolfEpLoading(false)
+    triedServersRef.current = new Set()
     if (failoverRef.current) {
       clearTimeout(failoverRef.current)
       failoverRef.current = null
@@ -300,7 +302,7 @@ export default function PlayerModal({ item, type, onClose }) {
     return visibleServers.findIndex(s => !s.usesSubjectId)
   }
 
-  // Auto-advance to next embed server when iframe takes too long
+  // Auto-cycle through all servers until one loads successfully
   useEffect(() => {
     if (failoverRef.current) {
       clearTimeout(failoverRef.current)
@@ -309,18 +311,30 @@ export default function PlayerModal({ item, type, onClose }) {
 
     if (!embedUrl || !iframeLoading || lookingUp || manualSwitch || srv?.usesSubjectId) return
 
-    // Find the next non-usesSubjectId server after current one
-    const nextIdx = visibleServers.findIndex((s, i) => i > safeIdx && !s.usesSubjectId)
-    const fallbackIdx = nextIdx !== -1 ? nextIdx : getFirstImdbServer()
-    if (fallbackIdx === -1 || fallbackIdx === safeIdx) return
+    // Mark current server as tried
+    triedServersRef.current.add(safeIdx)
+
+    // Find next untried embed server (in list order)
+    const nextIdx = visibleServers.findIndex((s, i) =>
+      !s.usesSubjectId && !triedServersRef.current.has(i)
+    )
+
+    if (nextIdx === -1) {
+      // Every server has been tried — give up and tell the user
+      setFailoverMsg('All servers tried. Select one manually below or check your connection.')
+      return
+    }
+
+    const totalEmbed = visibleServers.filter(s => !s.usesSubjectId).length
+    const tried = triedServersRef.current.size
 
     failoverRef.current = setTimeout(() => {
-      const nextLabel = visibleServers[fallbackIdx]?.label || 'next server'
-      setFailoverMsg(`Stream timed out — switching to ${nextLabel}…`)
-      setServerIdx(fallbackIdx)
+      const nextLabel = visibleServers[nextIdx]?.label || 'next server'
+      setFailoverMsg(`Trying ${nextLabel}… (${tried + 1}/${totalEmbed})`)
+      setServerIdx(nextIdx)
       setIframeLoading(true)
       failoverRef.current = null
-    }, 8000)
+    }, 5000)
 
     return () => {
       if (failoverRef.current) {
@@ -499,7 +513,7 @@ export default function PlayerModal({ item, type, onClose }) {
                   {failoverMsg || `Loading ${srv?.label}…`}
                 </p>
                 {!failoverMsg && !srv?.usesSubjectId && (
-                  <p className="mb-loader-sub">Auto-switching to NontonGo if stream is slow…</p>
+                  <p className="mb-loader-sub">Auto-trying all servers until one works…</p>
                 )}
               </div>
             )}
@@ -533,11 +547,20 @@ export default function PlayerModal({ item, type, onClose }) {
                 referrerPolicy="no-referrer-when-downgrade"
                 onLoad={() => { setIframeLoading(false); setFailoverMsg(null) }}
                 onError={() => {
-                  const failIdx = visibleServers.findIndex(s => s.label === 'VidSrc.to')
-                  if (failIdx !== -1 && failIdx !== safeIdx) {
-                    setFailoverMsg('Stream error — switching to VidSrc.to…')
-                    setServerIdx(failIdx)
+                  if (manualSwitch) return
+                  if (failoverRef.current) { clearTimeout(failoverRef.current); failoverRef.current = null }
+                  triedServersRef.current.add(safeIdx)
+                  const nextIdx = visibleServers.findIndex((s, i) =>
+                    !s.usesSubjectId && !triedServersRef.current.has(i)
+                  )
+                  if (nextIdx !== -1) {
+                    const tried = triedServersRef.current.size
+                    const totalEmbed = visibleServers.filter(s => !s.usesSubjectId).length
+                    setFailoverMsg(`${srv?.label} failed — trying ${visibleServers[nextIdx]?.label}… (${tried}/${totalEmbed})`)
+                    setServerIdx(nextIdx)
                     setIframeLoading(true)
+                  } else {
+                    setFailoverMsg('All servers tried. Select one manually below or check your connection.')
                   }
                 }}
               />
