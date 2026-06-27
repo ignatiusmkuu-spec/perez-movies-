@@ -280,6 +280,7 @@ export default function LiveSports() {
   const ytPlayerRef = useRef(null)
   const ytSearchRef = useRef(null)
   const ytActiveVideoRef = useRef(null)
+  const ytVideosRef = useRef([])
 
   // Live Matches state (xcasper live feed)
   const [liveMatches, setLiveMatches]           = useState([])
@@ -433,8 +434,34 @@ export default function LiveSports() {
     }
   }, [activeMatch2])
 
-  // Keep ref in sync with ytActiveVideo state (for cleanup)
+  // Keep refs in sync
   useEffect(() => { ytActiveVideoRef.current = ytActiveVideo }, [ytActiveVideo])
+  useEffect(() => { ytVideosRef.current = ytVideos }, [ytVideos])
+
+  // Navigate to adjacent video in the list
+  const handleYtNext = () => {
+    const list = ytVideosRef.current
+    const cur  = ytActiveVideoRef.current
+    if (!list.length || !cur) return
+    const idx = list.findIndex(v => v.vid === cur.vid)
+    const next = list[(idx + 1) % list.length]
+    setYtActiveVideo(next)
+    setYtPlayerLoading(true)
+    setYtVideoBlocked(false)
+    setTimeout(() => ytPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }
+
+  const handleYtPrev = () => {
+    const list = ytVideosRef.current
+    const cur  = ytActiveVideoRef.current
+    if (!list.length || !cur) return
+    const idx = list.findIndex(v => v.vid === cur.vid)
+    const prev = list[(idx - 1 + list.length) % list.length]
+    setYtActiveVideo(prev)
+    setYtPlayerLoading(true)
+    setYtVideoBlocked(false)
+    setTimeout(() => ytPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }
 
   // Auto-minimize YouTube to PiP when LiveSports unmounts (user navigates to another section)
   useEffect(() => {
@@ -452,21 +479,29 @@ export default function LiveSports() {
     }
   }, [playMini])
 
-  // YouTube: detect embedding errors via postMessage (error 101/150 = not embeddable)
+  // YouTube: detect embed errors + auto-advance on video end via postMessage
   useEffect(() => {
     const handleYtMessage = (event) => {
       if (!event.origin.includes('youtube.com')) return
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+        // Ignore cued state
         if (data?.event === 'infoDelivery' && data?.info?.playerState === 5) return
+        // Embedding errors (101 / 150 = not embeddable on third-party)
         if (data?.event === 'onError' && (data?.info === 101 || data?.info === 150)) {
           setYtVideoBlocked(true)
           setYtPlayerLoading(false)
+        }
+        // playerState 0 = ended → auto-play next
+        const state = data?.info?.playerState ?? data?.info
+        if ((data?.event === 'infoDelivery' || data?.event === 'onStateChange') && state === 0) {
+          handleYtNext()
         }
       } catch (_) {}
     }
     window.addEventListener('message', handleYtMessage)
     return () => window.removeEventListener('message', handleYtMessage)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // YouTube: fetch trending or search results
@@ -982,78 +1017,133 @@ export default function LiveSports() {
           )}
 
           {/* Embedded Player */}
-          {ytActiveVideo && (
-            <div className="yt-player-wrap" ref={ytPlayerRef}>
-              <div className="yt-player-bar">
-                <div className="yt-player-info">
-                  <div className="yt-player-title">{ytActiveVideo.title}</div>
-                  <div className="yt-player-channel">{ytActiveVideo.channel}</div>
-                </div>
-                <div className="yt-player-actions">
-                  <a
-                    href={`https://www.youtube.com/watch?v=${ytActiveVideo.vid}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="yt-open-btn"
-                  >
-                    ↗ YouTube
-                  </a>
-                  <button
-                    className="yt-pip-btn"
-                    title="Play in background (PiP)"
-                    onClick={() => {
-                      playMini({
-                        embedUrl: `https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`,
-                        title: ytActiveVideo.title,
-                        poster: ytActiveVideo.thumb,
-                        type: 'youtube',
-                        channel: ytActiveVideo.channel,
-                      })
-                      setYtActiveVideo(null)
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
-                      <rect x="14" y="14" width="8" height="6" rx="1"/>
-                      <path d="M2 3h13v10H2z"/>
-                    </svg>
-                  </button>
-                  <button className="yt-player-close" onClick={() => setYtActiveVideo(null)}>✕</button>
-                </div>
-              </div>
-              <div className="yt-player-frame">
-                {ytPlayerLoading && !ytVideoBlocked && (
-                  <div className="match-player-loading">
-                    <div style={{ width:40, height:40, border:'3px solid #222', borderTopColor:'#FF0000', borderRadius:'50%', animation:'nf-spin 0.8s linear infinite' }} />
+          {ytActiveVideo && (() => {
+            const curIdx   = ytVideos.findIndex(v => v.vid === ytActiveVideo.vid)
+            const upNext   = ytVideos[(curIdx + 1) % ytVideos.length]
+            const hasPrev  = ytVideos.length > 1
+            const hasNext  = ytVideos.length > 1
+            const posLabel = ytVideos.length > 0 ? `${curIdx + 1} / ${ytVideos.length}` : ''
+            return (
+              <div className="yt-player-wrap" ref={ytPlayerRef}>
+                {/* ── Top bar: nav + info + actions ── */}
+                <div className="yt-player-bar">
+                  <div className="yt-player-nav">
+                    <button
+                      className="yt-nav-btn"
+                      title="Previous video"
+                      disabled={!hasPrev}
+                      onClick={handleYtPrev}
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                        <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
+                      </svg>
+                    </button>
+                    <span className="yt-nav-pos">{posLabel}</span>
+                    <button
+                      className="yt-nav-btn"
+                      title="Next video"
+                      disabled={!hasNext}
+                      onClick={handleYtNext}
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                        <path d="M6 18l8.5-6L6 6v12zm8.5-6v6H17V6h-2.5v6z"/>
+                      </svg>
+                    </button>
                   </div>
-                )}
-                {ytVideoBlocked ? (
-                  <div className="yt-blocked-overlay">
-                    <div className="yt-blocked-icon">🚫</div>
-                    <div className="yt-blocked-title">Video can't be played here</div>
-                    <div className="yt-blocked-sub">The owner of this video has disabled playback on third-party sites.</div>
+
+                  <div className="yt-player-info">
+                    <div className="yt-player-title">{ytActiveVideo.title}</div>
+                    <div className="yt-player-channel">{ytActiveVideo.channel}</div>
+                  </div>
+
+                  <div className="yt-player-actions">
                     <a
                       href={`https://www.youtube.com/watch?v=${ytActiveVideo.vid}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="yt-blocked-btn"
+                      className="yt-open-btn"
                     >
-                      ▶ Watch on YouTube
+                      ↗ YouTube
                     </a>
+                    <button
+                      className="yt-pip-btn"
+                      title="Play in background (PiP)"
+                      onClick={() => {
+                        playMini({
+                          embedUrl: `https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`,
+                          title: ytActiveVideo.title,
+                          poster: ytActiveVideo.thumb,
+                          type: 'youtube',
+                          channel: ytActiveVideo.channel,
+                        })
+                        setYtActiveVideo(null)
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+                        <rect x="14" y="14" width="8" height="6" rx="1"/>
+                        <path d="M2 3h13v10H2z"/>
+                      </svg>
+                    </button>
+                    <button className="yt-player-close" onClick={() => setYtActiveVideo(null)}>✕</button>
                   </div>
-                ) : (
-                  <iframe
-                    key={ytActiveVideo.vid}
-                    src={`https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
-                    frameBorder="0"
-                    allowFullScreen
-                    allow="autoplay; fullscreen; encrypted-media; accelerometer; gyroscope; picture-in-picture"
-                    style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
-                    onLoad={() => setYtPlayerLoading(false)}
-                  />
+                </div>
+
+                {/* ── Iframe ── */}
+                <div className="yt-player-frame">
+                  {ytPlayerLoading && !ytVideoBlocked && (
+                    <div className="match-player-loading">
+                      <div style={{ width:40, height:40, border:'3px solid #222', borderTopColor:'#FF0000', borderRadius:'50%', animation:'nf-spin 0.8s linear infinite' }} />
+                    </div>
+                  )}
+                  {ytVideoBlocked ? (
+                    <div className="yt-blocked-overlay">
+                      <div className="yt-blocked-icon">🚫</div>
+                      <div className="yt-blocked-title">Video can't be played here</div>
+                      <div className="yt-blocked-sub">The owner has disabled third-party playback.</div>
+                      <div className="yt-blocked-actions">
+                        <a
+                          href={`https://www.youtube.com/watch?v=${ytActiveVideo.vid}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="yt-blocked-btn"
+                        >
+                          ▶ Watch on YouTube
+                        </a>
+                        {hasNext && (
+                          <button className="yt-blocked-next-btn" onClick={handleYtNext}>
+                            Skip → Next
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <iframe
+                      key={ytActiveVideo.vid}
+                      src={`https://www.youtube.com/embed/${ytActiveVideo.vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
+                      frameBorder="0"
+                      allowFullScreen
+                      allow="autoplay; fullscreen; encrypted-media; accelerometer; gyroscope; picture-in-picture"
+                      style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
+                      onLoad={() => setYtPlayerLoading(false)}
+                    />
+                  )}
+                </div>
+
+                {/* ── Up Next strip ── */}
+                {upNext && upNext.vid !== ytActiveVideo.vid && (
+                  <div className="yt-up-next" onClick={handleYtNext}>
+                    <span className="yt-up-next-label">▶ Up next</span>
+                    {upNext.thumb && (
+                      <img src={upNext.thumb} alt="" className="yt-up-next-thumb"
+                           onError={e => e.target.style.display = 'none'} />
+                    )}
+                    <span className="yt-up-next-title">{upNext.title}</span>
+                    <span className="yt-up-next-ch">{upNext.channel}</span>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Loading Skeletons */}
           {ytLoading && (
