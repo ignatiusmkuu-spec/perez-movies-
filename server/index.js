@@ -2558,6 +2558,51 @@ async function fetchNontongoChannels() {
   } catch { return _nontongoCache || [] }
 }
 
+/* ── Today's Soccer Fixtures (TheSportsDB, free, no key) ── */
+let _fixturesCache = null
+let _fixturesCacheAt = 0
+const FIXTURES_TTL = 2 * 60 * 1000
+
+app.get('/api/fixtures/today', async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*')
+  if (_fixturesCache && Date.now() - _fixturesCacheAt < FIXTURES_TTL) {
+    return res.json(_fixturesCache)
+  }
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const r = await fetch(
+      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${today}&s=Soccer`,
+      {
+        headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(8000),
+      }
+    )
+    const json = await r.json()
+    const raw = json.events || []
+    const events = raw.map(e => ({
+      id:          e.idEvent,
+      home:        e.strHomeTeam,
+      away:        e.strAwayTeam,
+      homeBadge:   e.strHomeTeamBadge || null,
+      awayBadge:   e.strAwayTeamBadge || null,
+      league:      e.strLeague,
+      leagueBadge: e.strLeagueBadge || null,
+      time:        e.strTime ? e.strTime.slice(0, 5) : '--:--',
+      localTime:   e.strTimeLocal ? e.strTimeLocal.slice(0, 5) : null,
+      homeScore:   e.intHomeScore,
+      awayScore:   e.intAwayScore,
+      status:      e.strStatus || null,
+      date:        e.dateEvent,
+    }))
+    const payload = { events, date: today, count: events.length }
+    _fixturesCache = payload
+    _fixturesCacheAt = Date.now()
+    res.json(payload)
+  } catch (err) {
+    res.status(502).json({ error: err.message, events: [], count: 0 })
+  }
+})
+
 app.get('/api/kenya-tv', (req, res) => {
   res.set('Access-Control-Allow-Origin', '*')
   res.json({ channels: KENYA_TV_CHANNELS, ok: true })
