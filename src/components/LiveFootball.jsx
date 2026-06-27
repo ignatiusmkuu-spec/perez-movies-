@@ -4,12 +4,30 @@ import './LiveFootball.css'
 
 const PROXY_ROOT = '/soccertv/'
 
+const DATE_TABS = [
+  { offset: -1, label: 'Yesterday' },
+  { offset:  0, label: 'Today'     },
+  { offset:  1, label: 'Tomorrow'  },
+]
+
+function getOffsetDate(offset = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toISOString().slice(0, 10)
+}
+
+function formatSubDate(offset) {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
 function getMatchStatus(event) {
   const s = (event.status || '').toLowerCase()
-  if (s === 'in progress' || s === 'ht' || s === 'live') return 'live'
+  if (s === 'in progress' || s === 'ht' || s === '1h' || s === '2h' || s === 'live') return 'live'
   const hasScore = event.homeScore !== null && event.homeScore !== '' &&
                    event.awayScore !== null && event.awayScore !== ''
-  if (hasScore && s !== 'ns' && s !== 'not started') return 'ft'
+  if (hasScore && s !== 'ns' && s !== 'not started' && s !== '') return 'ft'
   return 'upcoming'
 }
 
@@ -40,9 +58,7 @@ function FixtureCard({ event }) {
           {status === 'live' && (
             <span className="fx-status-live"><span className="fx-dot" />LIVE</span>
           )}
-          {status === 'ft' && (
-            <span className="fx-status-ft">FT</span>
-          )}
+          {status === 'ft' && <span className="fx-status-ft">FT</span>}
           {hasScore ? (
             <div className="fx-score">{event.homeScore} – {event.awayScore}</div>
           ) : (
@@ -63,39 +79,62 @@ function FixtureCard({ event }) {
 }
 
 function FixturesStrip() {
-  const [events, setEvents] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [offset, setOffset]     = useState(0)
+  const [events, setEvents]     = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
-  const fetchFixtures = useCallback(async () => {
+  const fetchFixtures = useCallback(async (dateOffset) => {
+    setLoading(true)
+    setError(false)
     try {
-      const r = await fetch('/api/fixtures/today')
+      const date = getOffsetDate(dateOffset)
+      const r = await fetch(`/api/fixtures/today?date=${date}`)
       const data = await r.json()
       setEvents(data.events || [])
-      setError(false)
     } catch {
       setError(true)
+      setEvents([])
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchFixtures()
-    const timer = setInterval(fetchFixtures, 2 * 60 * 1000)
+    fetchFixtures(offset)
+    if (offset !== 0) return
+    const timer = setInterval(() => fetchFixtures(0), 2 * 60 * 1000)
     return () => clearInterval(timer)
-  }, [fetchFixtures])
+  }, [offset, fetchFixtures])
 
   const liveCount = events.filter(e => getMatchStatus(e) === 'live').length
 
+  const handleTabClick = (e, newOffset) => {
+    e.stopPropagation()
+    if (newOffset !== offset) setOffset(newOffset)
+    if (collapsed) setCollapsed(false)
+  }
+
   return (
     <div className={`fx-strip ${collapsed ? 'fx-strip-collapsed' : ''}`}>
-      <div className="fx-strip-bar" onClick={() => setCollapsed(c => !c)}>
-        <div className="fx-strip-bar-left">
-          <span className="fx-strip-icon">📅</span>
-          <span className="fx-strip-title">Today's Fixtures</span>
-          {liveCount > 0 && (
+      {/* ── Bar: date tabs + collapse toggle ── */}
+      <div className="fx-strip-bar">
+        <div className="fx-date-tabs">
+          {DATE_TABS.map(({ offset: off, label }) => (
+            <button
+              key={off}
+              className={`fx-date-tab ${offset === off ? 'fx-date-tab-active' : ''}`}
+              onClick={e => handleTabClick(e, off)}
+            >
+              {label}
+              <span className="fx-date-sub">{formatSubDate(off)}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="fx-strip-bar-right" onClick={() => setCollapsed(c => !c)}>
+          {liveCount > 0 && offset === 0 && (
             <span className="fx-strip-live-count">
               <span className="fx-dot" />{liveCount} LIVE
             </span>
@@ -103,10 +142,11 @@ function FixturesStrip() {
           {!loading && !error && (
             <span className="fx-strip-count">{events.length} matches</span>
           )}
+          <span className="fx-strip-chevron">{collapsed ? '▲' : '▼'}</span>
         </div>
-        <span className="fx-strip-chevron">{collapsed ? '▲' : '▼'}</span>
       </div>
 
+      {/* ── Scrollable fixture cards ── */}
       {!collapsed && (
         <div className="fx-scroll">
           {loading && (
@@ -118,7 +158,7 @@ function FixturesStrip() {
             <div className="fx-empty">Could not load fixtures</div>
           )}
           {!loading && !error && events.length === 0 && (
-            <div className="fx-empty">No matches scheduled today</div>
+            <div className="fx-empty">No matches scheduled</div>
           )}
           {!loading && events.map(ev => (
             <FixtureCard key={ev.id} event={ev} />

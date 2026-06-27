@@ -96,29 +96,57 @@
   transition: max-height 0.25s ease;
 }
 
-/* Collapsible bar */
+/* Bar: date tabs + right meta */
 .fx-strip-bar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  padding: 7px 14px;
-  cursor: pointer;
-  user-select: none;
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
-.fx-strip-bar:hover { background: rgba(255,255,255,0.03); }
-.fx-strip-bar-left {
+
+/* ── Date tabs ── */
+.fx-date-tabs {
+  display: flex;
+}
+.fx-date-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #555;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.fx-date-tab:hover { color: #aaa; background: rgba(255,255,255,0.03); }
+.fx-date-tab-active {
+  color: #fff !important;
+  border-bottom-color: #e50914 !important;
+}
+.fx-date-sub {
+  font-size: 0.55rem;
+  font-weight: 400;
+  color: inherit;
+  opacity: 0.65;
+}
+
+/* Right side: counts + collapse chevron */
+.fx-strip-bar-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  user-select: none;
 }
-.fx-strip-icon { font-size: 0.8rem; }
-.fx-strip-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #ccc;
-  letter-spacing: 0.01em;
-}
+.fx-strip-bar-right:hover { background: rgba(255,255,255,0.03); }
+
 .fx-strip-live-count {
   display: inline-flex;
   align-items: center;

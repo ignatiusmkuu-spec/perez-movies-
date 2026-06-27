@@ -2559,19 +2559,25 @@ async function fetchNontongoChannels() {
 }
 
 /* ── Today's Soccer Fixtures (TheSportsDB, free, no key) ── */
-let _fixturesCache = null
-let _fixturesCacheAt = 0
+const _fixturesCacheMap = {}
 const FIXTURES_TTL = 2 * 60 * 1000
+
+function getDateStr(offsetDays = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return d.toISOString().slice(0, 10)
+}
 
 app.get('/api/fixtures/today', async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*')
-  if (_fixturesCache && Date.now() - _fixturesCacheAt < FIXTURES_TTL) {
-    return res.json(_fixturesCache)
+  const date = req.query.date || getDateStr(0)
+  const cached = _fixturesCacheMap[date]
+  if (cached && Date.now() - cached.at < FIXTURES_TTL) {
+    return res.json(cached.payload)
   }
   try {
-    const today = new Date().toISOString().slice(0, 10)
     const r = await fetch(
-      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${today}&s=Soccer`,
+      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${date}&s=Soccer`,
       {
         headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
         signal: AbortSignal.timeout(8000),
@@ -2594,9 +2600,8 @@ app.get('/api/fixtures/today', async (req, res) => {
       status:      e.strStatus || null,
       date:        e.dateEvent,
     }))
-    const payload = { events, date: today, count: events.length }
-    _fixturesCache = payload
-    _fixturesCacheAt = Date.now()
+    const payload = { events, date, count: events.length }
+    _fixturesCacheMap[date] = { payload, at: Date.now() }
     res.json(payload)
   } catch (err) {
     res.status(502).json({ error: err.message, events: [], count: 0 })
