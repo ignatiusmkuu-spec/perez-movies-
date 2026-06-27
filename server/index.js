@@ -205,6 +205,98 @@ app.use('/stream-proxy', async (req, res) => {
 })
 
 
+/* ── SoccerTVHD Full Reverse Proxy ── */
+const SOCCERTV_ORIGIN = 'https://www.soccertvhd.com'
+const SOCCERTV_PREFIX = '/soccertv'
+const DROP_HEADERS = new Set([
+  'x-frame-options','content-security-policy','content-security-policy-report-only',
+  'transfer-encoding','connection','keep-alive','trailer','upgrade',
+  'strict-transport-security','expect-ct','permissions-policy',
+])
+
+function rewriteSoccerUrl(url, reqProtocol, reqHost) {
+  if (!url) return url
+  const base = `${reqProtocol}://${reqHost}`
+  try {
+    let abs
+    if (url.startsWith('//')) abs = `https:${url}`
+    else if (url.startsWith('http://') || url.startsWith('https://')) abs = url
+    else return url
+    const u = new URL(abs)
+    if (u.origin === SOCCERTV_ORIGIN) {
+      return `${base}${SOCCERTV_PREFIX}${u.pathname}${u.search}${u.hash}`
+    }
+    return url
+  } catch { return url }
+}
+
+function rewriteSoccerHtml(html, proto, host) {
+  return html
+    .replace(/<meta[^>]*(?:x-frame-options|content-security-policy)[^>]*>/gi, '')
+    .replace(/(<(?:a|link|script|img|iframe|form|source|track)\b[^>]*\s(?:href|src|action|data-src)=["'])([^"']+)(["'])/gi, (_, pre, url, post) => {
+      return `${pre}${rewriteSoccerUrl(url, proto, host)}${post}`
+    })
+    .replace(/(url\(["']?)([^"')]+)(["']?\))/gi, (_, pre, url, post) => {
+      return `${pre}${rewriteSoccerUrl(url, proto, host)}${post}`
+    })
+}
+
+app.use(SOCCERTV_PREFIX, async (req, res) => {
+  const upstreamPath = req.url || '/'
+  const targetUrl = `${SOCCERTV_ORIGIN}${upstreamPath}`
+
+  try {
+    const upstream = await fetch(targetUrl, {
+      method: req.method,
+      agent: httpsAgent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': req.headers['accept'] || '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': SOCCERTV_ORIGIN + '/',
+        'Origin': SOCCERTV_ORIGIN,
+        ...(req.headers['range'] ? { 'Range': req.headers['range'] } : {}),
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15000),
+    })
+
+    const ct = upstream.headers.get('content-type') || 'application/octet-stream'
+    const isHtml = ct.includes('text/html')
+    const isCss  = ct.includes('text/css')
+    const isText = isHtml || isCss || ct.includes('javascript') || ct.includes('json') || ct.includes('text/')
+
+    upstream.headers.forEach((v, k) => {
+      if (!DROP_HEADERS.has(k.toLowerCase())) res.setHeader(k, v)
+    })
+    res.setHeader('Content-Type', ct)
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('X-Frame-Options', 'ALLOWALL')
+
+    if (!upstream.ok && !isHtml) {
+      res.status(upstream.status)
+      upstream.body.pipe(res)
+      return
+    }
+
+    if (isText) {
+      let body = await upstream.text()
+      const proto = req.protocol || 'https'
+      const host  = req.headers.host || req.hostname || 'localhost:3001'
+      if (isHtml) body = rewriteSoccerHtml(body, proto, host)
+      else body = body.replace(/((?:url\(["']?|["'`]))(https?:\/\/www\.soccertvhd\.com)([^"'`\s)]+)/g,
+        (_, pre, _origin, rest) => `${pre}${proto}://${host}${SOCCERTV_PREFIX}${rest}`)
+      res.status(upstream.status).send(body)
+    } else {
+      res.status(upstream.status)
+      upstream.body.pipe(res)
+    }
+  } catch (err) {
+    console.error('[SoccerTV Proxy]', err.message)
+    res.status(502).send('Proxy error: ' + err.message)
+  }
+})
+
 app.get('/api/imgproxy', async (req, res) => {
   const src = req.query.src
   if (!src) return res.status(400).send('Missing src')

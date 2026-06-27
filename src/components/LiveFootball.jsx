@@ -2,8 +2,7 @@ import { useState, useRef } from 'react'
 import Logo from './Logo'
 import './LiveFootball.css'
 
-const SITE_URL = 'https://www.soccertvhd.com/'
-const PROXY_URL = `/stream-proxy?target=${encodeURIComponent(SITE_URL)}`
+const PROXY_ROOT = '/soccertv/'
 
 export default function IgnatiusLiveMatches() {
   const [loading, setLoading] = useState(true)
@@ -40,7 +39,7 @@ export default function IgnatiusLiveMatches() {
         <iframe
           key={key}
           ref={iframeRef}
-          src={PROXY_URL}
+          src={PROXY_ROOT}
           className={`ilm-iframe ${loading ? 'ilm-iframe-hidden' : ''}`}
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"

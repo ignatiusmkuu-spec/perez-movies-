@@ -76,6 +76,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/soccertv': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })
